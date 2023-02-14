@@ -83,12 +83,6 @@ async def api_invoice(domain_id: str):
 async def api_domain_create(
     data: CreateDomainData, wallet: WalletTypeInfo = Depends(get_key_type)
 ):
-    exists = await get_domain_by_name(data.domain)
-    logger.error(exists)
-    if exists:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Domain already exists."
-        )
 
     domain = await create_domain_internal(wallet_id=wallet.wallet.id, data=data)
 
