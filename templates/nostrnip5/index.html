@@ -208,8 +208,8 @@
           filled
           dense
           v-model.trim="formDialog.data.amount"
-          label="Amount"
-          placeholder="How much do you want to charge?"
+          label="Price"
+          placeholder="How much do you want to charge per address?"
         ></q-input>
         <q-input
           filled
@@ -287,7 +287,7 @@
           dense
           v-model.trim="addressFormDialog.data.pubkey"
           label="Public Key"
-          placeholder="npub..."
+          placeholder="npub or hex"
         ></q-input>
         <q-input
           filled
