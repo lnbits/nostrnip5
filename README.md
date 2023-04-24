@@ -1,4 +1,5 @@
-# Nostr NIP-05
+# Nostr NIP-05 - <small>[LNbits](https://github.com/lnbits/lnbits) extension</small>
+<small>For more about LNBits extension check [this tutorial](https://github.com/lnbits/lnbits/wiki/LNbits-Extensions)</small>
 
 ## Allow users to NIP-05 verify themselves at a domain you control
 
