@@ -202,7 +202,7 @@ async def api_address_create(
 
     if len(bytes.fromhex(post_data.pubkey)) != 32:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Pubkey must be in hex format."
+            status_code=HTTPStatus.NOT_FOUND, detail="Pubkey must be in npub or hex format."
         )
 
     address = await create_address_internal(domain_id=domain_id, data=post_data)
