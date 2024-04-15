@@ -1,10 +1,11 @@
 import asyncio
 
-from fastapi import APIRouter
+from fastapi import APIRoute:
+from loguru import logger
 
 from lnbits.db import Database
 from lnbits.helpers import template_renderer
-from lnbits.tasks import catch_everything_and_restart
+from lnbits.tasks import create_permanent_unique_task
 
 db = Database("ext_nostrnip5")
 
@@ -23,12 +24,19 @@ def nostrnip5_renderer():
 
 
 from .tasks import wait_for_paid_invoices
-
-
-def nostrnip5_start():
-    loop = asyncio.get_event_loop()
-    loop.create_task(catch_everything_and_restart(wait_for_paid_invoices))
-
-
 from .views import *  # noqa: F401,F403
 from .views_api import *  # noqa: F401,F403
+
+
+scheduled_tasks: list[asyncio.Task] = []
+
+def nostrnip5_stop():
+    for task in scheduled_tasks:
+        try:
+            task.cancel()
+        except Exception as ex:
+            logger.warning(ex)
+
+def nostrnip5_start():
+    task = create_permanent_unique_task("ext_nostrnip5", wait_for_paid_invoices)
+    scheduled_tasks.append(task)
