@@ -2,6 +2,23 @@
   "name": "Nostr NIP-5",
   "short_description": "Verify addresses for Nostr NIP-5",
   "tile": "/nostrnip5/static/image/nostrnip5.png",
-  "contributors": ["leesalminen"],
-  "min_lnbits_version": "0.12.5"
+  "min_lnbits_version": "0.12.5",
+  "contributors": [
+    {
+      "name": "leesalminen",
+      "uri": "https://github.com/leesalminen",
+      "role": "Contributor"
+    }
+  ],
+  "images": [
+    {
+      "uri": "https://raw.githubusercontent.com/lnbits/nostrnip5/main/static/image/1.png"
+    },
+    {
+      "uri": "https://raw.githubusercontent.com/lnbits/nostrnip5/main/static/image/2.png"
+    }
+  ],
+  "description_md": "https://raw.githubusercontent.com/lnbits/nostrnip5/main/description.md",
+  "terms_and_conditions_md": "https://raw.githubusercontent.com/lnbits/nostrnip5/main/toc.md",
+  "license": "MIT"
 }
