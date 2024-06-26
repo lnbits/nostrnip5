@@ -111,15 +111,18 @@ async def api_domain_delete(
 
 
 @nostrnip5_api_router.delete(
-    "/api/v1/address/{address_id}", status_code=HTTPStatus.CREATED
+    "/api/v1/address/{domain_id}/{address_id}", status_code=HTTPStatus.GONE
 )
 async def api_address_delete(
+    domain_id: str,
     address_id: str,
-    wallet: WalletTypeInfo = Depends(require_admin_key),
+    w: WalletTypeInfo = Depends(require_admin_key),
 ):
-    await delete_address(address_id)
+    domain = await get_domain(domain_id, w.wallet.id)
+    if not domain:
+        return False
 
-    return True
+    return await delete_address(domain_id, address_id)
 
 
 @nostrnip5_api_router.post(

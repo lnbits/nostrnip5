@@ -717,7 +717,7 @@
             LNbits.api
               .request(
                 'DELETE',
-                '/nostrnip5/api/v1/address/' + address_id,
+                `/nostrnip5/api/v1/address/${domain.id}/${address_id}`,
                 _.findWhere(self.g.user.wallets, {id: domain.wallet}).adminkey
               )
               .then(function (response) {
