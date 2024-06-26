@@ -21,6 +21,7 @@ from .crud import (
     get_addresses,
     get_all_addresses,
     get_domain,
+    get_domain_by_id,
     get_domains,
     rotate_address,
     update_domain_internal,
@@ -66,10 +67,9 @@ async def api_addresses(
 @nostrnip5_api_router.get(
     "/api/v1/domain/{domain_id}",
     status_code=HTTPStatus.OK,
-    dependencies=[Depends(get_key_type)],
 )
-async def api_invoice(domain_id: str):
-    domain = await get_domain(domain_id)
+async def api_invoice(domain_id: str, w: WalletTypeInfo = Depends(get_key_type)):
+    domain = await get_domain(domain_id, w.wallet.id)
     if not domain:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="Domain does not exist."
@@ -184,7 +184,7 @@ async def api_address_create(
     post_data: CreateAddressData,
     domain_id: str,
 ):
-    domain = await get_domain(domain_id)
+    domain = await get_domain_by_id(domain_id)
 
     if not domain:
         raise HTTPException(
@@ -248,16 +248,22 @@ async def api_address_create(
     "/api/v1/domain/{domain_id}/payments/{payment_hash}", status_code=HTTPStatus.OK
 )
 async def api_nostrnip5_check_payment(domain_id: str, payment_hash: str):
-    domain = await get_domain(domain_id)
-    if not domain:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Domain does not exist."
-        )
     try:
         payment = await get_standalone_payment(payment_hash)
         if not payment:
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND, detail="Payment does not exist."
+            )
+        payment_domain_id = payment.extra.get("domain_id")
+        payment_address_id = payment.extra.get("address_id")
+        if (
+            not payment_domain_id
+            or not payment_address_id
+            or payment_domain_id != domain_id
+        ):
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail="Payment does not exist for this domain.",
             )
         status = await payment.check_status()
         return {"paid": status.paid}

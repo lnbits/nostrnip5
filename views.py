@@ -7,7 +7,7 @@ from lnbits.core.models import User
 from lnbits.decorators import check_user_exists
 from lnbits.helpers import template_renderer
 
-from .crud import get_address, get_domain
+from .crud import get_address, get_domain_public_data
 
 templates = Jinja2Templates(directory="templates")
 
@@ -27,7 +27,7 @@ async def index(request: Request, user: User = Depends(check_user_exists)):
 
 @nostrnip5_generic_router.get("/signup/{domain_id}", response_class=HTMLResponse)
 async def signup(request: Request, domain_id: str):
-    domain = await get_domain(domain_id)
+    domain = await get_domain_public_data(domain_id)
 
     if not domain:
         raise HTTPException(
@@ -48,7 +48,7 @@ async def signup(request: Request, domain_id: str):
     "/rotate/{domain_id}/{address_id}", response_class=HTMLResponse
 )
 async def rotate(request: Request, domain_id: str, address_id: str):
-    domain = await get_domain(domain_id)
+    domain = await get_domain_public_data(domain_id)
     address = await get_address(domain_id, address_id)
 
     if not domain:

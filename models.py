@@ -32,12 +32,19 @@ class EditDomainData(BaseModel):
         return cls(**dict(row))
 
 
-class Domain(BaseModel):
+class PublicDomain(BaseModel):
     id: str
-    wallet: str
     currency: str
     amount: int
     domain: str
+
+    @classmethod
+    def from_row(cls, row: Row) -> "PublicDomain":
+        return cls(**dict(row))
+
+
+class Domain(PublicDomain):
+    wallet: str
     time: int
 
     @classmethod

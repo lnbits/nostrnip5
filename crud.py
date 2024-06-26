@@ -3,16 +3,43 @@ from typing import List, Optional, Union
 from lnbits.db import Database
 from lnbits.helpers import urlsafe_short_hash
 
-from .models import Address, CreateAddressData, CreateDomainData, Domain, EditDomainData
+from .models import (
+    Address,
+    CreateAddressData,
+    CreateDomainData,
+    Domain,
+    EditDomainData,
+    PublicDomain,
+)
 
 db = Database("ext_nostrnip5")
 
 
-async def get_domain(domain_id: str) -> Optional[Domain]:
+async def get_domain(domain_id: str, wallet_id: str) -> Optional[Domain]:
     row = await db.fetchone(
-        "SELECT * FROM nostrnip5.domains WHERE id = ?", (domain_id,)
+        "SELECT * FROM nostrnip5.domains WHERE id = ? AND wallet = ?",
+        (
+            domain_id,
+            wallet_id,
+        ),
     )
     return Domain.from_row(row) if row else None
+
+
+async def get_domain_by_id(domain_id: str) -> Optional[Domain]:
+    row = await db.fetchone(
+        "SELECT * FROM nostrnip5.domains WHERE id = ?",
+        (domain_id,),
+    )
+    return Domain.from_row(row) if row else None
+
+
+async def get_domain_public_data(domain_id: str) -> Optional[PublicDomain]:
+    row = await db.fetchone(
+        "SELECT id, currency, amount, domain FROM nostrnip5.domains WHERE id = ?",
+        (domain_id,),
+    )
+    return PublicDomain.from_row(row) if row else None
 
 
 async def get_domain_by_name(domain: str) -> Optional[Domain]:
@@ -187,7 +214,7 @@ async def update_domain_internal(wallet_id: str, data: EditDomainData) -> Domain
         (int(amount), data.currency, data.id),
     )
 
-    domain = await get_domain(data.id)
+    domain = await get_domain(data.id, wallet_id)
     assert domain, "Domain couldn't be updated"
     return domain
 
@@ -208,6 +235,6 @@ async def create_domain_internal(wallet_id: str, data: CreateDomainData) -> Doma
         (domain_id, wallet_id, data.currency, int(amount), data.domain),
     )
 
-    domain = await get_domain(domain_id)
+    domain = await get_domain(domain_id, wallet_id)
     assert domain, "Newly created domain couldn't be retrieved"
     return domain
