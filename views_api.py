@@ -1,7 +1,5 @@
-import re
 from http import HTTPStatus
 
-from bech32 import bech32_decode, convertbits
 from fastapi import APIRouter, Depends, Query, Response
 from lnbits.core.crud import get_standalone_payment, get_user
 from lnbits.core.models import WalletTypeInfo
@@ -10,6 +8,8 @@ from lnbits.decorators import get_key_type, require_admin_key
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
 from starlette.exceptions import HTTPException
+
+from .helpers import validate_local_part, validate_pub_key
 
 from .crud import (
     activate_address,
@@ -152,18 +152,9 @@ async def api_address_rotate(
     address_id: str,
     post_data: RotateAddressData,
 ):
-    # todo: improve
-    if post_data.pubkey.startswith("npub"):
-        _, data = bech32_decode(post_data.pubkey)
-        if data:
-            decoded_data = convertbits(data, 5, 8, False)
-            if decoded_data:
-                post_data.pubkey = bytes(decoded_data).hex()
+    # todo: improve checks
 
-    if len(bytes.fromhex(post_data.pubkey)) != 32:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Pubkey must be in hex format."
-        )
+    post_data.pubkey = validate_pub_key(post_data.pubkey)
 
     await rotate_address(domain_id, address_id, post_data.pubkey)
 
@@ -184,7 +175,7 @@ async def api_address_create(
             status_code=HTTPStatus.NOT_FOUND, detail="Domain does not exist."
         )
 
-    _validate_local_part(post_data.local_part)
+    validate_local_part(post_data.local_part)
 
     exists = await get_address_by_local_part(domain_id, post_data.local_part)
 
@@ -193,18 +184,7 @@ async def api_address_create(
             status_code=HTTPStatus.NOT_FOUND, detail="Local part already exists."
         )
 
-    if post_data and post_data.pubkey.startswith("npub"):
-        _, data = bech32_decode(post_data.pubkey)
-        if data:
-            decoded_data = convertbits(data, 5, 8, False)
-            if decoded_data:
-                post_data.pubkey = bytes(decoded_data).hex()
-
-    if len(bytes.fromhex(post_data.pubkey)) != 32:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND,
-            detail="Pubkey must be in npub or hex format.",
-        )
+    post_data.pubkey = validate_pub_key(post_data.pubkey)
 
     address = await create_address_internal(domain_id=domain_id, data=post_data)
     if domain.currency == "Satoshis":
@@ -292,17 +272,3 @@ async def api_get_nostr_json(
     response.headers["Access-Control-Allow-Methods"] = "GET,OPTIONS"
 
     return {"names": output}
-
-
-def _validate_local_part(local_part: str):
-    if local_part == "_":
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="You're sneaky, nice try."
-        )
-
-    regex = re.compile(r"^[a-z0-9_.]+$")
-    if not re.fullmatch(regex, local_part.lower()):
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND,
-            detail="Only a-z, 0-9 and .-_ are allowed characters, case insensitive.",
-        )
