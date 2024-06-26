@@ -1,10 +1,10 @@
 import asyncio
 
 from fastapi import APIRouter
-from lnbits.tasks import create_permanent_unique_task
 from loguru import logger
 
 from .crud import db
+from .tasks import wait_for_paid_invoices
 from .views import nostrnip5_generic_router
 from .views_api import nostrnip5_api_router
 
@@ -31,7 +31,7 @@ def nostrnip5_stop():
 
 
 def nostrnip5_start():
-    from .tasks import wait_for_paid_invoices
+    from lnbits.tasks import create_permanent_unique_task
 
     task = create_permanent_unique_task("ext_nostrnip5", wait_for_paid_invoices)
     scheduled_tasks.append(task)
