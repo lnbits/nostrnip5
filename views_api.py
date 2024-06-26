@@ -128,12 +128,16 @@ async def api_address_delete(
 @nostrnip5_api_router.post(
     "/api/v1/domain/{domain_id}/address/{address_id}/activate",
     status_code=HTTPStatus.OK,
-    dependencies=[Depends(require_admin_key)],
 )
 async def api_address_activate(
     domain_id: str,
     address_id: str,
+    w: WalletTypeInfo = Depends(require_admin_key),
 ):
+    domain = await get_domain(domain_id, w.wallet.id)
+    if not domain:
+        return False
+
     await activate_address(domain_id, address_id)
 
     return True
