@@ -103,11 +103,11 @@ async def api_domain_update(
 )
 async def api_domain_delete(
     domain_id: str,
-    wallet: WalletTypeInfo = Depends(require_admin_key),
+    w: WalletTypeInfo = Depends(require_admin_key),
 ):
-    await delete_domain(domain_id)
+    deleted = await delete_domain(domain_id, w.wallet.id)
 
-    return True
+    return deleted
 
 
 @nostrnip5_api_router.delete(

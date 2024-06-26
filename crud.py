@@ -150,7 +150,10 @@ async def rotate_address(domain_id: str, address_id: str, pubkey: str) -> Addres
     return address
 
 
-async def delete_domain(domain_id) -> bool:
+async def delete_domain(domain_id: str, wallet_id: str) -> bool:
+    domain = await get_domain(domain_id, wallet_id)
+    if not domain:
+        return False
     await db.execute(
         """
         DELETE FROM nostrnip5.addresses WHERE domain_id = ?
