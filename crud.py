@@ -93,6 +93,14 @@ async def get_addresses(domain_id: str) -> List[Address]:
     return [Address.from_row(row) for row in rows]
 
 
+async def get_addresses_for_owner(owner_id: str) -> List[Address]:
+    rows = await db.fetchall(
+        "SELECT * FROM nostrnip5.addresses WHERE owner_id = ?", (owner_id,)
+    )
+
+    return [Address.from_row(row) for row in rows]
+
+
 async def get_all_addresses(wallet_ids: Union[str, List[str]]) -> List[Address]:
     if isinstance(wallet_ids, str):
         wallet_ids = [wallet_ids]
@@ -183,17 +191,21 @@ async def delete_address(domain_id, address_id):
     )
 
 
-async def create_address_internal(domain_id: str, data: CreateAddressData) -> Address:
+async def create_address_internal(
+    domain_id: str, data: CreateAddressData, owner_id: Optional[str] = None
+) -> Address:
     address_id = urlsafe_short_hash()
 
     await db.execute(
         """
-        INSERT INTO nostrnip5.addresses (id, domain_id, local_part, pubkey, active)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO nostrnip5.addresses
+        (id, domain_id, owner_id, local_part, pubkey, active)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
             address_id,
             domain_id,
+            owner_id,
             data.local_part.lower(),
             data.pubkey,
             False,

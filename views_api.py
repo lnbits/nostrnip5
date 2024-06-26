@@ -1,10 +1,11 @@
 from http import HTTPStatus
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Response
 from lnbits.core.crud import get_standalone_payment, get_user
 from lnbits.core.models import WalletTypeInfo
 from lnbits.core.services import create_invoice
-from lnbits.decorators import get_key_type, require_admin_key
+from lnbits.decorators import fetch_user_id, get_key_type, require_admin_key
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
 from starlette.exceptions import HTTPException
@@ -17,6 +18,7 @@ from .crud import (
     delete_domain,
     get_address_by_local_part,
     get_addresses,
+    get_addresses_for_owner,
     get_all_addresses,
     get_domain,
     get_domain_by_id,
@@ -24,7 +26,7 @@ from .crud import (
     rotate_address,
     update_domain_internal,
 )
-from .helpers import validate_local_part, validate_pub_key
+from .helpers import owner_id_from_user_id, validate_local_part, validate_pub_key
 from .models import (
     CreateAddressData,
     CreateDomainData,
@@ -61,6 +63,18 @@ async def api_addresses(
         wallet_ids = user.wallet_ids
 
     return [address.dict() for address in await get_all_addresses(wallet_ids)]
+
+
+@nostrnip5_api_router.get("/api/v1/addresses/user", status_code=HTTPStatus.OK)
+async def api_addresses_own(
+    user_id: Optional[str] = Depends(fetch_user_id),
+):
+    if not user_id:
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
+
+    owner_id = owner_id_from_user_id(user_id)
+    assert owner_id
+    return [address.dict() for address in await get_addresses_for_owner(owner_id)]
 
 
 @nostrnip5_api_router.get(
@@ -150,11 +164,13 @@ async def api_address_rotate(
     domain_id: str,
     address_id: str,
     post_data: RotateAddressData,
+    user_id: Optional[str] = Depends(fetch_user_id),
 ):
     # todo: improve checks
 
     post_data.pubkey = validate_pub_key(post_data.pubkey)
 
+    # todo: owner id
     await rotate_address(domain_id, address_id, post_data.pubkey)
 
     return True
@@ -166,6 +182,7 @@ async def api_address_rotate(
 async def api_address_create(
     post_data: CreateAddressData,
     domain_id: str,
+    user_id: Optional[str] = Depends(fetch_user_id),
 ):
     domain = await get_domain_by_id(domain_id)
 
@@ -185,8 +202,10 @@ async def api_address_create(
 
     post_data.pubkey = validate_pub_key(post_data.pubkey)
 
-    address = await create_address_internal(domain_id=domain_id, data=post_data)
-    if domain.currency == "Satoshis":
+    address = await create_address_internal(
+        domain_id=domain_id, data=post_data, owner_id=owner_id_from_user_id(user_id)
+    )
+    if domain.currency == "Satoshis":  # todo: sats
         price_in_sats = domain.amount
     else:
         price_in_sats = await fiat_amount_as_satoshis(
@@ -228,11 +247,7 @@ async def api_nostrnip5_check_payment(domain_id: str, payment_hash: str):
             )
         payment_domain_id = payment.extra.get("domain_id")
         payment_address_id = payment.extra.get("address_id")
-        if (
-            not payment_domain_id
-            or not payment_address_id
-            or payment_domain_id != domain_id
-        ):
+        if payment_domain_id != domain_id or not payment_address_id:
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND,
                 detail="Payment does not exist for this domain.",

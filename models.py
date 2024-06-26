@@ -1,10 +1,12 @@
 from sqlite3 import Row
+from typing import Optional
 
 from fastapi.param_functions import Query
 from pydantic import BaseModel
 
 
 class RotateAddressData(BaseModel):
+    owner_id: Optional[str] = None
     pubkey: str
 
 
@@ -54,6 +56,7 @@ class Domain(PublicDomain):
 
 class Address(BaseModel):
     id: str
+    owner_id: Optional[str] = None
     domain_id: str
     local_part: str
     pubkey: str

@@ -1,4 +1,6 @@
 import re
+from hashlib import sha256
+from typing import Optional
 
 from bech32 import bech32_decode, convertbits
 
@@ -26,3 +28,9 @@ def validate_local_part(local_part: str):
         raise ValueError(
             "Only a-z, 0-9 and .-_ are allowed characters, case insensitive."
         )
+
+
+def owner_id_from_user_id(user_id: Optional[str] = None) -> Optional[str]:
+    if not user_id:
+        return None
+    return sha256(user_id.encode("utf-8")).hexdigest()

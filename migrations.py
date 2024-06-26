@@ -33,3 +33,10 @@ async def m001_initial_invoices(db):
         );
    """
     )
+
+
+async def m002_add_owner_id_to_addresess(db):
+    """
+    Adds owner_id column to  addresses.
+    """
+    await db.execute("ALTER TABLE nostrnip5.addresses ADD COLUMN owner_id TEXT")
