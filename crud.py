@@ -210,7 +210,7 @@ async def update_domain_internal(wallet_id: str, data: EditDomainData) -> Domain
         amount = data.amount * 100
     else:
         amount = data.amount
-    print(data)
+
     await db.execute(
         """
         UPDATE nostrnip5.domains

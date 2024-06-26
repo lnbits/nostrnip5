@@ -9,8 +9,6 @@ from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
 from starlette.exceptions import HTTPException
 
-from .helpers import validate_local_part, validate_pub_key
-
 from .crud import (
     activate_address,
     create_address_internal,
@@ -26,6 +24,7 @@ from .crud import (
     rotate_address,
     update_domain_internal,
 )
+from .helpers import validate_local_part, validate_pub_key
 from .models import (
     CreateAddressData,
     CreateDomainData,
@@ -68,7 +67,7 @@ async def api_addresses(
     "/api/v1/domain/{domain_id}",
     status_code=HTTPStatus.OK,
 )
-async def api_invoice(domain_id: str, w: WalletTypeInfo = Depends(get_key_type)):
+async def api_domain_get(domain_id: str, w: WalletTypeInfo = Depends(get_key_type)):
     domain = await get_domain(domain_id, w.wallet.id)
     if not domain:
         raise HTTPException(
