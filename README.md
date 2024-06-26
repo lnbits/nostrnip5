@@ -1,4 +1,5 @@
 # Nostr NIP-05 - <small>[LNbits](https://github.com/lnbits/lnbits) extension</small>
+
 <small>For more about LNBits extension check [this tutorial](https://github.com/lnbits/lnbits/wiki/LNbits-Extensions)</small>
 
 ## Allow users to NIP-05 verify themselves at a domain you control
@@ -13,13 +14,12 @@ This extension allows users to sell NIP-05 verification to other nostr users on 
    - select the fiat currency the invoice will be denominated in
    - select an amount in fiat to charge users for verification
    - enter the domain (or subdomain) you want to provide verification for
-      - Note, you must own this domain and have access to a web server
+     - Note, you must own this domain and have access to a web server
 3. You can then use share your signup link with your users to allow them to sign up
-
 
 ## Installation
 
-In order for this to work, you need to have ownership of a domain name, and access to a web server that this domain is pointed to. 
+In order for this to work, you need to have ownership of a domain name, and access to a web server that this domain is pointed to.
 
 Then, you'll need to set up a proxy that points `https://{your_domain}/.well-known/nostr.json` to `https://{your_lnbits}/nostrnip5/api/v1/domain/{domain_id}/nostr.json`
 
@@ -48,13 +48,13 @@ Example Caddy configuration
 
 ```
 my.lnbits.instance {
-    reverse_proxy {your_lnbits} 
+    reverse_proxy {your_lnbits}
 }
 
 nip.5.domain {
     route /.well-known/nostr.json {
         rewrite * /nostrnip5/api/v1/domain/{domain_id}/nostr.json
-        reverse_proxy {your_lnbits} 
+        reverse_proxy {your_lnbits}
     }
 }
 ```

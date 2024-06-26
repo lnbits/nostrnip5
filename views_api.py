@@ -2,17 +2,15 @@ import re
 from http import HTTPStatus
 
 from bech32 import bech32_decode, convertbits
-from fastapi import Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Response
+from lnbits.core.crud import get_standalone_payment, get_user
+from lnbits.core.models import WalletTypeInfo
+from lnbits.core.services import create_invoice
+from lnbits.decorators import get_key_type, require_admin_key
+from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
 from starlette.exceptions import HTTPException
 
-from lnbits.core.crud import get_user
-from lnbits.core.services import create_invoice
-from lnbits.core.views.api import api_payment
-from lnbits.decorators import WalletTypeInfo, get_key_type, require_admin_key
-from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
-
-from . import nostrnip5_ext
 from .crud import (
     activate_address,
     create_address_internal,
@@ -23,7 +21,6 @@ from .crud import (
     get_addresses,
     get_all_addresses,
     get_domain,
-    get_domain_by_name,
     get_domains,
     rotate_address,
     update_domain_internal,
@@ -35,8 +32,10 @@ from .models import (
     RotateAddressData,
 )
 
+nostrnip5_api_router: APIRouter = APIRouter()
 
-@nostrnip5_ext.get("/api/v1/domains", status_code=HTTPStatus.OK)
+
+@nostrnip5_api_router.get("/api/v1/domains", status_code=HTTPStatus.OK)
 async def api_domains(
     all_wallets: bool = Query(None), wallet: WalletTypeInfo = Depends(get_key_type)
 ):
@@ -50,7 +49,7 @@ async def api_domains(
     return [domain.dict() for domain in await get_domains(wallet_ids)]
 
 
-@nostrnip5_ext.get("/api/v1/addresses", status_code=HTTPStatus.OK)
+@nostrnip5_api_router.get("/api/v1/addresses", status_code=HTTPStatus.OK)
 async def api_addresses(
     all_wallets: bool = Query(None), wallet: WalletTypeInfo = Depends(get_key_type)
 ):
@@ -64,7 +63,7 @@ async def api_addresses(
     return [address.dict() for address in await get_all_addresses(wallet_ids)]
 
 
-@nostrnip5_ext.get(
+@nostrnip5_api_router.get(
     "/api/v1/domain/{domain_id}",
     status_code=HTTPStatus.OK,
     dependencies=[Depends(get_key_type)],
@@ -79,7 +78,7 @@ async def api_invoice(domain_id: str):
     return domain
 
 
-@nostrnip5_ext.post("/api/v1/domain", status_code=HTTPStatus.CREATED)
+@nostrnip5_api_router.post("/api/v1/domain", status_code=HTTPStatus.CREATED)
 async def api_domain_create(
     data: CreateDomainData, wallet: WalletTypeInfo = Depends(get_key_type)
 ):
@@ -89,7 +88,7 @@ async def api_domain_create(
     return domain
 
 
-@nostrnip5_ext.put("/api/v1/domain", status_code=HTTPStatus.OK)
+@nostrnip5_api_router.put("/api/v1/domain", status_code=HTTPStatus.OK)
 async def api_domain_update(
     data: EditDomainData, wallet: WalletTypeInfo = Depends(get_key_type)
 ):
@@ -99,7 +98,9 @@ async def api_domain_update(
     return domain
 
 
-@nostrnip5_ext.delete("/api/v1/domain/{domain_id}", status_code=HTTPStatus.CREATED)
+@nostrnip5_api_router.delete(
+    "/api/v1/domain/{domain_id}", status_code=HTTPStatus.CREATED
+)
 async def api_domain_delete(
     domain_id: str,
     wallet: WalletTypeInfo = Depends(require_admin_key),
@@ -109,7 +110,9 @@ async def api_domain_delete(
     return True
 
 
-@nostrnip5_ext.delete("/api/v1/address/{address_id}", status_code=HTTPStatus.CREATED)
+@nostrnip5_api_router.delete(
+    "/api/v1/address/{address_id}", status_code=HTTPStatus.CREATED
+)
 async def api_address_delete(
     address_id: str,
     wallet: WalletTypeInfo = Depends(require_admin_key),
@@ -119,7 +122,7 @@ async def api_address_delete(
     return True
 
 
-@nostrnip5_ext.post(
+@nostrnip5_api_router.post(
     "/api/v1/domain/{domain_id}/address/{address_id}/activate",
     status_code=HTTPStatus.OK,
     dependencies=[Depends(require_admin_key)],
@@ -133,7 +136,7 @@ async def api_address_activate(
     return True
 
 
-@nostrnip5_ext.post(
+@nostrnip5_api_router.post(
     "/api/v1/domain/{domain_id}/address/{address_id}/rotate",
     status_code=HTTPStatus.OK,
 )
@@ -160,7 +163,21 @@ async def api_address_rotate(
     return True
 
 
-@nostrnip5_ext.post(
+def _validate_local_part(local_part: str):
+    if local_part == "_":
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail="You're sneaky, nice try."
+        )
+
+    regex = re.compile(r"^[a-z0-9_.]+$")
+    if not re.fullmatch(regex, local_part.lower()):
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail="Only a-z, 0-9 and .-_ are allowed characters, case insensitive.",
+        )
+
+
+@nostrnip5_api_router.post(
     "/api/v1/domain/{domain_id}/address", status_code=HTTPStatus.CREATED
 )
 async def api_address_create(
@@ -174,17 +191,7 @@ async def api_address_create(
             status_code=HTTPStatus.NOT_FOUND, detail="Domain does not exist."
         )
 
-    if post_data.local_part == "_":
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="You're sneaky, nice try."
-        )
-
-    regex = re.compile(r"^[a-z0-9_.]+$")
-    if not re.fullmatch(regex, post_data.local_part.lower()):
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND,
-            detail="Only a-z, 0-9 and .-_ are allowed characters, case insensitive.",
-        )
+    _validate_local_part(post_data.local_part)
 
     exists = await get_address_by_local_part(domain_id, post_data.local_part)
 
@@ -202,7 +209,8 @@ async def api_address_create(
 
     if len(bytes.fromhex(post_data.pubkey)) != 32:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Pubkey must be in npub or hex format."
+            status_code=HTTPStatus.NOT_FOUND,
+            detail="Pubkey must be in npub or hex format.",
         )
 
     address = await create_address_internal(domain_id=domain_id, data=post_data)
@@ -224,8 +232,10 @@ async def api_address_create(
                 "address_id": address.id,
             },
         )
-    except Exception as e:
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(e))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
 
     return {
         "payment_hash": payment_hash,
@@ -234,7 +244,7 @@ async def api_address_create(
     }
 
 
-@nostrnip5_ext.get(
+@nostrnip5_api_router.get(
     "/api/v1/domain/{domain_id}/payments/{payment_hash}", status_code=HTTPStatus.OK
 )
 async def api_nostrnip5_check_payment(domain_id: str, payment_hash: str):
@@ -244,15 +254,22 @@ async def api_nostrnip5_check_payment(domain_id: str, payment_hash: str):
             status_code=HTTPStatus.NOT_FOUND, detail="Domain does not exist."
         )
     try:
-        status = await api_payment(payment_hash)
+        payment = await get_standalone_payment(payment_hash)
+        if not payment:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND, detail="Payment does not exist."
+            )
+        status = await payment.check_status()
+        return {"paid": status.paid}
 
     except Exception as exc:
         logger.error(exc)
         return {"paid": False}
-    return status
 
 
-@nostrnip5_ext.get("/api/v1/domain/{domain_id}/nostr.json", status_code=HTTPStatus.OK)
+@nostrnip5_api_router.get(
+    "/api/v1/domain/{domain_id}/nostr.json", status_code=HTTPStatus.OK
+)
 async def api_get_nostr_json(
     response: Response, domain_id: str, name: str = Query(None)
 ):

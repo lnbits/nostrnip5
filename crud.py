@@ -1,9 +1,11 @@
 from typing import List, Optional, Union
 
+from lnbits.db import Database
 from lnbits.helpers import urlsafe_short_hash
 
-from . import db
 from .models import Address, CreateAddressData, CreateDomainData, Domain, EditDomainData
+
+db = Database("ext_nostrnip5")
 
 
 async def get_domain(domain_id: str) -> Optional[Domain]:

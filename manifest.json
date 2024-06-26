@@ -1,10 +1,9 @@
-
 {
-    "repos": [
-        {
-            "id": "nostrnip5",
-            "organisation": "lnbits",
-            "repository": "nostrnip5"
-        }
-    ]
+  "repos": [
+    {
+      "id": "nostrnip5",
+      "organisation": "lnbits",
+      "repository": "nostrnip5"
+    }
+  ]
 }
