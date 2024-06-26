@@ -64,7 +64,7 @@ context %} {% block page %}
         var newPubKey = this.formDialog.data.pubkey
 
         axios
-          .post(
+          .put(
             '/nostrnip5/api/v1/domain/' +
               this.domain_id +
               '/address/' +

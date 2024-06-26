@@ -125,7 +125,7 @@ async def api_address_delete(
     return await delete_address(domain_id, address_id)
 
 
-@nostrnip5_api_router.post(
+@nostrnip5_api_router.put(
     "/api/v1/domain/{domain_id}/address/{address_id}/activate",
     status_code=HTTPStatus.OK,
 )
@@ -138,12 +138,12 @@ async def api_address_activate(
     if not domain:
         return False
 
-    await activate_address(domain_id, address_id)
+    address = await activate_address(domain_id, address_id)
 
-    return True
+    return address
 
 
-@nostrnip5_api_router.post(
+@nostrnip5_api_router.put(
     "/api/v1/domain/{domain_id}/address/{address_id}/rotate",
     status_code=HTTPStatus.OK,
 )
@@ -152,7 +152,7 @@ async def api_address_rotate(
     address_id: str,
     post_data: RotateAddressData,
 ):
-
+    # todo: improve
     if post_data.pubkey.startswith("npub"):
         _, data = bech32_decode(post_data.pubkey)
         if data:
@@ -168,20 +168,6 @@ async def api_address_rotate(
     await rotate_address(domain_id, address_id, post_data.pubkey)
 
     return True
-
-
-def _validate_local_part(local_part: str):
-    if local_part == "_":
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="You're sneaky, nice try."
-        )
-
-    regex = re.compile(r"^[a-z0-9_.]+$")
-    if not re.fullmatch(regex, local_part.lower()):
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND,
-            detail="Only a-z, 0-9 and .-_ are allowed characters, case insensitive.",
-        )
 
 
 @nostrnip5_api_router.post(
@@ -306,3 +292,17 @@ async def api_get_nostr_json(
     response.headers["Access-Control-Allow-Methods"] = "GET,OPTIONS"
 
     return {"names": output}
+
+
+def _validate_local_part(local_part: str):
+    if local_part == "_":
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail="You're sneaky, nice try."
+        )
+
+    regex = re.compile(r"^[a-z0-9_.]+$")
+    if not re.fullmatch(regex, local_part.lower()):
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail="Only a-z, 0-9 and .-_ are allowed characters, case insensitive.",
+        )

@@ -688,7 +688,7 @@
           )
           .then(function (response) {
             return LNbits.api.request(
-              'POST',
+              'PUT',
               '/nostrnip5/api/v1/domain/' +
                 formDialog.data.domain_id +
                 '/address/' +
@@ -741,7 +741,7 @@
           .onOk(function () {
             return LNbits.api
               .request(
-                'POST',
+                'PUT',
                 '/nostrnip5/api/v1/domain/' +
                   domain_id +
                   '/address/' +
