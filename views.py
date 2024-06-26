@@ -2,11 +2,10 @@ from http import HTTPStatus
 
 from fastapi import Depends, Request
 from fastapi.templating import Jinja2Templates
-from starlette.exceptions import HTTPException
-from starlette.responses import HTMLResponse
-
 from lnbits.core.models import User
 from lnbits.decorators import check_user_exists
+from starlette.exceptions import HTTPException
+from starlette.responses import HTMLResponse
 
 from . import nostrnip5_ext, nostrnip5_renderer
 from .crud import get_address, get_domain

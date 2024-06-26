@@ -1,11 +1,10 @@
 import asyncio
 
 from fastapi import APIRouter
-from loguru import logger
-
 from lnbits.db import Database
 from lnbits.helpers import template_renderer
 from lnbits.tasks import create_permanent_unique_task
+from loguru import logger
 
 db = Database("ext_nostrnip5")
 
@@ -24,11 +23,11 @@ def nostrnip5_renderer():
 
 
 from .tasks import wait_for_paid_invoices
-from .views import *  # noqa: F401,F403
-from .views_api import *  # noqa: F401,F403
-
+from .views import *  # noqa: F403
+from .views_api import *  # noqa: F403
 
 scheduled_tasks: list[asyncio.Task] = []
+
 
 def nostrnip5_stop():
     for task in scheduled_tasks:
@@ -36,6 +35,7 @@ def nostrnip5_stop():
             task.cancel()
         except Exception as ex:
             logger.warning(ex)
+
 
 def nostrnip5_start():
     task = create_permanent_unique_task("ext_nostrnip5", wait_for_paid_invoices)
