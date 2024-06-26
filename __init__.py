@@ -1,12 +1,12 @@
 import asyncio
 
 from fastapi import APIRouter
-from lnbits.db import Database
-from lnbits.helpers import template_renderer
 from lnbits.tasks import create_permanent_unique_task
 from loguru import logger
 
-db = Database("ext_nostrnip5")
+from .crud import db
+from .views import nostrnip5_generic_router
+from .views_api import nostrnip5_api_router
 
 nostrnip5_static_files = [
     {
@@ -16,15 +16,8 @@ nostrnip5_static_files = [
 ]
 
 nostrnip5_ext: APIRouter = APIRouter(prefix="/nostrnip5", tags=["nostrnip5"])
-
-
-def nostrnip5_renderer():
-    return template_renderer(["nostrnip5/templates"])
-
-
-from .tasks import wait_for_paid_invoices
-from .views import *  # noqa: F403
-from .views_api import *  # noqa: F403
+nostrnip5_ext.include_router(nostrnip5_generic_router)
+nostrnip5_ext.include_router(nostrnip5_api_router)
 
 scheduled_tasks: list[asyncio.Task] = []
 
@@ -38,5 +31,16 @@ def nostrnip5_stop():
 
 
 def nostrnip5_start():
+    from .tasks import wait_for_paid_invoices
+
     task = create_permanent_unique_task("ext_nostrnip5", wait_for_paid_invoices)
     scheduled_tasks.append(task)
+
+
+__all__ = [
+    "nostrnip5_ext",
+    "nostrnip5_static_files",
+    "nostrnip5_start",
+    "nostrnip5_stop",
+    "db",
+]

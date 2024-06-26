@@ -1,26 +1,31 @@
 from http import HTTPStatus
 
-from fastapi import Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from lnbits.core.models import User
 from lnbits.decorators import check_user_exists
-from starlette.exceptions import HTTPException
-from starlette.responses import HTMLResponse
+from lnbits.helpers import template_renderer
 
-from . import nostrnip5_ext, nostrnip5_renderer
 from .crud import get_address, get_domain
 
 templates = Jinja2Templates(directory="templates")
 
+nostrnip5_generic_router: APIRouter = APIRouter()
 
-@nostrnip5_ext.get("/", response_class=HTMLResponse)
+
+def nostrnip5_renderer():
+    return template_renderer(["nostrnip5/templates"])
+
+
+@nostrnip5_generic_router.get("/", response_class=HTMLResponse)
 async def index(request: Request, user: User = Depends(check_user_exists)):
     return nostrnip5_renderer().TemplateResponse(
         "nostrnip5/index.html", {"request": request, "user": user.dict()}
     )
 
 
-@nostrnip5_ext.get("/signup/{domain_id}", response_class=HTMLResponse)
+@nostrnip5_generic_router.get("/signup/{domain_id}", response_class=HTMLResponse)
 async def signup(request: Request, domain_id: str):
     domain = await get_domain(domain_id)
 
@@ -39,7 +44,9 @@ async def signup(request: Request, domain_id: str):
     )
 
 
-@nostrnip5_ext.get("/rotate/{domain_id}/{address_id}", response_class=HTMLResponse)
+@nostrnip5_generic_router.get(
+    "/rotate/{domain_id}/{address_id}", response_class=HTMLResponse
+)
 async def rotate(request: Request, domain_id: str, address_id: str):
     domain = await get_domain(domain_id)
     address = await get_address(domain_id, address_id)
