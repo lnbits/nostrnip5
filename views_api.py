@@ -28,6 +28,7 @@ from .crud import (
 )
 from .helpers import owner_id_from_user_id, validate_local_part, validate_pub_key
 from .models import (
+    AddressStatus,
     CreateAddressData,
     CreateDomainData,
     EditDomainData,
@@ -258,6 +259,25 @@ async def api_nostrnip5_check_payment(domain_id: str, payment_hash: str):
     except Exception as exc:
         logger.error(exc)
         return {"paid": False}
+
+
+@nostrnip5_api_router.get(
+    "/api/v1/domain/{domain_id}/search", status_code=HTTPStatus.OK
+)
+async def api_domain_search_address(
+    domain_id: str, q: Optional[str] = None
+) -> AddressStatus:
+    try:
+        if not q:
+            return AddressStatus()
+        address = await get_address_by_local_part(domain_id, q)
+        if address:
+            return AddressStatus(available=not address.active, reserved=True)
+        else:
+            return AddressStatus(available=True, reserved=False)
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR) from exc
 
 
 @nostrnip5_api_router.get(

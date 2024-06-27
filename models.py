@@ -66,3 +66,8 @@ class Address(BaseModel):
     @classmethod
     def from_row(cls, row: Row) -> "Address":
         return cls(**dict(row))
+
+
+class AddressStatus(BaseModel):
+    available: bool = False
+    reserved: bool = False
