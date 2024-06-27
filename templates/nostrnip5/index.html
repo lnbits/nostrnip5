@@ -226,57 +226,90 @@
           color="secondary"
         ></q-toggle>
         <div v-if="formDialog.data.cost_config.enable_multipliers" class="row">
-          <div
-            v-for="(item, index) in formDialog.data.cost_config.length_multipliers"
-            class="row q-mb-sm q-ml-md"
-          >
-            <div class="col-5">
-              <q-input
-                filled
-                dense
-                v-model.trim="item.bracket"
-                type="number"
-                min="0"
-                step="1"
-                label="Character Count"
-              ></q-input>
-            </div>
-            <div class="col-5">
-              <q-input
-                filled
-                dense
-                v-model.trim="item.multiplier"
-                label="Multiply By"
-                type="number"
-                class="q-pl-sm"
-              ></q-input>
-            </div>
-            <div class="col-2">
-              <q-btn
-                @click="removeLengthCostMultiplier(index)"
-                icon="clear"
-                size="sm"
-                unelevated
-                color="primary"
-                class="float-right q-mt-sm"
-              ></q-btn>
-            </div>
-          </div>
-          <div class="row q-ml-md q-mb-sm q-mt-sm">
-            <div class="col float-right">
-              <div>
-                <q-btn
-                  icon="add"
-                  label="Add Character Count Multiplier"
-                  @click="addLengthCostMultiplier"
-                  size="sm"
-                  unelevated
-                  color="secondary"
-                  class="float-right"
-                ></q-btn>
-              </div>
-            </div>
-          </div>
+          <q-card class="lnbits__dialog-card">
+            <q-tabs v-model="domainTab" active-color="primary" align="justify">
+              <q-tab name="charCount" label="Char Count"></q-tab>
+              <q-tab name="ranking" label="Ranking"></q-tab>
+            </q-tabs>
+
+            <q-tab-panels class="bg-transparent" v-model="domainTab">
+              <q-tab-panel name="charCount">
+                <div
+                  v-for="(item, index) in formDialog.data.cost_config.length_multipliers"
+                  class="row q-mb-sm q-ml-md"
+                >
+                  <div class="col-5">
+                    <q-input
+                      filled
+                      dense
+                      v-model.trim="item.bracket"
+                      type="number"
+                      min="0"
+                      step="1"
+                      label="Character Count"
+                    ></q-input>
+                  </div>
+                  <div class="col-5">
+                    <q-input
+                      filled
+                      dense
+                      v-model.trim="item.multiplier"
+                      label="Multiply By"
+                      type="number"
+                      class="q-pl-sm"
+                    ></q-input>
+                  </div>
+                  <div class="col-2">
+                    <q-btn
+                      @click="removeLengthCostMultiplier(index)"
+                      icon="clear"
+                      size="sm"
+                      unelevated
+                      color="primary"
+                      class="float-right q-mt-sm"
+                    ></q-btn>
+                  </div>
+                </div>
+                <div class="row q-ml-md q-mb-sm q-mt-sm">
+                  <div class="col float-right">
+                    <div>
+                      <q-btn
+                        icon="add"
+                        label="Add Character Count Multiplier"
+                        @click="addLengthCostMultiplier"
+                        size="sm"
+                        unelevated
+                        color="secondary"
+                        class="float-right"
+                      ></q-btn>
+                    </div>
+                  </div>
+                </div>
+              </q-tab-panel>
+              <q-tab-panel name="ranking">
+                <div class="row q-mb-sm q-ml-md">
+                  x1asasas
+                  <br />
+                  asas
+                </div>
+                <div class="row q-ml-md q-mb-sm q-mt-sm">
+                  <div class="col float-right">
+                    <div>
+                      <q-btn
+                        icon="add"
+                        label="Add Character Count Multiplier"
+                        @click="addLengthCostMultiplier"
+                        size="sm"
+                        unelevated
+                        color="secondary"
+                        class="float-right"
+                      ></q-btn>
+                    </div>
+                  </div>
+                </div>
+              </q-tab-panel>
+            </q-tab-panels>
+          </q-card>
         </div>
         <div class="row q-mt-lg">
           <q-btn
@@ -590,6 +623,7 @@
           show: false,
           data: {}
         },
+        domainTab: null,
         addressFormDialog: {
           show: false,
           data: {}
@@ -599,6 +633,7 @@
     methods: {
       resetFormDialog: function () {
         this.formDialog.show = false
+        this.domainTab = 'charCount'
         this.formDialog.data = {
           cost_config: {
             enable_multipliers: false,
@@ -782,8 +817,8 @@
         })
       },
       removeLengthCostMultiplier: function (index) {
-        if (index < this.formDialog.cost_config.length_multipliers.length) {
-          this.formDialog.cost_config.length_multipliers.splice(index, 1)
+        if (index < this.formDialog.data.cost_config.length_multipliers.length) {
+          this.formDialog.data.cost_config.length_multipliers.splice(index, 1)
         }
       },
       exportCSV: function () {
