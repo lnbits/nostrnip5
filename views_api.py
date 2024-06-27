@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from lnbits.core.crud import get_standalone_payment, get_user
 from lnbits.core.models import WalletTypeInfo
 from lnbits.core.services import create_invoice
-from lnbits.decorators import fetch_user_id, get_key_type, require_admin_key
+from lnbits.decorators import authenticated_user_id, get_key_type, require_admin_key
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
 from starlette.exceptions import HTTPException
@@ -67,7 +67,7 @@ async def api_addresses(
 
 @nostrnip5_api_router.get("/api/v1/addresses/user", status_code=HTTPStatus.OK)
 async def api_addresses_own(
-    user_id: Optional[str] = Depends(fetch_user_id),
+    user_id: Optional[str] = Depends(authenticated_user_id),
 ):
     if not user_id:
         raise HTTPException(HTTPStatus.UNAUTHORIZED)
@@ -164,7 +164,7 @@ async def api_address_rotate(
     domain_id: str,
     address_id: str,
     post_data: RotateAddressData,
-    user_id: Optional[str] = Depends(fetch_user_id),
+    user_id: Optional[str] = Depends(authenticated_user_id),
 ):
     # todo: improve checks
 
@@ -182,7 +182,7 @@ async def api_address_rotate(
 async def api_address_create(
     post_data: CreateAddressData,
     domain_id: str,
-    user_id: Optional[str] = Depends(fetch_user_id),
+    user_id: Optional[str] = Depends(authenticated_user_id),
 ):
     domain = await get_domain_by_id(domain_id)
 
