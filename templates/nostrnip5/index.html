@@ -287,18 +287,49 @@
                 </div>
               </q-tab-panel>
               <q-tab-panel name="ranking">
-                <div class="row q-mb-sm q-ml-md">
-                  x1asasas
-                  <br />
-                  asas
+                <div
+                  v-for="(item, index) in formDialog.data.cost_config.rank_multipliers"
+                  class="row q-mb-sm q-ml-md"
+                >
+                  <div class="col-5">
+                    <q-input
+                      filled
+                      dense
+                      v-model.trim="item.bracket"
+                      type="number"
+                      min="0"
+                      step="1"
+                      label="Up to position"
+                    ></q-input>
+                  </div>
+                  <div class="col-5">
+                    <q-input
+                      filled
+                      dense
+                      v-model.trim="item.multiplier"
+                      label="Multiply By"
+                      type="number"
+                      class="q-pl-sm"
+                    ></q-input>
+                  </div>
+                  <div class="col-2">
+                    <q-btn
+                      @click="removeRankCostMultiplier(index)"
+                      icon="clear"
+                      size="sm"
+                      unelevated
+                      color="primary"
+                      class="float-right q-mt-sm"
+                    ></q-btn>
+                  </div>
                 </div>
                 <div class="row q-ml-md q-mb-sm q-mt-sm">
                   <div class="col float-right">
                     <div>
                       <q-btn
                         icon="add"
-                        label="Add Character Count Multiplier"
-                        @click="addLengthCostMultiplier"
+                        label="Add Rank Multiplier"
+                        @click="addRankCostMultiplier"
                         size="sm"
                         unelevated
                         color="secondary"
@@ -638,7 +669,7 @@
           cost_config: {
             enable_multipliers: false,
             length_multipliers: [],
-            ranking_multipliers: []
+            rank_multipliers: []
           }
         }
       },
@@ -817,8 +848,21 @@
         })
       },
       removeLengthCostMultiplier: function (index) {
-        if (index < this.formDialog.data.cost_config.length_multipliers.length) {
+        if (
+          index < this.formDialog.data.cost_config.length_multipliers.length
+        ) {
           this.formDialog.data.cost_config.length_multipliers.splice(index, 1)
+        }
+      },
+      addRankCostMultiplier: function () {
+        this.formDialog.data.cost_config.rank_multipliers.push({
+          bracket: 0,
+          multiplier: 1
+        })
+      },
+      removeRankCostMultiplier: function (index) {
+        if (index < this.formDialog.data.cost_config.rank_multipliers.length) {
+          this.formDialog.data.cost_config.rank_multipliers.splice(index, 1)
         }
       },
       exportCSV: function () {

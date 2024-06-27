@@ -26,7 +26,7 @@ class CreateAddressData(BaseModel):
 class DomainCostConfig(BaseModel):
     enable_multipliers: bool = False
     length_multipliers: List[CostMultipier] = []
-    ranking_multipliers: List[CostMultipier] = []
+    rank_multipliers: List[CostMultipier] = []
 
 
 class CreateDomainData(BaseModel):
