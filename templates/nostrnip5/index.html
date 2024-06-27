@@ -221,11 +221,11 @@
           placeholder="How much do you want to charge per address?"
         ></q-input>
         <q-toggle
-          v-model="formDialog.data.cost_config.enable_multipliers"
+          v-model="formDialog.data.cost_config.enable_custom_cost"
           label="Advanced cost configurations"
           color="secondary"
         ></q-toggle>
-        <div v-if="formDialog.data.cost_config.enable_multipliers" class="row">
+        <div v-if="formDialog.data.cost_config.enable_custom_cost" class="row">
           <q-card class="lnbits__dialog-card">
             <q-tabs v-model="domainTab" active-color="primary" align="justify">
               <q-tab name="charCount" label="Char Count"></q-tab>
@@ -235,7 +235,7 @@
             <q-tab-panels class="bg-transparent" v-model="domainTab">
               <q-tab-panel name="charCount">
                 <div
-                  v-for="(item, index) in formDialog.data.cost_config.length_multipliers"
+                  v-for="(item, index) in formDialog.data.cost_config.char_count_cost"
                   class="row q-mb-sm q-ml-md"
                 >
                   <div class="col-5">
@@ -253,15 +253,15 @@
                     <q-input
                       filled
                       dense
-                      v-model.trim="item.multiplier"
-                      label="Multiply By"
+                      v-model.trim="item.amount"
+                      label="Amount"
                       type="number"
                       class="q-pl-sm"
                     ></q-input>
                   </div>
                   <div class="col-2">
                     <q-btn
-                      @click="removeLengthCostMultiplier(index)"
+                      @click="removeCharCountCost(index)"
                       icon="clear"
                       size="sm"
                       unelevated
@@ -275,8 +275,8 @@
                     <div>
                       <q-btn
                         icon="add"
-                        label="Add Character Count Multiplier"
-                        @click="addLengthCostMultiplier"
+                        label="Add Character Count Cost"
+                        @click="addCharCountCost"
                         size="sm"
                         unelevated
                         color="secondary"
@@ -288,7 +288,7 @@
               </q-tab-panel>
               <q-tab-panel name="ranking">
                 <div
-                  v-for="(item, index) in formDialog.data.cost_config.rank_multipliers"
+                  v-for="(item, index) in formDialog.data.cost_config.rank_cost"
                   class="row q-mb-sm q-ml-md"
                 >
                   <div class="col-5">
@@ -306,15 +306,15 @@
                     <q-input
                       filled
                       dense
-                      v-model.trim="item.multiplier"
-                      label="Multiply By"
+                      v-model.trim="item.amount"
+                      label="Amount"
                       type="number"
                       class="q-pl-sm"
                     ></q-input>
                   </div>
                   <div class="col-2">
                     <q-btn
-                      @click="removeRankCostMultiplier(index)"
+                      @click="removeRankCost(index)"
                       icon="clear"
                       size="sm"
                       unelevated
@@ -328,8 +328,8 @@
                     <div>
                       <q-btn
                         icon="add"
-                        label="Add Rank Multiplier"
-                        @click="addRankCostMultiplier"
+                        label="Add Rank Cost"
+                        @click="addRankCost"
                         size="sm"
                         unelevated
                         color="secondary"
@@ -667,9 +667,9 @@
         this.domainTab = 'charCount'
         this.formDialog.data = {
           cost_config: {
-            enable_multipliers: false,
-            length_multipliers: [],
-            rank_multipliers: []
+            enable_custom_cost: false,
+            char_count_cost: [],
+            rank_cost: []
           }
         }
       },
@@ -841,28 +841,26 @@
               })
           })
       },
-      addLengthCostMultiplier: function () {
-        this.formDialog.data.cost_config.length_multipliers.push({
+      addCharCountCost: function () {
+        this.formDialog.data.cost_config.char_count_cost.push({
           bracket: 0,
-          multiplier: 1
+          amount: 1
         })
       },
-      removeLengthCostMultiplier: function (index) {
-        if (
-          index < this.formDialog.data.cost_config.length_multipliers.length
-        ) {
-          this.formDialog.data.cost_config.length_multipliers.splice(index, 1)
+      removeCharCountCost: function (index) {
+        if (index < this.formDialog.data.cost_config.char_count_cost.length) {
+          this.formDialog.data.cost_config.char_count_cost.splice(index, 1)
         }
       },
-      addRankCostMultiplier: function () {
-        this.formDialog.data.cost_config.rank_multipliers.push({
+      addRankCost: function () {
+        this.formDialog.data.cost_config.rank_cost.push({
           bracket: 0,
-          multiplier: 1
+          amount: 1
         })
       },
-      removeRankCostMultiplier: function (index) {
-        if (index < this.formDialog.data.cost_config.rank_multipliers.length) {
-          this.formDialog.data.cost_config.rank_multipliers.splice(index, 1)
+      removeRankCost: function (index) {
+        if (index < this.formDialog.data.cost_config.rank_cost.length) {
+          this.formDialog.data.cost_config.rank_cost.splice(index, 1)
         }
       },
       exportCSV: function () {

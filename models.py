@@ -6,9 +6,9 @@ from fastapi.param_functions import Query
 from pydantic import BaseModel
 
 
-class CostMultipier(BaseModel):
+class CustomCost(BaseModel):
     bracket: int
-    multiplier: float
+    amount: float
 
 
 class RotateAddressData(BaseModel):
@@ -24,9 +24,9 @@ class CreateAddressData(BaseModel):
 
 
 class DomainCostConfig(BaseModel):
-    enable_multipliers: bool = False
-    length_multipliers: List[CostMultipier] = []
-    rank_multipliers: List[CostMultipier] = []
+    enable_custom_cost: bool = False
+    char_count_cost: List[CustomCost] = []
+    rank_cost: List[CustomCost] = []
 
 
 class CreateDomainData(BaseModel):
