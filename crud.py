@@ -1,3 +1,4 @@
+import json
 from typing import List, Optional, Union
 
 from lnbits.db import Database
@@ -223,13 +224,18 @@ async def update_domain_internal(wallet_id: str, data: EditDomainData) -> Domain
     else:
         amount = data.amount
 
+    cost_extra = (
+        json.dumps(data.cost_config, default=lambda o: o.__dict__)
+        if data.cost_config
+        else None
+    )
     await db.execute(
         """
         UPDATE nostrnip5.domains
-        SET amount = ?, currency = ?
+        SET amount = ?, currency = ?, cost_extra = ?
         WHERE id = ?
         """,
-        (int(amount), data.currency, data.id),
+        (int(amount), data.currency, cost_extra, data.id),
     )
 
     domain = await get_domain(data.id, wallet_id)
@@ -245,12 +251,17 @@ async def create_domain_internal(wallet_id: str, data: CreateDomainData) -> Doma
     else:
         amount = data.amount
 
+    cost_extra = (
+        json.dumps(data.cost_config, default=lambda o: o.__dict__)
+        if data.cost_config
+        else None
+    )
     await db.execute(
         """
-        INSERT INTO nostrnip5.domains (id, wallet, currency, amount, domain)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO nostrnip5.domains (id, wallet, currency, amount, domain, cost_extra)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (domain_id, wallet_id, data.currency, int(amount), data.domain),
+        (domain_id, wallet_id, data.currency, int(amount), data.domain, cost_extra),
     )
 
     domain = await get_domain(domain_id, wallet_id)

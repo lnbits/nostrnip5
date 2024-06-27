@@ -40,3 +40,10 @@ async def m002_add_owner_id_to_addresess(db):
     Adds owner_id column to  addresses.
     """
     await db.execute("ALTER TABLE nostrnip5.addresses ADD COLUMN owner_id TEXT")
+
+
+async def m003_add_cost_extra_column_to_domains(db):
+    """
+    Adds cost_extra column to  addresses.
+    """
+    await db.execute("ALTER TABLE nostrnip5.domains ADD COLUMN cost_extra TEXT")

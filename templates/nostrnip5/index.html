@@ -189,6 +189,7 @@
     <q-card class="q-pa-lg q-pt-xl" style="width: 500px">
       <q-form @submit="saveDomain" class="q-gutter-md">
         <q-select
+          v-if="!formDialog.data.id"
           filled
           dense
           emit-value
@@ -205,60 +206,95 @@
           label="Currency *"
         ></q-select>
         <q-input
-          filled
-          dense
-          v-model.trim="formDialog.data.amount"
-          label="Price"
-          placeholder="How much do you want to charge per address?"
-        ></q-input>
-        <q-input
+          v-if="!formDialog.data.id"
           filled
           dense
           v-model.trim="formDialog.data.domain"
           label="Domain"
           placeholder="nostr.com"
         ></q-input>
-
+        <q-input
+          filled
+          dense
+          v-model.trim="formDialog.data.amount"
+          label="Price"
+          placeholder="How much do you want to charge per address?"
+        ></q-input>
+        <q-toggle
+          v-model="formDialog.data.cost_config.enable_multipliers"
+          label="Advanced cost configurations"
+          color="secondary"
+        ></q-toggle>
+        <div v-if="formDialog.data.cost_config.enable_multipliers" class="row">
+          <div
+            v-for="(item, index) in formDialog.data.cost_config.length_multipliers"
+            class="row q-mb-sm q-ml-md"
+          >
+            <div class="col-5">
+              <q-input
+                filled
+                dense
+                v-model.trim="item.bracket"
+                type="number"
+                min="0"
+                step="1"
+                label="Character Count"
+              ></q-input>
+            </div>
+            <div class="col-5">
+              <q-input
+                filled
+                dense
+                v-model.trim="item.multiplier"
+                label="Multiply By"
+                type="number"
+                class="q-pl-sm"
+              ></q-input>
+            </div>
+            <div class="col-2">
+              <q-btn
+                @click="removeLengthCostMultiplier(index)"
+                icon="clear"
+                size="sm"
+                unelevated
+                color="primary"
+                class="float-right q-mt-sm"
+              ></q-btn>
+            </div>
+          </div>
+          <div class="row q-ml-md q-mb-sm q-mt-sm">
+            <div class="col float-right">
+              <div>
+                <q-btn
+                  icon="add"
+                  label="Add Character Count Multiplier"
+                  @click="addLengthCostMultiplier"
+                  size="sm"
+                  unelevated
+                  color="secondary"
+                  class="float-right"
+                ></q-btn>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="row q-mt-lg">
           <q-btn
+            v-if="formDialog.data.id"
+            unelevated
+            color="primary"
+            :disable="formDialog.data.wallet == null || formDialog.data.currency == null"
+            type="submit"
+            >Update Domain</q-btn
+          >
+          <q-btn
+            v-else
             unelevated
             color="primary"
             :disable="formDialog.data.wallet == null || formDialog.data.currency == null"
             type="submit"
             >Create Domain</q-btn
           >
-          <q-btn v-close-popup flat color="grey" class="q-ml-auto"
-            >Cancel</q-btn
-          >
-        </div>
-      </q-form>
-    </q-card>
-  </q-dialog>
-
-  <q-dialog
-    v-model="editFormDialog.show"
-    position="top"
-    @hide="closeFormDialog"
-  >
-    <q-card class="q-pa-lg q-pt-xl" style="width: 500px">
-      <q-form @submit="saveEditedDomain" class="q-gutter-md">
-        <q-select
-          filled
-          dense
-          emit-value
-          v-model="editFormDialog.data.currency"
-          :options="currencyOptions"
-          label="Currency *"
-        ></q-select>
-        <q-input
-          filled
-          dense
-          v-model.trim="editFormDialog.data.amount"
-          label="Amount"
-          placeholder="How much do you want to charge?"
-        ></q-input>
-        <div class="row q-mt-lg">
-          <q-btn unelevated color="primary" type="submit">Update Amount</q-btn>
           <q-btn v-close-popup flat color="grey" class="q-ml-auto"
             >Cancel</q-btn
           >
@@ -554,10 +590,6 @@
           show: false,
           data: {}
         },
-        editFormDialog: {
-          show: false,
-          data: {}
-        },
         addressFormDialog: {
           show: false,
           data: {}
@@ -565,11 +597,21 @@
       }
     },
     methods: {
+      resetFormDialog: function () {
+        this.formDialog.show = false
+        this.formDialog.data = {
+          cost_config: {
+            enable_multipliers: false,
+            length_multipliers: [],
+            ranking_multipliers: []
+          }
+        }
+      },
       closeAddressFormDialog: function () {
-        this.formDialog.data = {}
+        this.resetFormDialog()
       },
       closeFormDialog: function () {
-        this.formDialog.data = {}
+        this.resetFormDialog()
       },
       getDomains: function () {
         var self = this
@@ -604,10 +646,11 @@
       saveDomain: function () {
         var data = this.formDialog.data
         var self = this
+        const method = this.formDialog.data.id ? 'PUT' : 'POST'
 
         LNbits.api
           .request(
-            'POST',
+            method,
             '/nostrnip5/api/v1/domain',
             _.findWhere(this.g.user.wallets, {id: this.formDialog.data.wallet})
               .inkey,
@@ -616,40 +659,15 @@
           .then(function (response) {
             self.domains.push(mapDomain(response.data))
 
-            self.formDialog.show = false
-            self.formDialog.data = {}
-          })
-          .catch(function (error) {
-            LNbits.utils.notifyApiError(error)
-          })
-      },
-      saveEditedDomain: function () {
-        var data = this.editFormDialog.data
-        var self = this
-
-        LNbits.api
-          .request(
-            'PUT',
-            '/nostrnip5/api/v1/domain',
-            _.findWhere(this.g.user.wallets, {
-              id: this.editFormDialog.data.wallet
-            }).inkey,
-            data
-          )
-          .then(function (response) {
-            self.editFormDialog.show = false
-            self.editFormDialog.data = {}
+            self.resetFormDialog()
           })
           .catch(function (error) {
             LNbits.utils.notifyApiError(error)
           })
       },
       editDomain: function (domain_id) {
-        var self = this
-        var data = _.findWhere(this.domains, {id: domain_id})
-
-        self.editFormDialog.show = true
-        self.editFormDialog.data = data
+        this.formDialog.show = true
+        this.formDialog.data = _.findWhere(this.domains, {id: domain_id})
       },
       deleteDomain: function (domain_id) {
         var self = this
@@ -757,6 +775,17 @@
               })
           })
       },
+      addLengthCostMultiplier: function () {
+        this.formDialog.data.cost_config.length_multipliers.push({
+          bracket: 0,
+          multiplier: 1
+        })
+      },
+      removeLengthCostMultiplier: function (index) {
+        if (index < this.formDialog.cost_config.length_multipliers.length) {
+          this.formDialog.cost_config.length_multipliers.splice(index, 1)
+        }
+      },
       exportCSV: function () {
         LNbits.utils.exportCSV(this.domainsTable.columns, this.domains)
       },
@@ -765,6 +794,7 @@
       }
     },
     created: function () {
+      this.resetFormDialog()
       if (this.g.user.wallets.length) {
         this.getDomains()
         this.getAddresses()
