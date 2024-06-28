@@ -19,15 +19,15 @@
           class="float-right"
           icon="settings"
         >
-          <q-list v-for="bracket in domainRankingBraketOptions" :key="bracket">
-            <q-item
-              clickable
-              v-close-popup
-              @click="refreshDomainRanking(bracket)"
+          <q-list>
+            <q-item clickable v-close-popup
               ><q-item-section>
-                <q-item-label
-                  v-text="'Refresh top '+ bracket + ' domains'"
-                ></q-item-label>
+                <q-item-label v-text="'Block Identifiers'"></q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item clickable v-close-popup
+              ><q-item-section>
+                <q-item-label v-text="'Search Identifiers'"></q-item-label>
               </q-item-section>
             </q-item>
           </q-list>
@@ -446,13 +446,46 @@
       <h6 class="q-mt-none">Settings</h6>
 
       <q-form @submit="updateSettings" class="q-gutter-md">
-        <q-input
-          filled
-          dense
-          v-model.trim="settingsFormDialog.data.cloudflare_access_token"
-          label="Cloudflare Access Token"
-          placeholder="Read-only access token"
-        ></q-input>
+        <div class="row">
+          <div class="col-8">
+            <q-input
+              filled
+              dense
+              v-model.trim="settingsFormDialog.data.cloudflare_access_token"
+              label="Cloudflare Access Token"
+              hint="Domain ranking is fetched from CloudFlare. An access token must be provided."
+              placeholder="Read-only access token"
+            ></q-input>
+          </div>
+          <div class="col-4">
+            <q-btn-dropdown
+              v-if="g.user.admin"
+              @click="refreshDomainRanking(200)"
+              unelevated
+              split
+              color="primary"
+              class="float-right"
+              label="Refresh"
+            >
+              <q-list
+                v-for="bracket in domainRankingBraketOptions"
+                :key="bracket"
+              >
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="refreshDomainRanking(bracket)"
+                  ><q-item-section>
+                    <q-item-label
+                      v-text="'Refresh top '+ bracket + ' domains'"
+                    ></q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-btn-dropdown>
+          </div>
+        </div>
+
         <div class="row q-mt-lg">
           <q-btn unelevated color="primary" type="submit">Update</q-btn>
           <q-btn v-close-popup flat color="grey" class="q-ml-auto"

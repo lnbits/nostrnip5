@@ -351,6 +351,8 @@ async def api_refresh_identifier_ranking(
     ranking_url = "https://api.cloudflare.com/client/v4/radar/datasets?limit=12&datasetType=RANKING_BUCKET"
     dataset_url = "https://api.cloudflare.com/client/v4/radar/datasets"
 
+    logger.info(f"Refresh requested for top {bucket} domains.")
+
     async with httpx.AsyncClient() as client:
         resp = await client.get(url=ranking_url, headers=headers)
         resp.raise_for_status()
@@ -358,6 +360,8 @@ async def api_refresh_identifier_ranking(
 
         datasets = data["result"]["datasets"]
         datasets.sort(key=lambda b: b["meta"]["top"])
+
+        logger.info("Bucket info received.")
 
         for dataset in datasets:
             top = dataset["meta"]["top"]
@@ -374,6 +378,8 @@ async def api_refresh_identifier_ranking(
                 domain_name = domain.split(".")[0]
                 await delete_inferior_ranking(domain_name, top)
                 await create_domain_ranking(domain_name, top)
+
+        logger.info("Domain rankins refreshed.")
 
 
 @nostrnip5_api_router.post(
