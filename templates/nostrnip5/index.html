@@ -12,7 +12,9 @@
         >
         <q-btn-dropdown
           v-if="g.user.admin"
+          @click="settingsFormDialog.show=true"
           unelevated
+          split
           color="primary"
           class="float-right"
           label="Refresh Ranking"
@@ -312,15 +314,14 @@
                   class="row q-mb-sm q-ml-md"
                 >
                   <div class="col-5">
-                    <q-input
+                    <q-select
                       filled
                       dense
-                      v-model.trim="item.bracket"
-                      type="number"
-                      min="0"
-                      step="1"
-                      label="Up to position"
-                    ></q-input>
+                      emit-value
+                      v-model="item.bracket"
+                      :options="domainRankingBraketOptions"
+                      label="Up to Rank"
+                    ></q-select>
                   </div>
                   <div class="col-5">
                     <q-input
@@ -425,6 +426,32 @@
             type="submit"
             >Create Address</q-btn
           >
+          <q-btn v-close-popup flat color="grey" class="q-ml-auto"
+            >Cancel</q-btn
+          >
+        </div>
+      </q-form>
+    </q-card>
+  </q-dialog>
+
+  <q-dialog v-model="settingsFormDialog.show" position="top">
+    <q-card
+      v-if="settingsFormDialog.show"
+      class="q-pa-lg q-pt-xl"
+      style="width: 500px"
+    >
+      <h6 class="q-mt-none">Settings</h6>
+
+      <q-form @submit="updateSettings" class="q-gutter-md">
+        <q-input
+          filled
+          dense
+          v-model.trim="settingsFormDialog.data.cloudflare_access_token"
+          label="Cloudflare Access Token"
+          placeholder="Read-only access token"
+        ></q-input>
+        <div class="row q-mt-lg">
+          <q-btn unelevated color="primary" type="submit">Update</q-btn>
           <q-btn v-close-popup flat color="grey" class="q-ml-auto"
             >Cancel</q-btn
           >
@@ -682,6 +709,10 @@
         addressFormDialog: {
           show: false,
           data: {}
+        },
+        settingsFormDialog: {
+          show: false,
+          data: {}
         }
       }
     },
@@ -747,8 +778,8 @@
             data
           )
           .then(function (response) {
+            self.domains = self.domains.filter(d => d.id !== response.data.id)
             self.domains.push(mapDomain(response.data))
-
             self.resetFormDialog()
           })
           .catch(function (error) {
@@ -883,6 +914,41 @@
             LNbits.utils.notifyApiError(error)
           })
       },
+      fetchSettings: function () {
+        var self = this
+        return LNbits.api
+          .request(
+            'GET',
+            '/nostrnip5/api/v1/settings',
+            self.g.user.wallets[0].adminkey
+          )
+          .then(function (response) {
+            self.settingsFormDialog.data = response.data
+          })
+          .catch(function (error) {
+            LNbits.utils.notifyApiError(error)
+          })
+      },
+      updateSettings: function () {
+        var self = this
+        return LNbits.api
+          .request(
+            'PUT',
+            '/nostrnip5/api/v1/settings',
+            self.g.user.wallets[0].adminkey,
+            self.settingsFormDialog.data
+          )
+          .then(function (response) {
+            self.settingsFormDialog = false
+            self.$q.notify({
+              type: 'positive',
+              message: 'Updated settings'
+            })
+          })
+          .catch(function (error) {
+            LNbits.utils.notifyApiError(error)
+          })
+      },
       addCharCountCost: function () {
         this.formDialog.data.cost_config.char_count_cost.push({
           bracket: 0,
@@ -917,6 +983,7 @@
       if (this.g.user.wallets.length) {
         this.getDomains()
         this.getAddresses()
+        this.fetchSettings()
       }
     },
     computed: {

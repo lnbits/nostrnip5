@@ -54,8 +54,21 @@ async def m004_add_domain_rankings_table(db):
     await db.execute(
         """
        CREATE TABLE nostrnip5.domain_rankings (
-           name TEXT NOT NULL,
+           name TEXT PRIMARY KEY,
            rank INTEGER NOT NULL
+
+       );
+   """
+    )
+
+
+async def m005_add_domain_rankings_table(db):
+
+    await db.execute(
+        """
+       CREATE TABLE nostrnip5.settings (
+           owner_id TEXT PRIMARY KEY,
+           settings text
 
        );
    """

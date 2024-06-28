@@ -11,6 +11,7 @@ from .models import (
     Domain,
     DomainRanking,
     EditDomainData,
+    Nip5Settings,
     PublicDomain,
 )
 
@@ -274,9 +275,9 @@ async def create_domain_ranking(name: str, rank: int):
     await db.execute(
         """
         INSERT INTO nostrnip5.domain_rankings(name, rank) VALUES (?, ?)
-        ON CONFLICT (name) DO UPDATE SET rank = ?
+        ON CONFLICT (name) DO NOTHING
         """,
-        (name, rank, rank),
+        (name, rank),
     )
 
 
@@ -286,3 +287,32 @@ async def get_domain_ranking(name: str) -> Optional[DomainRanking]:
         (name,),
     )
     return DomainRanking.from_row(row) if row else None
+
+
+async def delete_inferior_ranking(name: str, rank: int):
+    await db.execute(
+        """
+        DELETE from nostrnip5.domain_rankings
+        WHERE name = ? and rank > ?
+        """,
+        (name, rank),
+    )
+
+
+async def create_settings(owner_id: str, settings: Nip5Settings):
+    settings_json = json.dumps(settings, default=lambda o: o.__dict__)
+    await db.execute(
+        """
+        INSERT INTO nostrnip5.settings(owner_id, settings) VALUES (?, ?)
+        ON CONFLICT (owner_id) DO UPDATE SET settings = ?
+        """,
+        (owner_id, settings_json, settings_json),
+    )
+
+
+async def get_settings(owner_id: str) -> Nip5Settings:
+    row = await db.fetchone(
+        "SELECT * FROM nostrnip5.settings WHERE owner_id = ?",
+        (owner_id,),
+    )
+    return Nip5Settings.from_row(row) if row else Nip5Settings()

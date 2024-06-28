@@ -99,3 +99,11 @@ class Address(BaseModel):
 class AddressStatus(BaseModel):
     available: bool = False
     reserved: bool = False
+
+
+class Nip5Settings(BaseModel):
+    cloudflare_access_token: Optional[str] = None
+
+    @classmethod
+    def from_row(cls, row: Row) -> "Nip5Settings":
+        return cls(**dict(json.loads(row["settings"])))

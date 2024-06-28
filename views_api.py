@@ -1,13 +1,15 @@
 from http import HTTPStatus
 from typing import Optional
 
+import httpx
 from fastapi import APIRouter, Depends, Query, Response
 from lnbits.core.crud import get_standalone_payment, get_user
-from lnbits.core.models import WalletTypeInfo
+from lnbits.core.models import User, WalletTypeInfo
 from lnbits.core.services import create_invoice
 from lnbits.decorators import (
     authenticated_user_id,
     check_admin,
+    check_user_exists,
     get_key_type,
     require_admin_key,
 )
@@ -19,8 +21,11 @@ from .crud import (
     activate_address,
     create_address_internal,
     create_domain_internal,
+    create_domain_ranking,
+    create_settings,
     delete_address,
     delete_domain,
+    delete_inferior_ranking,
     get_address_by_local_part,
     get_addresses,
     get_addresses_for_owner,
@@ -28,6 +33,7 @@ from .crud import (
     get_domain,
     get_domain_by_id,
     get_domains,
+    get_settings,
     rotate_address,
     update_domain_internal,
 )
@@ -37,6 +43,7 @@ from .models import (
     CreateAddressData,
     CreateDomainData,
     EditDomainData,
+    Nip5Settings,
     RotateAddressData,
 )
 
@@ -315,10 +322,67 @@ async def api_get_nostr_json(
 
 
 @nostrnip5_api_router.put(
-    "/api/v1/domain/ranking/{braket}",
+    "/api/v1/domain/ranking/{bucket}",
     status_code=HTTPStatus.OK,
-    dependencies=[Depends(check_admin)],
 )
-async def api_refresh_domain_rankin(braket: int):
+async def api_refresh_domain_rankin(
+    bucket: int,
+    user: Optional[User] = Depends(check_admin),
+):
+    owner_id = owner_id_from_user_id("admin" if user.admin else user.id)
+    nip5_settings = await get_settings(owner_id)
+    headers = {"Authorization": f"Bearer {nip5_settings.cloudflare_access_token}"}
+    ranking_url = "https://api.cloudflare.com/client/v4/radar/datasets?limit=12&datasetType=RANKING_BUCKET"
+    dataset_url = "https://api.cloudflare.com/client/v4/radar/datasets"
 
-    print("### refresh domains", braket)
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(url=ranking_url, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+
+        datasets = data["result"]["datasets"]
+        datasets.sort(key=lambda b: b["meta"]["top"])
+
+        for dataset in datasets:
+            top = dataset["meta"]["top"]
+            if top > bucket:
+                continue
+            logger.info(f"Refreshing bucket {top}.")
+
+            resp = await client.get(
+                url=f"""{dataset_url}/{dataset["alias"]}""", headers=headers
+            )
+            resp.raise_for_status()
+
+            for domain in resp.text.split("\n"):
+                domain_name = domain.split(".")[0]
+                await delete_inferior_ranking(domain_name, top)
+                await create_domain_ranking(domain_name, top)
+
+
+@nostrnip5_api_router.post(
+    "/api/v1/settings",
+    status_code=HTTPStatus.OK,
+)
+@nostrnip5_api_router.put(
+    "/api/v1/settings",
+    status_code=HTTPStatus.OK,
+)
+async def api_settings_create_or_update(
+    settings: Nip5Settings,
+    user: Optional[User] = Depends(check_user_exists),
+):
+    owner_id = owner_id_from_user_id("admin" if user.admin else user.id)
+    await create_settings(owner_id, settings)
+
+
+@nostrnip5_api_router.get(
+    "/api/v1/settings",
+    status_code=HTTPStatus.OK,
+)
+async def api_get_settings(
+    user: Optional[User] = Depends(check_user_exists),
+) -> Nip5Settings:
+    owner_id = owner_id_from_user_id("admin" if user.admin else user.id)
+    nip5_settings = await get_settings(owner_id)
+    return nip5_settings
