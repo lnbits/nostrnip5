@@ -39,7 +39,7 @@ async def get_domain_by_id(domain_id: str) -> Optional[Domain]:
 
 async def get_domain_public_data(domain_id: str) -> Optional[PublicDomain]:
     row = await db.fetchone(
-        "SELECT id, currency, amount, domain FROM nostrnip5.domains WHERE id = ?",
+        "SELECT id, currency, cost, domain FROM nostrnip5.domains WHERE id = ?",
         (domain_id,),
     )
     return PublicDomain.from_row(row) if row else None
@@ -221,11 +221,6 @@ async def create_address_internal(
 
 
 async def update_domain_internal(wallet_id: str, data: EditDomainData) -> Domain:
-    if data.currency != "Satoshis":
-        amount = data.amount * 100
-    else:
-        amount = data.amount
-
     cost_extra = (
         json.dumps(data.cost_config, default=lambda o: o.__dict__)
         if data.cost_config
@@ -234,10 +229,10 @@ async def update_domain_internal(wallet_id: str, data: EditDomainData) -> Domain
     await db.execute(
         """
         UPDATE nostrnip5.domains
-        SET amount = ?, currency = ?, cost_extra = ?
+        SET cost = ?, currency = ?, cost_extra = ?
         WHERE id = ?
         """,
-        (int(amount), data.currency, cost_extra, data.id),
+        (data.cost, data.currency, cost_extra, data.id),
     )
 
     domain = await get_domain(data.id, wallet_id)
@@ -248,11 +243,6 @@ async def update_domain_internal(wallet_id: str, data: EditDomainData) -> Domain
 async def create_domain_internal(wallet_id: str, data: CreateDomainData) -> Domain:
     domain_id = urlsafe_short_hash()
 
-    if data.currency != "Satoshis":
-        amount = data.amount * 100
-    else:
-        amount = data.amount
-
     cost_extra = (
         json.dumps(data.cost_config, default=lambda o: o.__dict__)
         if data.cost_config
@@ -260,10 +250,10 @@ async def create_domain_internal(wallet_id: str, data: CreateDomainData) -> Doma
     )
     await db.execute(
         """
-        INSERT INTO nostrnip5.domains (id, wallet, currency, amount, domain, cost_extra)
+        INSERT INTO nostrnip5.domains (id, wallet, currency, cost, domain, cost_extra)
         VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (domain_id, wallet_id, data.currency, int(amount), data.domain, cost_extra),
+        (domain_id, wallet_id, data.currency, data.cost, data.domain, cost_extra),
     )
 
     domain = await get_domain(domain_id, wallet_id)

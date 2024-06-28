@@ -73,3 +73,23 @@ async def m005_add_domain_rankings_table(db):
        );
    """
     )
+
+
+async def m006_make_amount_type_real(db):
+    """
+    Domain amount was INT which is not well suited for fiat currencies. Not it is REAL.
+    """
+    await db.execute(
+        "ALTER TABLE nostrnip5.domains ADD COLUMN cost REAL NOT NULL DEFAULT 0"
+    )
+
+    rows = await db.fetchall(
+        "SELECT id, amount FROM nostrnip5.domains",
+    )
+    for row in rows:
+        await db.execute(
+            "UPDATE nostrnip5.domains SET cost = ? WHERE id = ?",
+            (row["amount"], row["id"]),
+        )
+
+    await db.execute("ALTER TABLE nostrnip5.domains DROP COLUMN amount")

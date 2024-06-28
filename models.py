@@ -32,7 +32,7 @@ class DomainCostConfig(BaseModel):
 class CreateDomainData(BaseModel):
     wallet: str
     currency: str
-    amount: float = Query(..., ge=0.01)
+    cost: float = Query(..., ge=0.01)
     domain: str
     cost_config: Optional[DomainCostConfig] = None
 
@@ -40,7 +40,7 @@ class CreateDomainData(BaseModel):
 class EditDomainData(BaseModel):
     id: str
     currency: str
-    amount: float = Query(..., ge=0.01)
+    cost: float = Query(..., ge=0.01)
     cost_config: Optional[DomainCostConfig] = None
 
     @classmethod
@@ -60,7 +60,7 @@ class DomainRanking(BaseModel):
 class PublicDomain(BaseModel):
     id: str
     currency: str
-    amount: int  # todo: only final cost should be available
+    cost: float  # todo: only final cost should be available
     domain: str
 
     @classmethod
@@ -74,7 +74,7 @@ class Domain(PublicDomain):
     time: int
 
     def price_for_address(self, identifier: str, rank: Optional[int] = None):
-        max_amount = self.amount
+        max_amount = self.cost
         reason = ""
         if not self.cost_config.enable_custom_cost:
             return max_amount

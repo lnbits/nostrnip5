@@ -238,7 +238,10 @@
         <q-input
           filled
           dense
-          v-model.trim="formDialog.data.amount"
+          v-model.trim="formDialog.data.cost"
+          type="number"
+          min="0"
+          step="1"
           label="Price"
           placeholder="How much do you want to charge per address?"
         ></q-input>
@@ -468,9 +471,7 @@
       'YYYY-MM-DD HH:mm'
     )
 
-    if (obj.currency != 'Satoshis') {
-      obj.amount = parseFloat(obj.amount / 100).toFixed(2)
-    }
+    obj.cost = parseFloat(obj.cost).toFixed(2)
 
     return obj
   }
@@ -487,7 +488,7 @@
           500000, 1000000
         ],
         currencyOptions: [
-          'Satoshis',
+          'sats',
           'USD',
           'EUR',
           'GBP',
@@ -671,7 +672,7 @@
               label: 'Currency',
               field: 'currency'
             },
-            {name: 'amount', align: 'left', label: 'Amount', field: 'amount'},
+            {name: 'cost', align: 'left', label: 'Amount', field: 'cost'},
             {name: 'time', align: 'left', label: 'Created At', field: 'time'}
           ],
           pagination: {
@@ -804,9 +805,7 @@
                 _.findWhere(self.g.user.wallets, {id: domain.wallet}).adminkey
               )
               .then(function (response) {
-                self.domains = _.reject(self.domain, function (obj) {
-                  return obj.id == domain_id
-                })
+                self.domains = self.domains.filter(d => d.id !== domain_id)
               })
               .catch(function (error) {
                 LNbits.utils.notifyApiError(error)
