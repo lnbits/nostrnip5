@@ -32,6 +32,7 @@ from .crud import (
     get_all_addresses,
     get_domain,
     get_domain_by_id,
+    get_domain_ranking,
     get_domains,
     get_settings,
     rotate_address,
@@ -284,10 +285,27 @@ async def api_domain_search_address(
         if not q:
             return AddressStatus()
         address = await get_address_by_local_part(domain_id, q)
-        if address:
-            return AddressStatus(available=not address.active, reserved=True)
-        else:
-            return AddressStatus(available=True, reserved=False)
+        reserved = address is not None
+        if address and address.active:
+            return AddressStatus(available=False, reserved=reserved)
+
+        domain = await get_domain_by_id(domain_id)
+        assert domain, "Unknown domain id"
+
+        rank = None
+        if domain.cost_config.enable_custom_cost:
+            domain_ranking = await get_domain_ranking(q)
+            rank = domain_ranking.rank if domain_ranking else None
+
+        price, reason = domain.price_for_address(q, rank)
+
+        return AddressStatus(
+            available=True,
+            reserved=reserved,
+            price=price,
+            price_reason=reason,
+            currency=domain.currency,
+        )
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR) from exc
@@ -325,7 +343,7 @@ async def api_get_nostr_json(
     "/api/v1/domain/ranking/{bucket}",
     status_code=HTTPStatus.OK,
 )
-async def api_refresh_domain_rankin(
+async def api_refresh_identifier_ranking(
     bucket: int,
     user: Optional[User] = Depends(check_admin),
 ):

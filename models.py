@@ -73,6 +73,27 @@ class Domain(PublicDomain):
     cost_config: DomainCostConfig = DomainCostConfig()
     time: int
 
+    def price_for_address(self, identifier: str, rank: Optional[int] = None):
+        max_amount = self.amount
+        reason = ""
+        if not self.cost_config.enable_custom_cost:
+            return max_amount
+
+        for char_cost in self.cost_config.char_count_cost:
+            if len(identifier) <= char_cost.bracket and max_amount < char_cost.amount:
+                max_amount = char_cost.amount
+                reason = f"{len(identifier)} characters"
+
+        if not rank:
+            return max_amount, reason
+
+        for rank_cost in self.cost_config.rank_cost:
+            if rank <= rank_cost.bracket and max_amount < rank_cost.amount:
+                max_amount = rank_cost.amount
+                reason = f"Top {rank_cost.bracket} identifier"
+
+        return max_amount, reason
+
     @classmethod
     def from_row(cls, row: Row) -> "Domain":
         domain = cls(**dict(row))
@@ -99,6 +120,9 @@ class Address(BaseModel):
 class AddressStatus(BaseModel):
     available: bool = False
     reserved: bool = False
+    price: Optional[float] = None
+    price_reason: Optional[str] = None
+    currency: Optional[str] = None
 
 
 class Nip5Settings(BaseModel):
