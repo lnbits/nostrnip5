@@ -5,7 +5,12 @@ from fastapi import APIRouter, Depends, Query, Response
 from lnbits.core.crud import get_standalone_payment, get_user
 from lnbits.core.models import WalletTypeInfo
 from lnbits.core.services import create_invoice
-from lnbits.decorators import authenticated_user_id, get_key_type, require_admin_key
+from lnbits.decorators import (
+    authenticated_user_id,
+    check_admin,
+    get_key_type,
+    require_admin_key,
+)
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
 from starlette.exceptions import HTTPException
@@ -240,6 +245,7 @@ async def api_address_create(
     "/api/v1/domain/{domain_id}/payments/{payment_hash}", status_code=HTTPStatus.OK
 )
 async def api_nostrnip5_check_payment(domain_id: str, payment_hash: str):
+    # todo: who can call and from where?
     try:
         payment = await get_standalone_payment(payment_hash)
         if not payment:
@@ -306,3 +312,13 @@ async def api_get_nostr_json(
     response.headers["Access-Control-Allow-Methods"] = "GET,OPTIONS"
 
     return {"names": output}
+
+
+@nostrnip5_api_router.put(
+    "/api/v1/domain/ranking/{braket}",
+    status_code=HTTPStatus.OK,
+    dependencies=[Depends(check_admin)],
+)
+async def api_refresh_domain_rankin(braket: int):
+
+    print("### refresh domains", braket)

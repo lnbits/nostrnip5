@@ -47,3 +47,16 @@ async def m003_add_cost_extra_column_to_domains(db):
     Adds cost_extra column to  addresses.
     """
     await db.execute("ALTER TABLE nostrnip5.domains ADD COLUMN cost_extra TEXT")
+
+
+async def m004_add_domain_rankings_table(db):
+
+    await db.execute(
+        """
+       CREATE TABLE nostrnip5.domain_rankings (
+           name TEXT NOT NULL,
+           rank INTEGER NOT NULL
+
+       );
+   """
+    )

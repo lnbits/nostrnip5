@@ -9,6 +9,7 @@ from .models import (
     CreateAddressData,
     CreateDomainData,
     Domain,
+    DomainRanking,
     EditDomainData,
     PublicDomain,
 )
@@ -267,3 +268,21 @@ async def create_domain_internal(wallet_id: str, data: CreateDomainData) -> Doma
     domain = await get_domain(domain_id, wallet_id)
     assert domain, "Newly created domain couldn't be retrieved"
     return domain
+
+
+async def create_domain_ranking(name: str, rank: int):
+    await db.execute(
+        """
+        INSERT INTO nostrnip5.domain_rankings(name, rank) VALUES (?, ?)
+        ON CONFLICT (name) DO UPDATE SET rank = ?
+        """,
+        (name, rank, rank),
+    )
+
+
+async def get_domain_ranking(name: str) -> Optional[DomainRanking]:
+    row = await db.fetchone(
+        "SELECT * FROM nostrnip5.domain_rankings WHERE name = ?",
+        (name,),
+    )
+    return DomainRanking.from_row(row) if row else None
