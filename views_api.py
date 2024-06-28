@@ -343,7 +343,7 @@ async def api_get_nostr_json(
 )
 async def api_refresh_identifier_ranking(
     bucket: int,
-    user: Optional[User] = Depends(check_admin),
+    user: User = Depends(check_admin),
 ):
     owner_id = owner_id_from_user_id("admin" if user.admin else user.id)
     nip5_settings = await get_settings(owner_id)
@@ -386,7 +386,7 @@ async def api_refresh_identifier_ranking(
 )
 async def api_settings_create_or_update(
     settings: Nip5Settings,
-    user: Optional[User] = Depends(check_user_exists),
+    user: User = Depends(check_user_exists),
 ):
     owner_id = owner_id_from_user_id("admin" if user.admin else user.id)
     await create_settings(owner_id, settings)
@@ -397,7 +397,7 @@ async def api_settings_create_or_update(
     status_code=HTTPStatus.OK,
 )
 async def api_get_settings(
-    user: Optional[User] = Depends(check_user_exists),
+    user: User = Depends(check_user_exists),
 ) -> Nip5Settings:
     owner_id = owner_id_from_user_id("admin" if user.admin else user.id)
     nip5_settings = await get_settings(owner_id)

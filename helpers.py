@@ -30,7 +30,5 @@ def validate_local_part(local_part: str):
         )
 
 
-def owner_id_from_user_id(user_id: Optional[str] = None) -> Optional[str]:
-    if not user_id:
-        return None
-    return sha256(user_id.encode("utf-8")).hexdigest()
+def owner_id_from_user_id(user_id: Optional[str] = None) -> str:
+    return sha256((user_id or "").encode("utf-8")).hexdigest()
