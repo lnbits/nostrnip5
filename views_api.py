@@ -420,7 +420,7 @@ async def api_domain_search_address(q: Optional[str] = None) -> Optional[DomainR
 
 
 @nostrnip5_api_router.put(
-    "/api/v1/ranking/",
+    "/api/v1/ranking",
     dependencies=[Depends(check_admin)],
     status_code=HTTPStatus.OK,
 )
