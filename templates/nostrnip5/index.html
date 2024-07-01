@@ -26,8 +26,8 @@
               </q-item-section>
             </q-item>
             <q-item clickable v-close-popup
-              ><q-item-section>
-                <q-item-label v-text="'Search Identifiers'"></q-item-label>
+              ><q-item-section @click="identifierFormDialog.show = true">
+                <q-item-label v-text="'Manage Identifiers'"></q-item-label>
               </q-item-section>
             </q-item>
           </q-list>
@@ -470,6 +470,55 @@
     </q-card>
   </q-dialog>
 
+  <q-dialog v-model="identifierFormDialog.show" position="top">
+    <q-card class="q-pa-lg q-pt-xl" style="width: 500px">
+      <q-form @submit="searchIdentifier" class="q-gutter-md">
+        <div class="row">
+          <div class="col-8">
+            <q-input
+              filled
+              dense
+              v-model.trim="identifierFormDialog.data.searchText"
+              label="Search Identifier"
+              placeholder="Search"
+            ></q-input>
+          </div>
+          <div class="col-4">
+            <q-btn
+              @click="searchIdentifier"
+              type="submit"
+              unelevated
+              color="primary"
+              class="float-right"
+              >Search</q-btn
+            >
+          </div>
+        </div>
+        <div v-if="identifierFormDialog.data.identifier" class="row">
+          <div class="col-8">
+            <q-select
+              filled
+              dense
+              emit-value
+              map-options
+              v-model="identifierFormDialog.data.identifier.rank"
+              :options="domainRankingAllOptions"
+              label="Bucket"
+            ></q-select>
+          </div>
+          <div class="col-4"></div>
+        </div>
+
+        <div class="row q-mt-lg">
+          <q-btn @click="updateIdentifier" unelevated color="primary" >Update Ranking</q-btn>
+          <q-btn v-close-popup flat color="grey" class="q-ml-auto"
+            >Cancel</q-btn
+          >
+        </div>
+      </q-form>
+    </q-card>
+  </q-dialog>
+
   <q-dialog v-model="settingsFormDialog.show" position="top">
     <q-card
       v-if="settingsFormDialog.show"
@@ -779,10 +828,11 @@
         },
         rankingFormDialog: {
           show: false,
-          data: {
-            bucket: 0,
-            identifiers: ''
-          }
+          data: {}
+        },
+        identifierFormDialog: {
+          show: false,
+          data: {}
         },
         settingsFormDialog: {
           show: false,
@@ -805,6 +855,12 @@
         this.rankingFormDialog.data = {
           bucket: 0,
           identifiers: ''
+        }
+        this.identifierFormDialog.show = false
+        this.identifierFormDialog.data = {
+          searchText: '',
+          bucket: 0,
+          identifier: ''
         }
       },
       closeAddressFormDialog: function () {
@@ -1012,6 +1068,46 @@
             LNbits.utils.notifyApiError(error)
           })
       },
+      searchIdentifier: function () {
+        var self = this
+        return LNbits.api
+          .request(
+            'GET',
+            '/nostrnip5/api/v1/ranking/search?q=' +
+              this.identifierFormDialog.data.searchText,
+            self.g.user.wallets[0].adminkey
+          )
+          .then(function (response) {
+            self.identifierFormDialog.data.identifier = response.data
+          })
+          .catch(function (error) {
+            LNbits.utils.notifyApiError(error)
+          })
+      },
+      updateIdentifier: function () {
+        var self = this
+        return LNbits.api
+          .request(
+            'PUT',
+            '/nostrnip5/api/v1/ranking',
+            self.g.user.wallets[0].adminkey,
+            {
+              name: self.identifierFormDialog.data.identifier.name,
+              rank: self.identifierFormDialog.data.identifier.rank
+            }
+          )
+          .then(function (response) {
+            self.$q.notify({
+              type: 'positive',
+              message: 'Identifier updated!'
+            })
+            self.resetFormDialog()
+          })
+          .catch(function (error) {
+            LNbits.utils.notifyApiError(error)
+          })
+      },
+
       fetchSettings: function () {
         var self = this
         return LNbits.api

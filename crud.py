@@ -271,6 +271,17 @@ async def create_domain_ranking(name: str, rank: int):
     )
 
 
+async def update_domain_ranking(name: str, rank: int):
+    await db.execute(
+        """
+        UPDATE nostrnip5.domain_rankings
+        SET rank = ?
+        WHERE name = ?
+        """,
+        (rank, name),
+    )
+
+
 async def get_domain_ranking(name: str) -> Optional[DomainRanking]:
     row = await db.fetchone(
         "SELECT * FROM nostrnip5.domain_rankings WHERE name = ?",

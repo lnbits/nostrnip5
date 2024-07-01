@@ -37,12 +37,14 @@ from .crud import (
     get_settings,
     rotate_address,
     update_domain_internal,
+    update_domain_ranking,
 )
 from .helpers import owner_id_from_user_id, validate_local_part, validate_pub_key
 from .models import (
     AddressStatus,
     CreateAddressData,
     CreateDomainData,
+    DomainRanking,
     EditDomainData,
     Nip5Settings,
     RotateAddressData,
@@ -276,7 +278,7 @@ async def api_nostrnip5_check_payment(domain_id: str, payment_hash: str):
 @nostrnip5_api_router.get(
     "/api/v1/domain/{domain_id}/search", status_code=HTTPStatus.OK
 )
-async def api_domain_search_address(
+async def api_search_identifier(
     domain_id: str, q: Optional[str] = None
 ) -> AddressStatus:
     try:
@@ -399,6 +401,39 @@ async def api_add_identifier_ranking(
         await create_domain_ranking(identifier, bucket)
 
     logger.info(f"Updated {len(identifiers)} rankings.")
+
+
+@nostrnip5_api_router.get(
+    "/api/v1/ranking/search",
+    dependencies=[Depends(check_admin)],
+    status_code=HTTPStatus.OK,
+)
+async def api_domain_search_address(q: Optional[str] = None) -> Optional[DomainRanking]:
+    try:
+        if not q:
+            return None
+        return await get_domain_ranking(q)
+
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR) from exc
+
+
+@nostrnip5_api_router.put(
+    "/api/v1/ranking/",
+    dependencies=[Depends(check_admin)],
+    status_code=HTTPStatus.OK,
+)
+async def api_domain_update_ranking(
+    domain_ranking: DomainRanking,
+) -> Optional[DomainRanking]:
+    try:
+
+        return await update_domain_ranking(domain_ranking.name, domain_ranking.rank)
+
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR) from exc
 
 
 @nostrnip5_api_router.post(
