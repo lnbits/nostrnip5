@@ -288,7 +288,7 @@ async def api_domain_search_address(
             return AddressStatus(available=False, reserved=reserved)
 
         domain = await get_domain_by_id(domain_id)
-        assert domain, "Unknown domain id"
+        assert domain, "Unknown domain id."
 
         rank = None
         if domain.cost_config.enable_custom_cost:
