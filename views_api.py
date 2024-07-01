@@ -2,7 +2,7 @@ from http import HTTPStatus
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from lnbits.core.crud import get_standalone_payment, get_user
 from lnbits.core.models import User, WalletTypeInfo
 from lnbits.core.services import create_invoice
@@ -380,6 +380,25 @@ async def api_refresh_identifier_ranking(
                 await create_domain_ranking(domain_name, top)
 
         logger.info("Domain rankins refreshed.")
+
+
+@nostrnip5_api_router.patch(
+    "/api/v1/domain/ranking/{bucket}",
+    dependencies=[Depends(check_admin)],
+    status_code=HTTPStatus.OK,
+)
+async def api_add_identifier_ranking(
+    bucket: int,
+    request: Request,
+):
+    identifiers = (await request.body()).decode("utf-8").splitlines()
+    logger.info(f"Updating {len(identifiers)} rankings.")
+
+    for identifier in identifiers:
+        await delete_inferior_ranking(identifier, bucket)
+        await create_domain_ranking(identifier, bucket)
+
+    logger.info(f"Updated {len(identifiers)} rankings.")
 
 
 @nostrnip5_api_router.post(

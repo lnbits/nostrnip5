@@ -21,8 +21,8 @@
         >
           <q-list>
             <q-item clickable v-close-popup
-              ><q-item-section>
-                <q-item-label v-text="'Block Identifiers'"></q-item-label>
+              ><q-item-section @click="rankingFormDialog.show = true">
+                <q-item-label v-text="'Add Identifiers'"></q-item-label>
               </q-item-section>
             </q-item>
             <q-item clickable v-close-popup
@@ -437,6 +437,39 @@
     </q-card>
   </q-dialog>
 
+  <q-dialog v-model="rankingFormDialog.show" position="top">
+    <q-card class="q-pa-lg q-pt-xl" style="width: 500px">
+      <q-form @submit="addDomainRanking" class="q-gutter-md">
+        <q-select
+          filled
+          dense
+          emit-value
+          map-options
+          v-model="rankingFormDialog.data.bucket"
+          :options="domainRankingAllOptions"
+          label="Bucket"
+        ></q-select>
+        <q-input
+          filled
+          dense
+          type="textarea"
+          rows="10"
+          v-model.trim="rankingFormDialog.data.identifiers"
+          label="Identifiers"
+          placeholder="identifiers"
+          hint="One identifier per line"
+        ></q-input>
+
+        <div class="row q-mt-lg">
+          <q-btn unelevated color="primary" type="submit">Update Ranking</q-btn>
+          <q-btn v-close-popup flat color="grey" class="q-ml-auto"
+            >Cancel</q-btn
+          >
+        </div>
+      </q-form>
+    </q-card>
+  </q-dialog>
+
   <q-dialog v-model="settingsFormDialog.show" position="top">
     <q-card
       v-if="settingsFormDialog.show"
@@ -477,7 +510,7 @@
                   @click="refreshDomainRanking(bracket)"
                   ><q-item-section>
                     <q-item-label
-                      v-text="'Refresh top '+ bracket + ' domains'"
+                      v-text="'Refresh top '+ bracket + ' identifiers'"
                     ></q-item-label>
                   </q-item-section>
                 </q-item>
@@ -744,6 +777,13 @@
           show: false,
           data: {}
         },
+        rankingFormDialog: {
+          show: false,
+          data: {
+            bucket: 0,
+            identifiers: ''
+          }
+        },
         settingsFormDialog: {
           show: false,
           data: {}
@@ -760,6 +800,11 @@
             char_count_cost: [],
             rank_cost: []
           }
+        }
+        this.rankingFormDialog.show = false
+        this.rankingFormDialog.data = {
+          bucket: 0,
+          identifiers: ''
         }
       },
       closeAddressFormDialog: function () {
@@ -939,8 +984,29 @@
           .then(function (response) {
             self.$q.notify({
               type: 'positive',
-              message: `Top ${braket} domains refreshed!`
+              message: `Top ${braket} identifiers refreshed!`
             })
+          })
+          .catch(function (error) {
+            LNbits.utils.notifyApiError(error)
+          })
+      },
+      addDomainRanking: function () {
+        var self = this
+        return LNbits.api
+          .request(
+            'PATCH',
+            '/nostrnip5/api/v1/domain/ranking/' +
+              this.rankingFormDialog.data.bucket,
+            self.g.user.wallets[0].adminkey,
+            this.rankingFormDialog.data.identifiers
+          )
+          .then(function (response) {
+            self.$q.notify({
+              type: 'positive',
+              message: 'Identifiers updated!'
+            })
+            self.resetFormDialog()
           })
           .catch(function (error) {
             LNbits.utils.notifyApiError(error)
@@ -1026,6 +1092,13 @@
             value: el.id
           }
         })
+      },
+      domainRankingAllOptions: function () {
+        const rankings = this.domainRankingBraketOptions.map(r => ({
+          value: r,
+          label: `Top ${r} identifiers`
+        }))
+        return [{value: 0, label: 'Reserved'}].concat(rankings)
       }
     }
   })
