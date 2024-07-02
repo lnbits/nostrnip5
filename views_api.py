@@ -208,15 +208,14 @@ async def api_address_create(
         )
 
     validate_local_part(post_data.local_part)
-
-    exists = await get_address_by_local_part(domain_id, post_data.local_part)
-
-    if exists:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Local part already exists."
-        )
-
     post_data.pubkey = validate_pub_key(post_data.pubkey)
+
+    existing_address = await get_address_by_local_part(domain_id, post_data.local_part)
+
+    if existing_address and existing_address.active:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail="Identifier already used."
+        )
 
     address = await create_address_internal(
         domain_id=domain_id, data=post_data, owner_id=owner_id_from_user_id(user_id)
