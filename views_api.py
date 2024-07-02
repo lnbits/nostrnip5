@@ -32,7 +32,6 @@ from .crud import (
     get_all_addresses,
     get_domain,
     get_domain_by_id,
-    get_domains,
     get_identifier_ranking,
     get_settings,
     rotate_address,
@@ -49,7 +48,7 @@ from .models import (
     Nip5Settings,
     RotateAddressData,
 )
-from .services import get_identifier_status
+from .services import get_identifier_status, get_user_domains
 
 nostrnip5_api_router: APIRouter = APIRouter()
 
@@ -58,14 +57,20 @@ nostrnip5_api_router: APIRouter = APIRouter()
 async def api_domains(
     all_wallets: bool = Query(None), wallet: WalletTypeInfo = Depends(get_key_type)
 ):
-    wallet_ids = [wallet.wallet.id]
-    if all_wallets:
-        user = await get_user(wallet.wallet.user)
-        if not user:
-            return []
-        wallet_ids = user.wallet_ids
 
-    return [domain.dict() for domain in await get_domains(wallet_ids)]
+    try:
+        domains = await get_user_domains(
+            wallet.wallet.user, wallet.wallet.id, all_wallets
+        )
+
+        return [domain.dict() for domain in domains]
+
+    except AssertionError as exc:
+        logger.error(exc)
+        raise HTTPException(HTTPStatus.BAD_REQUEST, str(exc)) from exc
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR) from exc
 
 
 @nostrnip5_api_router.get("/api/v1/addresses", status_code=HTTPStatus.OK)

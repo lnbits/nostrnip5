@@ -1,5 +1,27 @@
-from .crud import get_address_by_local_part, get_domain_by_id, get_identifier_ranking
-from .models import AddressStatus
+from typing import List, Optional
+
+from lnbits.core.crud import get_user
+
+from .crud import (
+    get_address_by_local_part,
+    get_domain_by_id,
+    get_domains,
+    get_identifier_ranking,
+)
+from .models import AddressStatus, Domain
+
+
+async def get_user_domains(
+    user_id: str, wallet_id: str, all_wallets: Optional[bool] = False
+) -> List[Domain]:
+    wallet_ids = [wallet_id]
+    if all_wallets:
+        user = await get_user(user_id)
+        if not user:
+            return []
+        wallet_ids = user.wallet_ids
+
+    return await get_domains(wallet_ids)
 
 
 async def get_identifier_status(domain_id: str, identifier: str) -> AddressStatus:
