@@ -276,6 +276,8 @@ async def api_nostrnip5_check_payment(domain_id: str, payment_hash: str):
                 status_code=HTTPStatus.NOT_FOUND,
                 detail="Payment does not exist for this domain.",
             )
+        if payment.pending is False:
+            return {"paid": True}
         status = await payment.check_status()
         return {"paid": status.paid}
 
