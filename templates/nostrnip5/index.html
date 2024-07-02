@@ -864,6 +864,7 @@
           bucket: 0,
           identifier: ''
         }
+        this.settingsFormDialog.show = false
       },
       closeAddressFormDialog: function () {
         this.resetFormDialog()
@@ -1135,7 +1136,7 @@
             self.settingsFormDialog.data
           )
           .then(function (response) {
-            self.settingsFormDialog = false
+            self.resetFormDialog()
             self.$q.notify({
               type: 'positive',
               message: 'Updated settings'
