@@ -30,52 +30,81 @@ context %} {% block page %}
     {% endraw %}
   </q-card>
   <q-card class="q-pa-lg q-pt-lg" v-if="success == false">
-    <q-form @submit="createAddress" class="q-gutter-md">
+    <q-form @submit="checkIdentifier" class="q-gutter-md">
       <p>
         You can use this page to get NIP-5 verified on the nostr protocol under
-        the {{ domain.domain }} domain.
+        the <strong> {{ domain.domain }}</strong> domain.
       </p>
       <p>
-        The current price is {% if domain.currency != "sats" %}
-        <b>{{ "{:0,.2f}".format(domain.cost) }} {{ domain.currency }}</b>
-        {% else %}
-        <b>{{ "{}".format(domain.cost) }} {{ domain.currency }}</b>
-        {% endif %} for an account (if you do not own the domain, the service
-        provider can disable at any time).
+        The price starts from
+        <b>{{ domain.cost }} {{ domain.currency }}</b>
+        for an account (if you do not own the domain, the service provider can
+        disable at any time).
       </p>
 
       <p>After submitting payment, your address will be</p>
 
-      <q-input
-        filled
-        dense
-        v-model.trim="formDialog.data.local_part"
-        label="Local Part"
-        placeholder="benarc"
-      >
-        <template v-slot:append>
-          <span style="font-size: 18px">@{{ domain.domain }} </span>
-        </template>
-      </q-input>
+      <div class="row">
+        <div class="col-md-10 col-sm-6 q-mt-sm">
+          <q-input
+            filled
+            dense
+            v-model.trim="formDialog.data.local_part"
+            label="Local Part"
+            placeholder="benarc"
+            class="q-mr-md"
+          >
+            <template v-slot:append>
+              <span style="font-size: 18px">@{{ domain.domain }} </span>
+            </template>
+          </q-input>
+        </div>
+        <div class="col-md-2 col-sm-6 q-mt-sm">
+          <q-btn
+            @click="checkIdentifier"
+            unelevated
+            color="primary"
+            type="submit"
+            :disable="!formDialog.data.local_part"
+            class="float-right"
+            >Check Identifier</q-btn
+          >
+        </div>
+      </div>
 
-      <p>and will be tied to this nostr pubkey</p>
+      <div v-if="identifierCost" class="row">
+        <div class="col">
+          <p>
+            The price for this domain is
+            <strong> {{identifier_cost}} {{domain.currency}} </strong>
+            and will be tied to this nostr pubkey:
+          </p>
+        </div>
+      </div>
 
-      <q-input
-        filled
-        dense
-        v-model.trim="formDialog.data.pubkey"
-        label="Pub Key"
-        placeholder="abc234"
-        :rules="[ val => val.length = 64 || val.indexOf('npub') === 0 ||'Please enter a hex pubkey' ]"
-      >
-      </q-input>
+      <div v-if="identifierCost" class="row">
+        <div class="col-md-10 col-sm-6 q-mt-sm">
+          <q-input
+            filled
+            dense
+            v-model.trim="formDialog.data.pubkey"
+            :rules="[ val => (val && (val.length === 64)) || (val && (val.indexOf('npub') === 0)) ||'Please enter an npub or hex pubkey' ]"
+            label="Pub Key"
+            placeholder="abc234"
+            hint="npub or hex format"
+            class="q-mr-md"
+          >
+          </q-input>
+        </div>
+        <div class="col-md-10 col-sm-6 q-mt-sm"></div>
+      </div>
 
-      <div class="row q-mt-lg">
+      <div v-if="identifierCost" class="row q-mt-lg">
         <q-btn
           unelevated
           color="primary"
-          :disable="formDialog.data.local_part == null || formDialog.data.pubkey == null"
-          type="submit"
+          @click="createAddress"
+          :disable="formDialog.data.local_part == null || !formDialog.data.pubkey"
           >Create Address</q-btn
         >
       </div>
@@ -124,7 +153,7 @@ context %} {% block page %}
         domain_id: '{{ domain_id }}',
         wallet: '{{ domain.wallet }}',
         currency: '{{ domain.currency }}',
-        cost: '{{ domain.cost }}',
+        identifierCost: '{{ identifier_cost }}',
         success: false,
         successData: {
           local_part: null,
@@ -138,8 +167,8 @@ context %} {% block page %}
         },
         formDialog: {
           data: {
-            local_part: null,
-            pubkey: null
+            local_part: '{{ identifier or "" }}',
+            pubkey: ''
           }
         },
         urlDialog: {
@@ -150,6 +179,12 @@ context %} {% block page %}
     methods: {
       closeQrCodeDialog: function () {
         this.qrCodeDialog.show = false
+      },
+      checkIdentifier: function () {
+        const urlParams = new URLSearchParams(window.location.search)
+
+        urlParams.set('identifier', this.formDialog.data.local_part || '')
+        window.location.search = urlParams
       },
       createAddress: function () {
         var self = this
@@ -164,8 +199,6 @@ context %} {% block page %}
             formDialog.data
           )
           .then(function (response) {
-            formDialog.data = {}
-
             qrCodeDialog.data = response.data
             qrCodeDialog.show = true
 

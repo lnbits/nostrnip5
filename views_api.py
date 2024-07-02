@@ -255,7 +255,7 @@ async def api_address_create(
 async def api_nostrnip5_check_payment(domain_id: str, payment_hash: str):
     # todo: who can call and from where?
     try:
-        payment = await get_standalone_payment(payment_hash)
+        payment = await get_standalone_payment(payment_hash, incoming=True)
         if not payment:
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND, detail="Payment does not exist."
@@ -297,7 +297,7 @@ async def api_search_identifier(
             domain_ranking = await get_domain_ranking(q)
             rank = domain_ranking.rank if domain_ranking else None
 
-        price, reason = domain.price_for_address(q, rank)
+        price, reason = domain.price_for_identifier(q, rank)
 
         return AddressStatus(
             available=True,

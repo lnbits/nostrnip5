@@ -73,7 +73,8 @@ class Domain(PublicDomain):
     cost_config: DomainCostConfig = DomainCostConfig()
     time: int
 
-    def price_for_address(self, identifier: str, rank: Optional[int] = None):
+    def price_for_identifier(self, identifier: str, rank: Optional[int] = None):
+        identifier = identifier.lower()
         max_amount = self.cost
         reason = ""
         if not self.cost_config.enable_custom_cost:

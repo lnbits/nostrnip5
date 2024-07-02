@@ -253,7 +253,14 @@ async def create_domain_internal(wallet_id: str, data: CreateDomainData) -> Doma
         INSERT INTO nostrnip5.domains (id, wallet, currency, cost, domain, cost_extra)
         VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (domain_id, wallet_id, data.currency, data.cost, data.domain, cost_extra),
+        (
+            domain_id,
+            wallet_id,
+            data.currency,
+            data.cost,
+            data.domain.lower(),
+            cost_extra,
+        ),
     )
 
     domain = await get_domain(domain_id, wallet_id)
@@ -261,13 +268,14 @@ async def create_domain_internal(wallet_id: str, data: CreateDomainData) -> Doma
     return domain
 
 
+# todo: rename to identifier
 async def create_domain_ranking(name: str, rank: int):
     await db.execute(
         """
         INSERT INTO nostrnip5.domain_rankings(name, rank) VALUES (?, ?)
         ON CONFLICT (name) DO NOTHING
         """,
-        (name, rank),
+        (name.lower(), rank),
     )
 
 
@@ -278,14 +286,14 @@ async def update_domain_ranking(name: str, rank: int):
         SET rank = ?
         WHERE name = ?
         """,
-        (rank, name),
+        (rank, name.lower()),
     )
 
 
 async def get_domain_ranking(name: str) -> Optional[DomainRanking]:
     row = await db.fetchone(
         "SELECT * FROM nostrnip5.domain_rankings WHERE name = ?",
-        (name,),
+        (name.lower(),),
     )
     return DomainRanking.from_row(row) if row else None
 
@@ -296,7 +304,7 @@ async def delete_inferior_ranking(name: str, rank: int):
         DELETE from nostrnip5.domain_rankings
         WHERE name = ? and rank > ?
         """,
-        (name, rank),
+        (name.lower(), rank),
     )
 
 

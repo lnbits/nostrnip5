@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -7,7 +8,7 @@ from lnbits.core.models import User
 from lnbits.decorators import check_user_exists
 from lnbits.helpers import template_renderer
 
-from .crud import get_address, get_domain_public_data
+from .crud import get_address, get_domain_by_id, get_domain_public_data
 
 templates = Jinja2Templates(directory="templates")
 
@@ -26,12 +27,21 @@ async def index(request: Request, user: User = Depends(check_user_exists)):
 
 
 @nostrnip5_generic_router.get("/signup/{domain_id}", response_class=HTMLResponse)
-async def signup(request: Request, domain_id: str):
-    domain = await get_domain_public_data(domain_id)
+async def signup(request: Request, domain_id: str, identifier: Optional[str] = None):
+    domain_public_data = await get_domain_public_data(domain_id)
 
-    if not domain:
+    if not domain_public_data:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="Domain does not exist."
+        )
+
+    identifier_cost = ""
+    if identifier:
+        domain = await get_domain_by_id(domain_id)
+        assert domain, "Domain does not exits."
+        cost, _ = domain.price_for_identifier(identifier)
+        identifier_cost = (
+            str(int(cost)) if domain.currency == "sats" else format(cost, ".2f")
         )
 
     return nostrnip5_renderer().TemplateResponse(
@@ -39,7 +49,9 @@ async def signup(request: Request, domain_id: str):
         {
             "request": request,
             "domain_id": domain_id,
-            "domain": domain,
+            "domain": domain_public_data,
+            "identifier": identifier,
+            "identifier_cost": identifier_cost,
         },
     )
 
