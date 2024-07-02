@@ -50,7 +50,7 @@ context %} {% block page %}
             filled
             dense
             v-model.trim="formDialog.data.local_part"
-            label="Local Part"
+            label="Identifier"
             placeholder="benarc"
             class="q-mr-md"
           >
@@ -83,7 +83,7 @@ context %} {% block page %}
       </div>
 
       <div v-if="identifierCost" class="row">
-        <div class="col-md-10 col-sm-6 q-mt-sm">
+        <div class="col-md-10 col-sm-11 q-mt-sm">
           <q-input
             filled
             dense
@@ -96,7 +96,7 @@ context %} {% block page %}
           >
           </q-input>
         </div>
-        <div class="col-md-10 col-sm-6 q-mt-sm"></div>
+        <div class="col-md-2 col-sm-1 q-mt-sm"><span></span></div>
       </div>
 
       <div v-if="identifierCost" class="row q-mt-lg">

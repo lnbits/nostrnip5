@@ -21,7 +21,7 @@ from .crud import (
     activate_address,
     create_address_internal,
     create_domain_internal,
-    create_domain_ranking,
+    create_identifier_ranking,
     create_settings,
     delete_address,
     delete_domain,
@@ -32,20 +32,20 @@ from .crud import (
     get_all_addresses,
     get_domain,
     get_domain_by_id,
-    get_domain_ranking,
     get_domains,
+    get_identifier_ranking,
     get_settings,
     rotate_address,
     update_domain_internal,
-    update_domain_ranking,
+    update_identifier_ranking,
 )
 from .helpers import owner_id_from_user_id, validate_local_part, validate_pub_key
 from .models import (
     AddressStatus,
     CreateAddressData,
     CreateDomainData,
-    DomainRanking,
     EditDomainData,
+    IdentifierRanking,
     Nip5Settings,
     RotateAddressData,
 )
@@ -294,8 +294,8 @@ async def api_search_identifier(
 
         rank = None
         if domain.cost_config.enable_custom_cost:
-            domain_ranking = await get_domain_ranking(q)
-            rank = domain_ranking.rank if domain_ranking else None
+            identifier_ranking = await get_identifier_ranking(q)
+            rank = identifier_ranking.rank if identifier_ranking else None
 
         price, reason = domain.price_for_identifier(q, rank)
 
@@ -379,7 +379,7 @@ async def api_refresh_identifier_ranking(
             for domain in resp.text.split("\n"):
                 domain_name = domain.split(".")[0]
                 await delete_inferior_ranking(domain_name, top)
-                await create_domain_ranking(domain_name, top)
+                await create_identifier_ranking(domain_name, top)
 
         logger.info("Domain rankins refreshed.")
 
@@ -398,7 +398,7 @@ async def api_add_identifier_ranking(
 
     for identifier in identifiers:
         await delete_inferior_ranking(identifier, bucket)
-        await create_domain_ranking(identifier, bucket)
+        await create_identifier_ranking(identifier, bucket)
 
     logger.info(f"Updated {len(identifiers)} rankings.")
 
@@ -408,11 +408,13 @@ async def api_add_identifier_ranking(
     dependencies=[Depends(check_admin)],
     status_code=HTTPStatus.OK,
 )
-async def api_domain_search_address(q: Optional[str] = None) -> Optional[DomainRanking]:
+async def api_domain_search_address(
+    q: Optional[str] = None,
+) -> Optional[IdentifierRanking]:
     try:
         if not q:
             return None
-        return await get_domain_ranking(q)
+        return await get_identifier_ranking(q)
 
     except Exception as exc:
         logger.error(exc)
@@ -425,11 +427,13 @@ async def api_domain_search_address(q: Optional[str] = None) -> Optional[DomainR
     status_code=HTTPStatus.OK,
 )
 async def api_domain_update_ranking(
-    domain_ranking: DomainRanking,
-) -> Optional[DomainRanking]:
+    identifier_ranking: IdentifierRanking,
+) -> Optional[IdentifierRanking]:
     try:
 
-        return await update_domain_ranking(domain_ranking.name, domain_ranking.rank)
+        return await update_identifier_ranking(
+            identifier_ranking.name, identifier_ranking.rank
+        )
 
     except Exception as exc:
         logger.error(exc)

@@ -9,8 +9,8 @@ from .models import (
     CreateAddressData,
     CreateDomainData,
     Domain,
-    DomainRanking,
     EditDomainData,
+    IdentifierRanking,
     Nip5Settings,
     PublicDomain,
 )
@@ -269,20 +269,20 @@ async def create_domain_internal(wallet_id: str, data: CreateDomainData) -> Doma
 
 
 # todo: rename to identifier
-async def create_domain_ranking(name: str, rank: int):
+async def create_identifier_ranking(name: str, rank: int):
     await db.execute(
         """
-        INSERT INTO nostrnip5.domain_rankings(name, rank) VALUES (?, ?)
+        INSERT INTO nostrnip5.identifiers_rankings(name, rank) VALUES (?, ?)
         ON CONFLICT (name) DO NOTHING
         """,
         (name.lower(), rank),
     )
 
 
-async def update_domain_ranking(name: str, rank: int):
+async def update_identifier_ranking(name: str, rank: int):
     await db.execute(
         """
-        UPDATE nostrnip5.domain_rankings
+        UPDATE nostrnip5.identifiers_rankings
         SET rank = ?
         WHERE name = ?
         """,
@@ -290,18 +290,18 @@ async def update_domain_ranking(name: str, rank: int):
     )
 
 
-async def get_domain_ranking(name: str) -> Optional[DomainRanking]:
+async def get_identifier_ranking(name: str) -> Optional[IdentifierRanking]:
     row = await db.fetchone(
-        "SELECT * FROM nostrnip5.domain_rankings WHERE name = ?",
+        "SELECT * FROM nostrnip5.identifiers_rankings WHERE name = ?",
         (name.lower(),),
     )
-    return DomainRanking.from_row(row) if row else None
+    return IdentifierRanking.from_row(row) if row else None
 
 
 async def delete_inferior_ranking(name: str, rank: int):
     await db.execute(
         """
-        DELETE from nostrnip5.domain_rankings
+        DELETE from nostrnip5.identifiers_rankings
         WHERE name = ? and rank > ?
         """,
         (name.lower(), rank),

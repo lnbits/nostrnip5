@@ -48,19 +48,19 @@ class EditDomainData(BaseModel):
         return cls(**dict(row))
 
 
-class DomainRanking(BaseModel):
+class IdentifierRanking(BaseModel):
     name: str
     rank: int
 
     @classmethod
-    def from_row(cls, row: Row) -> "DomainRanking":
+    def from_row(cls, row: Row) -> "IdentifierRanking":
         return cls(**dict(row))
 
 
 class PublicDomain(BaseModel):
     id: str
     currency: str
-    cost: float  # todo: only final cost should be available
+    cost: float
     domain: str
 
     @classmethod

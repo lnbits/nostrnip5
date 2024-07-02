@@ -53,7 +53,7 @@ async def m004_add_domain_rankings_table(db):
 
     await db.execute(
         """
-       CREATE TABLE nostrnip5.domain_rankings (
+       CREATE TABLE nostrnip5.identifiers_rankings (
            name TEXT PRIMARY KEY,
            rank INTEGER NOT NULL
 

@@ -8,7 +8,12 @@ from lnbits.core.models import User
 from lnbits.decorators import check_user_exists
 from lnbits.helpers import template_renderer
 
-from .crud import get_address, get_domain_by_id, get_domain_public_data
+from .crud import (
+    get_address,
+    get_domain_by_id,
+    get_domain_public_data,
+    get_identifier_ranking,
+)
 
 templates = Jinja2Templates(directory="templates")
 
@@ -39,7 +44,11 @@ async def signup(request: Request, domain_id: str, identifier: Optional[str] = N
     if identifier:
         domain = await get_domain_by_id(domain_id)
         assert domain, "Domain does not exits."
-        cost, _ = domain.price_for_identifier(identifier)
+        rank = None
+        if domain.cost_config.enable_custom_cost:
+            identifier_ranking = await get_identifier_ranking(identifier)
+            rank = identifier_ranking.rank if identifier_ranking else None
+        cost, _ = domain.price_for_identifier(identifier, rank)
         identifier_cost = (
             str(int(cost)) if domain.currency == "sats" else format(cost, ".2f")
         )
