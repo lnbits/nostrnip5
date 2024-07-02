@@ -3,7 +3,7 @@ from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Depends, Query, Request, Response
-from lnbits.core.crud import get_standalone_payment, get_user
+from lnbits.core.crud import get_standalone_payment
 from lnbits.core.models import User, WalletTypeInfo
 from lnbits.core.services import create_invoice
 from lnbits.decorators import (
@@ -29,7 +29,6 @@ from .crud import (
     get_address_by_local_part,
     get_addresses,
     get_addresses_for_owner,
-    get_all_addresses,
     get_domain,
     get_domain_by_id,
     get_identifier_ranking,
@@ -48,7 +47,7 @@ from .models import (
     Nip5Settings,
     RotateAddressData,
 )
-from .services import get_identifier_status, get_user_domains
+from .services import get_identifier_status, get_user_addresses, get_user_domains
 
 nostrnip5_api_router: APIRouter = APIRouter()
 
@@ -77,14 +76,19 @@ async def api_domains(
 async def api_addresses(
     all_wallets: bool = Query(None), wallet: WalletTypeInfo = Depends(get_key_type)
 ):
-    wallet_ids = [wallet.wallet.id]
-    if all_wallets:
-        user = await get_user(wallet.wallet.user)
-        if not user:
-            return []
-        wallet_ids = user.wallet_ids
 
-    return [address.dict() for address in await get_all_addresses(wallet_ids)]
+    try:
+        addresses = await get_user_addresses(
+            wallet.wallet.user, wallet.wallet.id, all_wallets
+        )
+
+        return [address.dict() for address in addresses]
+    except AssertionError as exc:
+        logger.error(exc)
+        raise HTTPException(HTTPStatus.BAD_REQUEST, str(exc)) from exc
+    except Exception as exc:
+        logger.error(exc)
+        raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR) from exc
 
 
 @nostrnip5_api_router.get("/api/v1/addresses/user", status_code=HTTPStatus.OK)
