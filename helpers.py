@@ -32,3 +32,7 @@ def validate_local_part(local_part: str):
 
 def owner_id_from_user_id(user_id: Optional[str] = None) -> str:
     return sha256((user_id or "").encode("utf-8")).hexdigest()
+
+
+def format_amount(amount: float, currency: str):
+    return str(int(amount)) if currency == "sats" else format(amount, ".2f")

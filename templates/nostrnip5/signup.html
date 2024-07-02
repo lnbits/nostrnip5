@@ -72,41 +72,46 @@ context %} {% block page %}
         </div>
       </div>
 
-      <div v-if="identifierCost" class="row">
-        <div class="col">
-          <p>
-            The price for this domain is
-            <strong> {{identifier_cost}} {{domain.currency}} </strong>
-            and will be tied to this nostr pubkey:
-          </p>
+      <div v-if="identifierAvailable">
+        <div class="row">
+          <div class="col">
+            <p>
+              The price for this domain is
+              <strong> {{identifier_cost}} {{domain.currency}} </strong>
+              and will be tied to this nostr pubkey:
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div v-if="identifierCost" class="row">
-        <div class="col-md-10 col-sm-11 q-mt-sm">
-          <q-input
-            filled
-            dense
-            v-model.trim="formDialog.data.pubkey"
-            :rules="[ val => (val && (val.length === 64)) || (val && (val.indexOf('npub') === 0)) ||'Please enter an npub or hex pubkey' ]"
-            label="Pub Key"
-            placeholder="abc234"
-            hint="npub or hex format"
-            class="q-mr-md"
+        <div class="row">
+          <div class="col-md-10 col-sm-11 q-mt-sm">
+            <q-input
+              filled
+              dense
+              v-model.trim="formDialog.data.pubkey"
+              :rules="[ val => (val && (val.length === 64)) || (val && (val.indexOf('npub') === 0)) ||'Please enter an npub or hex pubkey' ]"
+              label="Pub Key"
+              placeholder="abc234"
+              hint="npub or hex format"
+              class="q-mr-md"
+            >
+            </q-input>
+          </div>
+          <div class="col-md-2 col-sm-1 q-mt-sm"><span></span></div>
+        </div>
+
+        <div class="row q-mt-lg">
+          <q-btn
+            unelevated
+            color="primary"
+            @click="createAddress"
+            :disable="formDialog.data.local_part == null || !formDialog.data.pubkey"
+            >Create Address</q-btn
           >
-          </q-input>
         </div>
-        <div class="col-md-2 col-sm-1 q-mt-sm"><span></span></div>
       </div>
-
-      <div v-if="identifierCost" class="row q-mt-lg">
-        <q-btn
-          unelevated
-          color="primary"
-          @click="createAddress"
-          :disable="formDialog.data.local_part == null || !formDialog.data.pubkey"
-          >Create Address</q-btn
-        >
+      <div v-else>
+        <p>This identifier is not available.</p>
       </div>
     </q-form>
   </q-card>
@@ -154,6 +159,7 @@ context %} {% block page %}
         wallet: '{{ domain.wallet }}',
         currency: '{{ domain.currency }}',
         identifierCost: '{{ identifier_cost }}',
+        identifierAvailable: '{{ identifier_available }}' === 'True',
         success: false,
         successData: {
           local_part: null,

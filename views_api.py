@@ -49,6 +49,7 @@ from .models import (
     Nip5Settings,
     RotateAddressData,
 )
+from .services import get_identifier_status
 
 nostrnip5_api_router: APIRouter = APIRouter()
 
@@ -283,28 +284,12 @@ async def api_search_identifier(
     try:
         if not q:
             return AddressStatus()
-        address = await get_address_by_local_part(domain_id, q)
-        reserved = address is not None
-        if address and address.active:
-            return AddressStatus(available=False, reserved=reserved)
 
-        domain = await get_domain_by_id(domain_id)
-        assert domain, "Unknown domain id."
+        return await get_identifier_status(domain_id, q)
 
-        rank = None
-        if domain.cost_config.enable_custom_cost:
-            identifier_ranking = await get_identifier_ranking(q)
-            rank = identifier_ranking.rank if identifier_ranking else None
-
-        price, reason = domain.price_for_identifier(q, rank)
-
-        return AddressStatus(
-            available=True,
-            reserved=reserved,
-            price=price,
-            price_reason=reason,
-            currency=domain.currency,
-        )
+    except AssertionError as exc:
+        logger.error(exc)
+        raise HTTPException(HTTPStatus.BAD_REQUEST, str(exc)) from exc
     except Exception as exc:
         logger.error(exc)
         raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR) from exc
@@ -352,7 +337,7 @@ async def api_refresh_identifier_ranking(
     ranking_url = "https://api.cloudflare.com/client/v4/radar/datasets?limit=12&datasetType=RANKING_BUCKET"
     dataset_url = "https://api.cloudflare.com/client/v4/radar/datasets"
 
-    logger.info(f"Refresh requested for top {bucket} domains.")
+    logger.info(f"Refresh requested for top {bucket} identifiers.")
 
     async with httpx.AsyncClient() as client:
         resp = await client.get(url=ranking_url, headers=headers)
@@ -375,12 +360,12 @@ async def api_refresh_identifier_ranking(
             )
             resp.raise_for_status()
 
-            for domain in resp.text.split("\n"):
-                domain_name = domain.split(".")[0]
-                await delete_inferior_ranking(domain_name, top)
-                await create_identifier_ranking(domain_name, top)
+            for identifier in resp.text.split("\n"):
+                identifier_name = identifier.split(".")[0]
+                await delete_inferior_ranking(identifier_name, top)
+                await create_identifier_ranking(identifier_name, top)
 
-        logger.info("Domain rankins refreshed.")
+        logger.info(f"Top {bucket} identifiers ranking refreshed.")
 
 
 @nostrnip5_api_router.patch(

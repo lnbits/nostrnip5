@@ -10,10 +10,11 @@ from lnbits.helpers import template_renderer
 
 from .crud import (
     get_address,
-    get_domain_by_id,
     get_domain_public_data,
-    get_identifier_ranking,
 )
+from .helpers import format_amount
+from .models import AddressStatus
+from .services import get_identifier_status
 
 templates = Jinja2Templates(directory="templates")
 
@@ -31,6 +32,13 @@ async def index(request: Request, user: User = Depends(check_user_exists)):
     )
 
 
+# @nostrnip5_generic_router.get("/signup/{domain}", response_class=HTMLResponse)
+# async def index(request: Request, user: User = Depends(check_user_exists)):
+#     return nostrnip5_renderer().TemplateResponse(
+#         "nostrnip5/domain.html", {"request": request, "user": user.dict()}
+#     )
+
+
 @nostrnip5_generic_router.get("/signup/{domain_id}", response_class=HTMLResponse)
 async def signup(request: Request, domain_id: str, identifier: Optional[str] = None):
     domain_public_data = await get_domain_public_data(domain_id)
@@ -40,18 +48,14 @@ async def signup(request: Request, domain_id: str, identifier: Optional[str] = N
             status_code=HTTPStatus.NOT_FOUND, detail="Domain does not exist."
         )
 
-    identifier_cost = ""
     if identifier:
-        domain = await get_domain_by_id(domain_id)
-        assert domain, "Domain does not exits."
-        rank = None
-        if domain.cost_config.enable_custom_cost:
-            identifier_ranking = await get_identifier_ranking(identifier)
-            rank = identifier_ranking.rank if identifier_ranking else None
-        cost, _ = domain.price_for_identifier(identifier, rank)
+        status = await get_identifier_status(domain_id, identifier)
         identifier_cost = (
-            str(int(cost)) if domain.currency == "sats" else format(cost, ".2f")
+            format_amount(status.price, status.currency) if status.available else ""
         )
+    else:
+        status = AddressStatus(available=True)
+        identifier_cost = ""
 
     return nostrnip5_renderer().TemplateResponse(
         "nostrnip5/signup.html",
@@ -61,6 +65,7 @@ async def signup(request: Request, domain_id: str, identifier: Optional[str] = N
             "domain": domain_public_data,
             "identifier": identifier,
             "identifier_cost": identifier_cost,
+            "identifier_available": status.available,
         },
     )
 
