@@ -26,6 +26,12 @@ def http_try_except(f):
     return wrapper
 
 
+def normalize_identifier(identifier: str):
+    identifier = identifier.lower().split("@")[0]
+    validate_local_part(identifier)
+    return identifier
+
+
 def validate_pub_key(pubkey: str):
     if pubkey.startswith("npub"):
         _, data = bech32_decode(pubkey)
@@ -41,7 +47,7 @@ def validate_pub_key(pubkey: str):
 
 
 def validate_local_part(local_part: str):
-    if local_part == "_":
+    if local_part == "_" or local_part == ".":
         raise ValueError("You're sneaky, nice try.")
 
     regex = re.compile(r"^[a-z0-9_.]+$")

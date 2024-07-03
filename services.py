@@ -14,7 +14,11 @@ from .crud import (
     get_domains,
     get_identifier_ranking,
 )
-from .helpers import owner_id_from_user_id, validate_local_part, validate_pub_key
+from .helpers import (
+    normalize_identifier,
+    owner_id_from_user_id,
+    validate_pub_key,
+)
 from .models import Address, AddressStatus, CreateAddressData, Domain
 
 
@@ -73,7 +77,7 @@ async def create_address(
     domain: Domain, address_data: CreateAddressData, user_id: Optional[str] = None
 ) -> Tuple[Address, float]:
 
-    validate_local_part(address_data.local_part)
+    address_data.local_part = normalize_identifier(address_data.local_part)
     address_data.pubkey = validate_pub_key(address_data.pubkey)
 
     identifier_status = await get_identifier_status(domain, address_data.local_part)

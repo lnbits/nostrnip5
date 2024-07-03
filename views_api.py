@@ -33,6 +33,7 @@ from .crud import (
 )
 from .helpers import (
     http_try_except,
+    normalize_identifier,
     owner_id_from_user_id,
     validate_pub_key,
 )
@@ -264,14 +265,15 @@ async def api_get_nostr_json(
         local_part = address.get("local_part")
         if not local_part:
             continue
+        local_part = normalize_identifier(local_part)
 
         if address.get("active") is False:
             continue
 
-        if name and name.lower() != local_part.lower():
+        if name and normalize_identifier(name) != local_part:
             continue
 
-        output[local_part.lower()] = address.get("pubkey")
+        output[local_part] = address.get("pubkey")
 
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "GET,OPTIONS"

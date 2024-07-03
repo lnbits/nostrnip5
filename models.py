@@ -5,7 +5,7 @@ from typing import List, Optional
 from fastapi.param_functions import Query
 from pydantic import BaseModel
 
-from .helpers import format_amount
+from .helpers import format_amount, normalize_identifier
 
 
 class CustomCost(BaseModel):
@@ -75,7 +75,7 @@ class Domain(PublicDomain):
     time: int
 
     def price_for_identifier(self, identifier: str, rank: Optional[int] = None):
-        identifier = identifier.lower()
+        identifier = normalize_identifier(identifier)
         max_amount = self.cost
         reason = ""
         if not self.cost_config.enable_custom_cost:

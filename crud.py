@@ -4,6 +4,7 @@ from typing import List, Optional, Union
 from lnbits.db import Database
 from lnbits.helpers import urlsafe_short_hash
 
+from .helpers import normalize_identifier
 from .models import (
     Address,
     CreateAddressData,
@@ -82,7 +83,7 @@ async def get_address_by_local_part(
         "SELECT * FROM nostrnip5.addresses WHERE domain_id = ? AND local_part = ?",
         (
             domain_id,
-            local_part.lower(),
+            normalize_identifier(local_part),
         ),
     )
     return Address.from_row(row) if row else None
@@ -209,7 +210,7 @@ async def create_address_internal(
             address_id,
             data.domain_id,
             owner_id,
-            data.local_part.lower(),
+            normalize_identifier(data.local_part),
             data.pubkey,
             False,
         ),
@@ -275,7 +276,7 @@ async def create_identifier_ranking(name: str, rank: int):
         INSERT INTO nostrnip5.identifiers_rankings(name, rank) VALUES (?, ?)
         ON CONFLICT (name) DO NOTHING
         """,
-        (name.lower(), rank),
+        (normalize_identifier(name), rank),
     )
 
 
@@ -286,14 +287,14 @@ async def update_identifier_ranking(name: str, rank: int):
         SET rank = ?
         WHERE name = ?
         """,
-        (rank, name.lower()),
+        (rank, normalize_identifier(name)),
     )
 
 
 async def get_identifier_ranking(name: str) -> Optional[IdentifierRanking]:
     row = await db.fetchone(
         "SELECT * FROM nostrnip5.identifiers_rankings WHERE name = ?",
-        (name.lower(),),
+        (normalize_identifier(name),),
     )
     return IdentifierRanking.from_row(row) if row else None
 
@@ -304,7 +305,7 @@ async def delete_inferior_ranking(name: str, rank: int):
         DELETE from nostrnip5.identifiers_rankings
         WHERE name = ? and rank > ?
         """,
-        (name.lower(), rank),
+        (normalize_identifier(name), rank),
     )
 
 

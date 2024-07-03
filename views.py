@@ -13,6 +13,7 @@ from .crud import (
     get_domain_by_id,
     get_domain_public_data,
 )
+from .helpers import normalize_identifier
 from .models import AddressStatus
 from .services import get_identifier_status
 
@@ -52,16 +53,15 @@ async def signup(request: Request, domain_id: str, identifier: Optional[str] = N
         else AddressStatus(available=True)
     )
 
-    print("### domain", domain)
-    print("### domain.public_data()", domain.public_data())
-
     return nostrnip5_renderer().TemplateResponse(
         "nostrnip5/signup.html",
         {
             "request": request,
             "domain_id": domain_id,
             "domain": domain.public_data(),
-            "identifier": identifier,
+            "identifier": (
+                normalize_identifier(identifier) if identifier else identifier
+            ),
             "identifier_cost": status.price_formatted,
             "identifier_available": status.available,
         },
