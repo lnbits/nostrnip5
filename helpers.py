@@ -1,8 +1,29 @@
 import re
+from functools import wraps
 from hashlib import sha256
+from http import HTTPStatus
 from typing import Optional
 
 from bech32 import bech32_decode, convertbits
+from loguru import logger
+from starlette.exceptions import HTTPException
+
+
+def http_try_except(f):
+    @wraps(f)
+    async def wrapper(*arg, **kwargs):
+        try:
+            await f(*arg, **kwargs)
+        except HTTPException as exc:
+            raise exc
+        except AssertionError as exc:
+            logger.error(exc)
+            raise HTTPException(HTTPStatus.BAD_REQUEST, str(exc)) from exc
+        except Exception as exc:
+            logger.error(exc)
+            raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR) from exc
+
+    return wrapper
 
 
 def validate_pub_key(pubkey: str):

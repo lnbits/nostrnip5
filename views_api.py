@@ -37,7 +37,12 @@ from .crud import (
     update_domain_internal,
     update_identifier_ranking,
 )
-from .helpers import owner_id_from_user_id, validate_local_part, validate_pub_key
+from .helpers import (
+    http_try_except,
+    owner_id_from_user_id,
+    validate_local_part,
+    validate_pub_key,
+)
 from .models import (
     AddressStatus,
     CreateAddressData,
@@ -52,47 +57,31 @@ from .services import get_identifier_status, get_user_addresses, get_user_domain
 nostrnip5_api_router: APIRouter = APIRouter()
 
 
+@http_try_except
 @nostrnip5_api_router.get("/api/v1/domains", status_code=HTTPStatus.OK)
 async def api_domains(
     all_wallets: bool = Query(None), wallet: WalletTypeInfo = Depends(get_key_type)
 ):
+    domains = await get_user_domains(wallet.wallet.user, wallet.wallet.id, all_wallets)
 
-    try:
-        domains = await get_user_domains(
-            wallet.wallet.user, wallet.wallet.id, all_wallets
-        )
-
-        return [domain.dict() for domain in domains]
-
-    except AssertionError as exc:
-        logger.error(exc)
-        raise HTTPException(HTTPStatus.BAD_REQUEST, str(exc)) from exc
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR) from exc
+    return [domain.dict() for domain in domains]
 
 
+@http_try_except
 @nostrnip5_api_router.get("/api/v1/addresses", status_code=HTTPStatus.OK)
 async def api_addresses(
     all_wallets: bool = Query(None), wallet: WalletTypeInfo = Depends(get_key_type)
 ):
+    addresses = await get_user_addresses(
+        wallet.wallet.user, wallet.wallet.id, all_wallets
+    )
 
-    try:
-        addresses = await get_user_addresses(
-            wallet.wallet.user, wallet.wallet.id, all_wallets
-        )
-
-        return [address.dict() for address in addresses]
-    except AssertionError as exc:
-        logger.error(exc)
-        raise HTTPException(HTTPStatus.BAD_REQUEST, str(exc)) from exc
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR) from exc
+    return [address.dict() for address in addresses]
 
 
+@http_try_except
 @nostrnip5_api_router.get("/api/v1/addresses/user", status_code=HTTPStatus.OK)
-async def api_addresses_own(
+async def api_get_user_addresses(
     user_id: Optional[str] = Depends(authenticated_user_id),
 ):
     if not user_id:
@@ -103,40 +92,36 @@ async def api_addresses_own(
     return [address.dict() for address in await get_addresses_for_owner(owner_id)]
 
 
+@http_try_except
 @nostrnip5_api_router.get(
     "/api/v1/domain/{domain_id}",
     status_code=HTTPStatus.OK,
 )
-async def api_domain_get(domain_id: str, w: WalletTypeInfo = Depends(get_key_type)):
+async def api_get_domaint(domain_id: str, w: WalletTypeInfo = Depends(get_key_type)):
     domain = await get_domain(domain_id, w.wallet.id)
-    if not domain:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Domain does not exist."
-        )
-
+    assert domain, "Domain does not exist."
     return domain
 
 
+@http_try_except
 @nostrnip5_api_router.post("/api/v1/domain", status_code=HTTPStatus.CREATED)
-async def api_domain_create(
+async def api_create_domain(
     data: CreateDomainData, wallet: WalletTypeInfo = Depends(get_key_type)
 ):
 
-    domain = await create_domain_internal(wallet_id=wallet.wallet.id, data=data)
-
-    return domain
+    return await create_domain_internal(wallet_id=wallet.wallet.id, data=data)
 
 
+@http_try_except
 @nostrnip5_api_router.put("/api/v1/domain", status_code=HTTPStatus.OK)
-async def api_domain_update(
+async def api_update_domain(
     data: EditDomainData, wallet: WalletTypeInfo = Depends(get_key_type)
 ):
 
-    domain = await update_domain_internal(wallet_id=wallet.wallet.id, data=data)
-
-    return domain
+    return await update_domain_internal(wallet_id=wallet.wallet.id, data=data)
 
 
+@http_try_except
 @nostrnip5_api_router.delete(
     "/api/v1/domain/{domain_id}", status_code=HTTPStatus.CREATED
 )
@@ -149,39 +134,40 @@ async def api_domain_delete(
     return deleted
 
 
+@http_try_except
 @nostrnip5_api_router.delete(
     "/api/v1/address/{domain_id}/{address_id}", status_code=HTTPStatus.GONE
 )
-async def api_address_delete(
+async def api_delete_address(
     domain_id: str,
     address_id: str,
     w: WalletTypeInfo = Depends(require_admin_key),
 ):
+    # make sure the address belongs to the user
     domain = await get_domain(domain_id, w.wallet.id)
-    if not domain:
-        return False
+    assert domain, "Domain does not exist."
 
     return await delete_address(domain_id, address_id)
 
 
+@http_try_except
 @nostrnip5_api_router.put(
     "/api/v1/domain/{domain_id}/address/{address_id}/activate",
     status_code=HTTPStatus.OK,
 )
-async def api_address_activate(
+async def api_activate_address(
     domain_id: str,
     address_id: str,
     w: WalletTypeInfo = Depends(require_admin_key),
 ):
+    # make sure the address belongs to the user
     domain = await get_domain(domain_id, w.wallet.id)
-    if not domain:
-        return False
+    assert domain, "Domain does not exist."
 
-    address = await activate_address(domain_id, address_id)
-
-    return address
+    return await activate_address(domain_id, address_id)
 
 
+@http_try_except
 @nostrnip5_api_router.put(
     "/api/v1/domain/{domain_id}/address/{address_id}/rotate",
     status_code=HTTPStatus.OK,
@@ -202,6 +188,7 @@ async def api_address_rotate(
     return True
 
 
+@http_try_except
 @nostrnip5_api_router.post(
     "/api/v1/domain/{domain_id}/address", status_code=HTTPStatus.CREATED
 )
@@ -210,12 +197,9 @@ async def api_address_create(
     domain_id: str,
     user_id: Optional[str] = Depends(authenticated_user_id),
 ):
+    # make sure the address belongs to the user
     domain = await get_domain_by_id(domain_id)
-
-    if not domain:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Domain does not exist."
-        )
+    assert domain, "Domain does not exist."
 
     validate_local_part(post_data.local_part)
     post_data.pubkey = validate_pub_key(post_data.pubkey)
@@ -223,33 +207,27 @@ async def api_address_create(
     existing_address = await get_address_by_local_part(domain_id, post_data.local_part)
 
     if existing_address and existing_address.active:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Identifier already used."
-        )
+        raise HTTPException(HTTPStatus.CONFLICT, "Identifier already used.")
 
-    address = await create_address_internal(
-        domain_id=domain_id, data=post_data, owner_id=owner_id_from_user_id(user_id)
+    owner_id = owner_id_from_user_id(user_id)
+    address = await create_address_internal(domain_id, post_data, owner_id)
+
+    price_in_sats = (
+        domain.cost
+        if domain.currency == "sats"
+        else await fiat_amount_as_satoshis(domain.cost, domain.currency)
     )
-    if domain.currency == "sats":
-        price_in_sats = domain.cost
-    else:
-        price_in_sats = await fiat_amount_as_satoshis(domain.cost, domain.currency)
 
-    try:
-        payment_hash, payment_request = await create_invoice(
-            wallet_id=domain.wallet,
-            amount=price_in_sats,
-            memo=f"Payment for NIP-05 for {address.local_part}@{domain.domain}",
-            extra={
-                "tag": "nostrnip5",
-                "domain_id": domain_id,
-                "address_id": address.id,
-            },
-        )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=str(exc)
-        ) from exc
+    payment_hash, payment_request = await create_invoice(
+        wallet_id=domain.wallet,
+        amount=price_in_sats,
+        memo=f"Payment for NIP-05 for {address.local_part}@{domain.domain}",
+        extra={
+            "tag": "nostrnip5",
+            "domain_id": domain_id,
+            "address_id": address.id,
+        },
+    )
 
     return {
         "payment_hash": payment_hash,
