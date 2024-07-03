@@ -5,13 +5,16 @@ import httpx
 from fastapi import APIRouter, Depends, Query, Request, Response
 from lnbits.core.models import User, WalletTypeInfo
 from lnbits.core.services import create_invoice
+from lnbits.db import Filters, Page
 from lnbits.decorators import (
     authenticated_user_id,
     check_admin,
     check_user_exists,
     get_key_type,
+    parse_filters,
     require_admin_key,
 )
+from lnbits.helpers import generate_filter_params_openapi
 from loguru import logger
 from starlette.exceptions import HTTPException
 
@@ -38,6 +41,8 @@ from .helpers import (
     validate_pub_key,
 )
 from .models import (
+    Address,
+    AddressFilters,
     AddressStatus,
     CreateAddressData,
     CreateDomainData,
@@ -51,12 +56,15 @@ from .services import (
     create_address,
     get_identifier_status,
     get_user_addresses,
+    get_user_addresses_paginated,
     get_user_domains,
     refresh_buckets,
     update_identifiers,
 )
 
 nostrnip5_api_router: APIRouter = APIRouter()
+
+address_filters = parse_filters(AddressFilters)
 
 
 @http_try_except
@@ -71,7 +79,7 @@ async def api_domains(
 
 @http_try_except
 @nostrnip5_api_router.get("/api/v1/addresses", status_code=HTTPStatus.OK)
-async def api_addresses(
+async def api_get_addresses(
     all_wallets: bool = Query(None), wallet: WalletTypeInfo = Depends(get_key_type)
 ):
     addresses = await get_user_addresses(
@@ -79,6 +87,28 @@ async def api_addresses(
     )
 
     return [address.dict() for address in addresses]
+
+
+@http_try_except
+@nostrnip5_api_router.get(
+    "/api/v1/addresses/paginated",
+    name="Addresses List",
+    summary="get paginated list of addresses",
+    response_description="list of addresses",
+    openapi_extra=generate_filter_params_openapi(AddressFilters),
+    response_model=Page[Address],
+    status_code=HTTPStatus.OK,
+)
+async def api_get_addresses_paginated(
+    all_wallets: bool = Query(None),
+    filters: Filters = Depends(address_filters),
+    wallet: WalletTypeInfo = Depends(get_key_type),
+):
+    page = await get_user_addresses_paginated(
+        wallet.wallet.user, wallet.wallet.id, all_wallets, filters
+    )
+
+    return page
 
 
 @http_try_except

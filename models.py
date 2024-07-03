@@ -3,6 +3,7 @@ from sqlite3 import Row
 from typing import List, Optional
 
 from fastapi.param_functions import Query
+from lnbits.db import FilterModel, FromRowModel
 from pydantic import BaseModel
 
 from .helpers import format_amount, normalize_identifier
@@ -108,7 +109,7 @@ class Domain(PublicDomain):
         return domain
 
 
-class Address(BaseModel):
+class Address(FromRowModel):
     id: str
     owner_id: Optional[str] = None
     domain_id: str
@@ -135,6 +136,14 @@ class AddressStatus(BaseModel):
             return format_amount(self.price, self.currency)
 
         return ""
+
+
+class AddressFilters(FilterModel):
+    domain_id: str
+    local_part: str
+    pubkey: str
+    active: bool
+    time: int
 
 
 class Nip5Settings(BaseModel):

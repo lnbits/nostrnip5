@@ -1,12 +1,13 @@
 import json
 from typing import List, Optional, Union
 
-from lnbits.db import Database
+from lnbits.db import Database, Filters, Page
 from lnbits.helpers import urlsafe_short_hash
 
 from .helpers import normalize_identifier
 from .models import (
     Address,
+    AddressFilters,
     CreateAddressData,
     CreateDomainData,
     Domain,
@@ -109,7 +110,7 @@ async def get_all_addresses(wallet_ids: Union[str, List[str]]) -> List[Address]:
     if isinstance(wallet_ids, str):
         wallet_ids = [wallet_ids]
 
-    q = ",".join(["?"] * len(wallet_ids))
+    q = ",".join(["?"] * len(wallet_ids))  # todo: re-check
     rows = await db.fetchall(
         f"""
         SELECT a.*
@@ -121,6 +122,29 @@ async def get_all_addresses(wallet_ids: Union[str, List[str]]) -> List[Address]:
     )
 
     return [Address.from_row(row) for row in rows]
+
+
+async def get_all_addresses_paginated(
+    wallet_ids: Union[str, List[str]],
+    filters: Optional[Filters[AddressFilters]] = None,
+) -> Page[Address]:
+    if isinstance(wallet_ids, str):
+        wallet_ids = [wallet_ids]
+
+    q = ",".join(["?"] * len(wallet_ids))
+    query = f"""
+        SELECT a.*
+        FROM nostrnip5.addresses a
+        JOIN nostrnip5.domains d ON d.id = a.domain_id
+        WHERE d.wallet IN ({q})
+        """
+
+    return await db.fetch_page(
+        query,
+        values=wallet_ids,
+        filters=filters,
+        model=Address,
+    )
 
 
 async def activate_address(domain_id: str, address_id: str) -> Address:

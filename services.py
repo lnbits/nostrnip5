@@ -2,6 +2,7 @@ from typing import List, Optional, Tuple
 
 import httpx
 from lnbits.core.crud import get_standalone_payment, get_user
+from lnbits.db import Filters, Page
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
 
@@ -11,6 +12,7 @@ from .crud import (
     delete_inferior_ranking,
     get_address_by_local_part,
     get_all_addresses,
+    get_all_addresses_paginated,
     get_domains,
     get_identifier_ranking,
 )
@@ -19,7 +21,7 @@ from .helpers import (
     owner_id_from_user_id,
     validate_pub_key,
 )
-from .models import Address, AddressStatus, CreateAddressData, Domain
+from .models import Address, AddressFilters, AddressStatus, CreateAddressData, Domain
 
 
 async def get_user_domains(
@@ -46,6 +48,22 @@ async def get_user_addresses(
         wallet_ids = user.wallet_ids
 
     return await get_all_addresses(wallet_ids)
+
+
+async def get_user_addresses_paginated(
+    user_id: str,
+    wallet_id: str,
+    all_wallets: Optional[bool] = False,
+    filters: Optional[Filters[AddressFilters]] = None,
+) -> Page[Address]:
+    wallet_ids = [wallet_id]
+    if all_wallets:
+        user = await get_user(user_id)
+        if not user:
+            return Page(data=[], total=0)
+        wallet_ids = user.wallet_ids
+
+    return await get_all_addresses_paginated(wallet_ids, filters)
 
 
 async def get_identifier_status(domain: Domain, identifier: str) -> AddressStatus:
