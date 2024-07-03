@@ -5,6 +5,8 @@ from typing import List, Optional
 from fastapi.param_functions import Query
 from pydantic import BaseModel
 
+from .helpers import format_amount
+
 
 class CustomCost(BaseModel):
     bracket: int
@@ -20,7 +22,6 @@ class CreateAddressData(BaseModel):
     domain_id: str
     local_part: str
     pubkey: str
-    active: bool = False
 
 
 class DomainCostConfig(BaseModel):
@@ -95,6 +96,9 @@ class Domain(PublicDomain):
 
         return max_amount, reason
 
+    def public_data(self):
+        return PublicDomain(**dict(self))
+
     @classmethod
     def from_row(cls, row: Row) -> "Domain":
         domain = cls(**dict(row))
@@ -124,6 +128,13 @@ class AddressStatus(BaseModel):
     price: Optional[float] = None
     price_reason: Optional[str] = None
     currency: Optional[str] = None
+
+    @property
+    def price_formatted(self) -> str:
+        if self.available and self.price and self.currency:
+            return format_amount(self.price, self.currency)
+
+        return ""
 
 
 class Nip5Settings(BaseModel):

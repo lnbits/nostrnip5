@@ -1,15 +1,21 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
-from lnbits.core.crud import get_user
+import httpx
+from lnbits.core.crud import get_standalone_payment, get_user
+from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
+from loguru import logger
 
 from .crud import (
+    create_address_internal,
+    create_identifier_ranking,
+    delete_inferior_ranking,
     get_address_by_local_part,
     get_all_addresses,
-    get_domain_by_id,
     get_domains,
     get_identifier_ranking,
 )
-from .models import Address, AddressStatus, Domain
+from .helpers import owner_id_from_user_id, validate_local_part, validate_pub_key
+from .models import Address, AddressStatus, CreateAddressData, Domain
 
 
 async def get_user_domains(
@@ -38,14 +44,11 @@ async def get_user_addresses(
     return await get_all_addresses(wallet_ids)
 
 
-async def get_identifier_status(domain_id: str, identifier: str) -> AddressStatus:
-    address = await get_address_by_local_part(domain_id, identifier)
+async def get_identifier_status(domain: Domain, identifier: str) -> AddressStatus:
+    address = await get_address_by_local_part(domain.id, identifier)
     reserved = address is not None
     if address and address.active:
         return AddressStatus(available=False, reserved=reserved)
-
-    domain = await get_domain_by_id(domain_id)
-    assert domain, "Unknown domain id."
 
     rank = None
     if domain.cost_config.enable_custom_cost:
@@ -64,3 +67,88 @@ async def get_identifier_status(domain_id: str, identifier: str) -> AddressStatu
         price_reason=reason,
         currency=domain.currency,
     )
+
+
+async def create_address(
+    domain: Domain, address_data: CreateAddressData, user_id: Optional[str] = None
+) -> Tuple[Address, float]:
+
+    validate_local_part(address_data.local_part)
+    address_data.pubkey = validate_pub_key(address_data.pubkey)
+
+    identifier_status = await get_identifier_status(domain, address_data.local_part)
+
+    assert identifier_status.available, "Identifier not available."
+    assert (
+        identifier_status.price
+    ), f"Cannot compute price for {address_data.local_part}"
+
+    owner_id = owner_id_from_user_id(user_id)
+    address = await create_address_internal(address_data, owner_id)
+
+    price_in_sats = (
+        identifier_status.price
+        if domain.currency == "sats"
+        else await fiat_amount_as_satoshis(identifier_status.price, domain.currency)
+    )
+
+    assert price_in_sats, f"Cannot compute price for {address_data.local_part}"
+
+    return address, price_in_sats
+
+
+async def check_address_payment(domain_id: str, payment_hash: str) -> bool:
+    payment = await get_standalone_payment(payment_hash, incoming=True)
+    assert payment, "Payment does not exist."
+
+    payment_address_id = payment.extra.get("address_id")
+    assert payment_address_id, "Payment does not exist for this address."
+
+    payment_domain_id = payment.extra.get("domain_id")
+    assert payment_domain_id == domain_id, "Payment does not exist for this domain."
+
+    if payment.pending is False:
+        return True
+
+    status = await payment.check_status()
+    return status.success
+
+
+async def refresh_buckets(
+    client: httpx.AsyncClient, ranking_url: str, dataset_url: str, bucket: int
+):
+    logger.info(f"Refresh requested for top {bucket} identifiers.")
+
+    resp = await client.get(url=ranking_url)
+    resp.raise_for_status()
+    data = resp.json()
+
+    datasets = data["result"]["datasets"]
+    datasets.sort(key=lambda b: b["meta"]["top"])
+
+    logger.info("Bucket info received.")
+
+    for dataset in datasets:
+        top = dataset["meta"]["top"]
+        if top > bucket:
+            continue
+        logger.info(f"Refreshing bucket {top}.")
+        url = f"""{dataset_url}/{dataset["alias"]}"""
+        await refresh_bucket(client, url, top)
+        logger.info(f"Refreshed bucket {top}.")
+
+    logger.info(f"Top {bucket} identifiers ranking refreshed.")
+
+
+async def refresh_bucket(
+    client: httpx.AsyncClient,
+    url: str,
+    bucket: int,
+):
+    resp = await client.get(url)
+    resp.raise_for_status()
+
+    for identifier in resp.text.split("\n"):
+        identifier_name = identifier.split(".")[0]
+        await delete_inferior_ranking(identifier_name, bucket)
+        await create_identifier_ranking(identifier_name, bucket)

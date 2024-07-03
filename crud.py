@@ -195,7 +195,7 @@ async def delete_address(domain_id, address_id):
 
 
 async def create_address_internal(
-    domain_id: str, data: CreateAddressData, owner_id: Optional[str] = None
+    data: CreateAddressData, owner_id: Optional[str] = None
 ) -> Address:
     address_id = urlsafe_short_hash()
 
@@ -207,7 +207,7 @@ async def create_address_internal(
         """,
         (
             address_id,
-            domain_id,
+            data.domain_id,
             owner_id,
             data.local_part.lower(),
             data.pubkey,
@@ -215,7 +215,7 @@ async def create_address_internal(
         ),
     )
 
-    address = await get_address(domain_id, address_id)
+    address = await get_address(data.domain_id, address_id)
     assert address, "Newly created address couldn't be retrieved"
     return address
 

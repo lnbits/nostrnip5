@@ -10,9 +10,9 @@ from lnbits.helpers import template_renderer
 
 from .crud import (
     get_address,
+    get_domain_by_id,
     get_domain_public_data,
 )
-from .helpers import format_amount
 from .models import AddressStatus
 from .services import get_identifier_status
 
@@ -41,30 +41,28 @@ async def index(request: Request, user: User = Depends(check_user_exists)):
 
 @nostrnip5_generic_router.get("/signup/{domain_id}", response_class=HTMLResponse)
 async def signup(request: Request, domain_id: str, identifier: Optional[str] = None):
-    domain_public_data = await get_domain_public_data(domain_id)
+    domain = await get_domain_by_id(domain_id)
 
-    if not domain_public_data:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Domain does not exist."
-        )
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain does not exist.")
 
-    if identifier:
-        status = await get_identifier_status(domain_id, identifier)
-        identifier_cost = (
-            format_amount(status.price, status.currency) if status.available else ""
-        )
-    else:
-        status = AddressStatus(available=True)
-        identifier_cost = ""
+    status = (
+        await get_identifier_status(domain, identifier)
+        if identifier
+        else AddressStatus(available=True)
+    )
+
+    print("### domain", domain)
+    print("### domain.public_data()", domain.public_data())
 
     return nostrnip5_renderer().TemplateResponse(
         "nostrnip5/signup.html",
         {
             "request": request,
             "domain_id": domain_id,
-            "domain": domain_public_data,
+            "domain": domain.public_data(),
             "identifier": identifier,
-            "identifier_cost": identifier_cost,
+            "identifier_cost": status.price_formatted,
             "identifier_available": status.available,
         },
     )
