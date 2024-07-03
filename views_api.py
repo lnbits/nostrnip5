@@ -18,11 +18,9 @@ from starlette.exceptions import HTTPException
 from .crud import (
     activate_address,
     create_domain_internal,
-    create_identifier_ranking,
     create_settings,
     delete_address,
     delete_domain,
-    delete_inferior_ranking,
     get_addresses,
     get_addresses_for_owner,
     get_domain,
@@ -54,6 +52,7 @@ from .services import (
     get_user_addresses,
     get_user_domains,
     refresh_buckets,
+    update_identifiers,
 )
 
 nostrnip5_api_router: APIRouter = APIRouter()
@@ -302,6 +301,7 @@ async def api_refresh_identifier_ranking(
         await refresh_buckets(client, ranking_url, dataset_url, bucket)
 
 
+@http_try_except
 @nostrnip5_api_router.patch(
     "/api/v1/domain/ranking/{bucket}",
     dependencies=[Depends(check_admin)],
@@ -314,13 +314,14 @@ async def api_add_identifier_ranking(
     identifiers = (await request.body()).decode("utf-8").splitlines()
     logger.info(f"Updating {len(identifiers)} rankings.")
 
-    for identifier in identifiers:
-        await delete_inferior_ranking(identifier, bucket)
-        await create_identifier_ranking(identifier, bucket)
+    await update_identifiers(identifiers, bucket)
 
     logger.info(f"Updated {len(identifiers)} rankings.")
 
+    return {"count": len(identifiers)}
 
+
+@http_try_except
 @nostrnip5_api_router.get(
     "/api/v1/ranking/search",
     dependencies=[Depends(check_admin)],
@@ -329,16 +330,13 @@ async def api_add_identifier_ranking(
 async def api_domain_search_address(
     q: Optional[str] = None,
 ) -> Optional[IdentifierRanking]:
-    try:
-        if not q:
-            return None
-        return await get_identifier_ranking(q)
 
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR) from exc
+    if not q:
+        return None
+    return await get_identifier_ranking(q)
 
 
+@http_try_except
 @nostrnip5_api_router.put(
     "/api/v1/ranking",
     dependencies=[Depends(check_admin)],
@@ -347,17 +345,14 @@ async def api_domain_search_address(
 async def api_domain_update_ranking(
     identifier_ranking: IdentifierRanking,
 ) -> Optional[IdentifierRanking]:
-    try:
 
-        return await update_identifier_ranking(
-            identifier_ranking.name, identifier_ranking.rank
-        )
-
-    except Exception as exc:
-        logger.error(exc)
-        raise HTTPException(HTTPStatus.INTERNAL_SERVER_ERROR) from exc
+    return await update_identifier_ranking(
+        identifier_ranking.name, identifier_ranking.rank
+    )
 
 
+##################################### SETTINGS #####################################
+@http_try_except
 @nostrnip5_api_router.post(
     "/api/v1/settings",
     status_code=HTTPStatus.OK,
@@ -374,6 +369,7 @@ async def api_settings_create_or_update(
     await create_settings(owner_id, settings)
 
 
+@http_try_except
 @nostrnip5_api_router.get(
     "/api/v1/settings",
     status_code=HTTPStatus.OK,

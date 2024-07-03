@@ -114,6 +114,16 @@ async def check_address_payment(domain_id: str, payment_hash: str) -> bool:
     return status.success
 
 
+async def update_identifiers(identifiers: List[str], bucket: int):
+    for identifier in identifiers:
+        await update_identifier(identifier, bucket)
+
+
+async def update_identifier(identifier, bucket):
+    await delete_inferior_ranking(identifier, bucket)
+    await create_identifier_ranking(identifier, bucket)
+
+
 async def refresh_buckets(
     client: httpx.AsyncClient, ranking_url: str, dataset_url: str, bucket: int
 ):
@@ -150,5 +160,4 @@ async def refresh_bucket(
 
     for identifier in resp.text.split("\n"):
         identifier_name = identifier.split(".")[0]
-        await delete_inferior_ranking(identifier_name, bucket)
-        await create_identifier_ranking(identifier_name, bucket)
+        await update_identifier(identifier_name, bucket)
