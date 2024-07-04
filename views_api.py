@@ -7,7 +7,7 @@ from lnbits.core.models import User, WalletTypeInfo
 from lnbits.core.services import create_invoice
 from lnbits.db import Filters, Page
 from lnbits.decorators import (
-    authenticated_user_id,
+    optional_user_id,
     check_admin,
     check_user_exists,
     get_key_type,
@@ -114,7 +114,7 @@ async def api_get_addresses_paginated(
 @http_try_except
 @nostrnip5_api_router.get("/api/v1/addresses/user", status_code=HTTPStatus.OK)
 async def api_get_user_addresses(
-    user_id: Optional[str] = Depends(authenticated_user_id),
+    user_id: Optional[str] = Depends(optional_user_id),
 ):
     if not user_id:
         raise HTTPException(HTTPStatus.UNAUTHORIZED)
@@ -208,7 +208,7 @@ async def api_address_rotate(
     domain_id: str,
     address_id: str,
     post_data: RotateAddressData,
-    user_id: Optional[str] = Depends(authenticated_user_id),
+    user_id: Optional[str] = Depends(optional_user_id),
 ):
     # todo: improve checks
 
@@ -227,7 +227,7 @@ async def api_address_rotate(
 async def api_address_create(
     address_data: CreateAddressData,
     domain_id: str,
-    user_id: Optional[str] = Depends(authenticated_user_id),
+    user_id: Optional[str] = Depends(optional_user_id),
 ):
 
     # make sure the address belongs to the user
