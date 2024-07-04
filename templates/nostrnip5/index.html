@@ -10,6 +10,28 @@
         <q-btn unelevated color="primary" @click="addressFormDialog.show = true"
           >New Address</q-btn
         >
+        <q-btn-dropdown
+          v-if="g.user.admin"
+          @click="settingsFormDialog.show=true"
+          unelevated
+          split
+          color="primary"
+          class="float-right"
+          icon="settings"
+        >
+          <q-list>
+            <q-item clickable v-close-popup
+              ><q-item-section @click="rankingFormDialog.show = true">
+                <q-item-label v-text="'Add Identifiers'"></q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item clickable v-close-popup
+              ><q-item-section @click="identifierFormDialog.show = true">
+                <q-item-label v-text="'Manage Identifiers'"></q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
       </q-card-section>
     </q-card>
 
@@ -111,6 +133,7 @@
           row-key="id"
           :columns="addressesTable.columns"
           :pagination.sync="addressesTable.pagination"
+          @request="getAddresses"
         >
           {% raw %}
           <template v-slot:header="props">
@@ -189,6 +212,7 @@
     <q-card class="q-pa-lg q-pt-xl" style="width: 500px">
       <q-form @submit="saveDomain" class="q-gutter-md">
         <q-select
+          v-if="!formDialog.data.id"
           filled
           dense
           emit-value
@@ -205,60 +229,161 @@
           label="Currency *"
         ></q-select>
         <q-input
-          filled
-          dense
-          v-model.trim="formDialog.data.amount"
-          label="Price"
-          placeholder="How much do you want to charge per address?"
-        ></q-input>
-        <q-input
+          v-if="!formDialog.data.id"
           filled
           dense
           v-model.trim="formDialog.data.domain"
           label="Domain"
           placeholder="nostr.com"
         ></q-input>
+        <q-input
+          filled
+          dense
+          v-model.trim="formDialog.data.cost"
+          type="number"
+          min="0"
+          step="1"
+          label="Price"
+          placeholder="How much do you want to charge per address?"
+        ></q-input>
+        <q-toggle
+          v-model="formDialog.data.cost_config.enable_custom_cost"
+          label="Advanced cost configurations"
+          color="secondary"
+        ></q-toggle>
+        <div v-if="formDialog.data.cost_config.enable_custom_cost" class="row">
+          <q-card class="lnbits__dialog-card">
+            <q-tabs v-model="domainTab" active-color="primary" align="justify">
+              <q-tab name="charCount" label="Char Count"></q-tab>
+              <q-tab name="ranking" label="Ranking"></q-tab>
+            </q-tabs>
 
+            <q-tab-panels class="bg-transparent" v-model="domainTab">
+              <q-tab-panel name="charCount">
+                <div
+                  v-for="(item, index) in formDialog.data.cost_config.char_count_cost"
+                  class="row q-mb-sm q-ml-md"
+                >
+                  <div class="col-5">
+                    <q-input
+                      filled
+                      dense
+                      v-model.trim="item.bracket"
+                      type="number"
+                      min="0"
+                      step="1"
+                      label="Character Count"
+                    ></q-input>
+                  </div>
+                  <div class="col-5">
+                    <q-input
+                      filled
+                      dense
+                      v-model.trim="item.amount"
+                      label="Amount"
+                      type="number"
+                      class="q-pl-sm"
+                    ></q-input>
+                  </div>
+                  <div class="col-2">
+                    <q-btn
+                      @click="removeCharCountCost(index)"
+                      icon="clear"
+                      size="sm"
+                      unelevated
+                      color="primary"
+                      class="float-right q-mt-sm"
+                    ></q-btn>
+                  </div>
+                </div>
+                <div class="row q-ml-md q-mb-sm q-mt-sm">
+                  <div class="col float-right">
+                    <div>
+                      <q-btn
+                        icon="add"
+                        label="Add Character Count Cost"
+                        @click="addCharCountCost"
+                        size="sm"
+                        unelevated
+                        color="secondary"
+                        class="float-right"
+                      ></q-btn>
+                    </div>
+                  </div>
+                </div>
+              </q-tab-panel>
+              <q-tab-panel name="ranking">
+                <div
+                  v-for="(item, index) in formDialog.data.cost_config.rank_cost"
+                  class="row q-mb-sm q-ml-md"
+                >
+                  <div class="col-5">
+                    <q-select
+                      filled
+                      dense
+                      emit-value
+                      v-model="item.bracket"
+                      :options="domainRankingBraketOptions"
+                      label="Up to Rank"
+                    ></q-select>
+                  </div>
+                  <div class="col-5">
+                    <q-input
+                      filled
+                      dense
+                      v-model.trim="item.amount"
+                      label="Amount"
+                      type="number"
+                      class="q-pl-sm"
+                    ></q-input>
+                  </div>
+                  <div class="col-2">
+                    <q-btn
+                      @click="removeRankCost(index)"
+                      icon="clear"
+                      size="sm"
+                      unelevated
+                      color="primary"
+                      class="float-right q-mt-sm"
+                    ></q-btn>
+                  </div>
+                </div>
+                <div class="row q-ml-md q-mb-sm q-mt-sm">
+                  <div class="col float-right">
+                    <div>
+                      <q-btn
+                        icon="add"
+                        label="Add Rank Cost"
+                        @click="addRankCost"
+                        size="sm"
+                        unelevated
+                        color="secondary"
+                        class="float-right"
+                      ></q-btn>
+                    </div>
+                  </div>
+                </div>
+              </q-tab-panel>
+            </q-tab-panels>
+          </q-card>
+        </div>
         <div class="row q-mt-lg">
           <q-btn
+            v-if="formDialog.data.id"
+            unelevated
+            color="primary"
+            :disable="formDialog.data.wallet == null || formDialog.data.currency == null"
+            type="submit"
+            >Update Domain</q-btn
+          >
+          <q-btn
+            v-else
             unelevated
             color="primary"
             :disable="formDialog.data.wallet == null || formDialog.data.currency == null"
             type="submit"
             >Create Domain</q-btn
           >
-          <q-btn v-close-popup flat color="grey" class="q-ml-auto"
-            >Cancel</q-btn
-          >
-        </div>
-      </q-form>
-    </q-card>
-  </q-dialog>
-
-  <q-dialog
-    v-model="editFormDialog.show"
-    position="top"
-    @hide="closeFormDialog"
-  >
-    <q-card class="q-pa-lg q-pt-xl" style="width: 500px">
-      <q-form @submit="saveEditedDomain" class="q-gutter-md">
-        <q-select
-          filled
-          dense
-          emit-value
-          v-model="editFormDialog.data.currency"
-          :options="currencyOptions"
-          label="Currency *"
-        ></q-select>
-        <q-input
-          filled
-          dense
-          v-model.trim="editFormDialog.data.amount"
-          label="Amount"
-          placeholder="How much do you want to charge?"
-        ></q-input>
-        <div class="row q-mt-lg">
-          <q-btn unelevated color="primary" type="submit">Update Amount</q-btn>
           <q-btn v-close-popup flat color="grey" class="q-ml-auto"
             >Cancel</q-btn
           >
@@ -312,6 +437,149 @@
       </q-form>
     </q-card>
   </q-dialog>
+
+  <q-dialog v-model="rankingFormDialog.show" position="top">
+    <q-card class="q-pa-lg q-pt-xl" style="width: 500px">
+      <q-form @submit="addDomainRanking" class="q-gutter-md">
+        <q-select
+          filled
+          dense
+          emit-value
+          map-options
+          v-model="rankingFormDialog.data.bucket"
+          :options="domainRankingAllOptions"
+          label="Bucket"
+        ></q-select>
+        <q-input
+          filled
+          dense
+          type="textarea"
+          rows="10"
+          v-model.trim="rankingFormDialog.data.identifiers"
+          label="Identifiers"
+          placeholder="identifiers"
+          hint="One identifier per line"
+        ></q-input>
+
+        <div class="row q-mt-lg">
+          <q-btn unelevated color="primary" type="submit">Update Ranking</q-btn>
+          <q-btn v-close-popup flat color="grey" class="q-ml-auto"
+            >Cancel</q-btn
+          >
+        </div>
+      </q-form>
+    </q-card>
+  </q-dialog>
+
+  <q-dialog v-model="identifierFormDialog.show" position="top">
+    <q-card class="q-pa-lg q-pt-xl" style="width: 500px">
+      <q-form @submit="searchIdentifier" class="q-gutter-md">
+        <div class="row">
+          <div class="col-8">
+            <q-input
+              filled
+              dense
+              v-model.trim="identifierFormDialog.data.searchText"
+              label="Search Identifier"
+              placeholder="Search"
+            ></q-input>
+          </div>
+          <div class="col-4">
+            <q-btn
+              @click="searchIdentifier"
+              type="submit"
+              unelevated
+              color="primary"
+              class="float-right"
+              >Search</q-btn
+            >
+          </div>
+        </div>
+        <div v-if="identifierFormDialog.data.identifier" class="row">
+          <div class="col-8">
+            <q-select
+              filled
+              dense
+              emit-value
+              map-options
+              v-model="identifierFormDialog.data.identifier.rank"
+              :options="domainRankingAllOptions"
+              label="Bucket"
+            ></q-select>
+          </div>
+          <div class="col-4"></div>
+        </div>
+
+        <div class="row q-mt-lg">
+          <q-btn @click="updateIdentifier" unelevated color="primary"
+            >Update Ranking</q-btn
+          >
+          <q-btn v-close-popup flat color="grey" class="q-ml-auto"
+            >Cancel</q-btn
+          >
+        </div>
+      </q-form>
+    </q-card>
+  </q-dialog>
+
+  <q-dialog v-model="settingsFormDialog.show" position="top">
+    <q-card
+      v-if="settingsFormDialog.show"
+      class="q-pa-lg q-pt-xl"
+      style="width: 500px"
+    >
+      <h6 class="q-mt-none">Settings</h6>
+
+      <q-form @submit="updateSettings" class="q-gutter-md">
+        <div class="row">
+          <div class="col-8">
+            <q-input
+              filled
+              dense
+              v-model.trim="settingsFormDialog.data.cloudflare_access_token"
+              label="Cloudflare Access Token"
+              hint="Domain ranking is fetched from CloudFlare. An access token must be provided."
+              placeholder="Read-only access token"
+            ></q-input>
+          </div>
+          <div class="col-4">
+            <q-btn-dropdown
+              v-if="g.user.admin"
+              @click="refreshDomainRanking(200)"
+              unelevated
+              split
+              color="primary"
+              class="float-right"
+              label="Refresh"
+            >
+              <q-list
+                v-for="bracket in domainRankingBraketOptions"
+                :key="bracket"
+              >
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="refreshDomainRanking(bracket)"
+                  ><q-item-section>
+                    <q-item-label
+                      v-text="'Refresh top '+ bracket + ' identifiers'"
+                    ></q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-btn-dropdown>
+          </div>
+        </div>
+
+        <div class="row q-mt-lg">
+          <q-btn unelevated color="primary" type="submit">Update</q-btn>
+          <q-btn v-close-popup flat color="grey" class="q-ml-auto"
+            >Cancel</q-btn
+          >
+        </div>
+      </q-form>
+    </q-card>
+  </q-dialog>
 </div>
 {% endblock %} {% block scripts %} {{ window_vars(user) }}
 <script>
@@ -321,9 +589,7 @@
       'YYYY-MM-DD HH:mm'
     )
 
-    if (obj.currency != 'Satoshis') {
-      obj.amount = parseFloat(obj.amount / 100).toFixed(2)
-    }
+    obj.cost = parseFloat(obj.cost).toFixed(2)
 
     return obj
   }
@@ -335,8 +601,12 @@
       return {
         domains: [],
         addresses: [],
+        domainRankingBraketOptions: [
+          200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000,
+          500000, 1000000
+        ],
         currencyOptions: [
-          'Satoshis',
+          'sats',
           'USD',
           'EUR',
           'GBP',
@@ -520,7 +790,7 @@
               label: 'Currency',
               field: 'currency'
             },
-            {name: 'amount', align: 'left', label: 'Amount', field: 'amount'},
+            {name: 'cost', align: 'left', label: 'Amount', field: 'cost'},
             {name: 'time', align: 'left', label: 'Created At', field: 'time'}
           ],
           pagination: {
@@ -530,46 +800,100 @@
         addressesTable: {
           columns: [
             {name: 'id', align: 'left', label: 'ID', field: 'id'},
-            {name: 'active', align: 'left', label: 'Active', field: 'active'},
+            {
+              name: 'active',
+              align: 'left',
+              label: 'Active',
+              field: 'active',
+              sortable: true
+            },
             {
               name: 'domain_id',
               align: 'left',
               label: 'Domain',
-              field: 'domain_id'
+              field: 'domain_id',
+              sortable: true
             },
             {
               name: 'local_part',
               align: 'left',
               label: 'Local Part',
-              field: 'local_part'
+              field: 'local_part',
+              sortable: true
             },
-            {name: 'pubkey', align: 'left', label: 'Pubkey', field: 'pubkey'},
-            {name: 'time', align: 'left', label: 'Created At', field: 'time'}
+            {
+              name: 'pubkey',
+              align: 'left',
+              label: 'Pubkey',
+              field: 'pubkey',
+              sortable: true
+            },
+            {
+              name: 'time',
+              align: 'left',
+              label: 'Created At',
+              field: 'time',
+              sortable: true
+            }
           ],
           pagination: {
-            rowsPerPage: 10
+            rowsPerPage: 10,
+            page: 1,
+            rowsNumber: 10
           }
         },
         formDialog: {
           show: false,
           data: {}
         },
-        editFormDialog: {
+        domainTab: null,
+        addressFormDialog: {
           show: false,
           data: {}
         },
-        addressFormDialog: {
+        rankingFormDialog: {
+          show: false,
+          data: {}
+        },
+        identifierFormDialog: {
+          show: false,
+          data: {}
+        },
+        settingsFormDialog: {
           show: false,
           data: {}
         }
       }
     },
     methods: {
+      resetFormDialog: function () {
+        this.formDialog.show = false
+        this.domainTab = 'charCount'
+        this.formDialog.data = {
+          cost_config: {
+            enable_custom_cost: false,
+            char_count_cost: [],
+            rank_cost: []
+          }
+        }
+        this.rankingFormDialog.show = false
+        this.rankingFormDialog.data = {
+          bucket: 0,
+          identifiers: ''
+        }
+        this.identifierFormDialog.show = false
+        this.identifierFormDialog.data = {
+          searchText: '',
+          bucket: 0,
+          identifier: ''
+        }
+        this.settingsFormDialog.show = false
+      },
       closeAddressFormDialog: function () {
-        this.formDialog.data = {}
+        this.resetFormDialog()
       },
       closeFormDialog: function () {
-        this.formDialog.data = {}
+        this.resetFormDialog()
       },
       getDomains: function () {
         var self = this
@@ -586,17 +910,32 @@
             })
           })
       },
-      getAddresses: function () {
+
+      getAddresses: function (props) {
         var self = this
+        if (props) {
+          self.addressesTable.pagination = props.pagination
+        }
+        let pagination = self.addressesTable.pagination
+        const query = {
+          all_wallets: true,
+          limit: pagination.rowsPerPage,
+          offset: (pagination.page - 1) * pagination.rowsPerPage ?? 0,
+          sortby: pagination.sortBy || 'time',
+          direction: pagination.descending ? 'desc' : 'asc'
+        }
+        const params = new URLSearchParams(query)
 
         LNbits.api
           .request(
             'GET',
-            '/nostrnip5/api/v1/addresses?all_wallets=true',
+            `/nostrnip5/api/v1/addresses/paginated?${params}`,
             this.g.user.wallets[0].inkey
           )
           .then(function (response) {
-            self.addresses = response.data.map(function (obj) {
+            const {data, total} = response.data
+            self.addressesTable.pagination.rowsNumber = total
+            self.addresses = data.map(function (obj) {
               return mapDomain(obj)
             })
           })
@@ -604,52 +943,28 @@
       saveDomain: function () {
         var data = this.formDialog.data
         var self = this
+        const method = this.formDialog.data.id ? 'PUT' : 'POST'
 
         LNbits.api
           .request(
-            'POST',
+            method,
             '/nostrnip5/api/v1/domain',
             _.findWhere(this.g.user.wallets, {id: this.formDialog.data.wallet})
               .inkey,
             data
           )
           .then(function (response) {
+            self.domains = self.domains.filter(d => d.id !== response.data.id)
             self.domains.push(mapDomain(response.data))
-
-            self.formDialog.show = false
-            self.formDialog.data = {}
-          })
-          .catch(function (error) {
-            LNbits.utils.notifyApiError(error)
-          })
-      },
-      saveEditedDomain: function () {
-        var data = this.editFormDialog.data
-        var self = this
-
-        LNbits.api
-          .request(
-            'PUT',
-            '/nostrnip5/api/v1/domain',
-            _.findWhere(this.g.user.wallets, {
-              id: this.editFormDialog.data.wallet
-            }).inkey,
-            data
-          )
-          .then(function (response) {
-            self.editFormDialog.show = false
-            self.editFormDialog.data = {}
+            self.resetFormDialog()
           })
           .catch(function (error) {
             LNbits.utils.notifyApiError(error)
           })
       },
       editDomain: function (domain_id) {
-        var self = this
-        var data = _.findWhere(this.domains, {id: domain_id})
-
-        self.editFormDialog.show = true
-        self.editFormDialog.data = data
+        this.formDialog.show = true
+        this.formDialog.data = _.findWhere(this.domains, {id: domain_id})
       },
       deleteDomain: function (domain_id) {
         var self = this
@@ -665,9 +980,7 @@
                 _.findWhere(self.g.user.wallets, {id: domain.wallet}).adminkey
               )
               .then(function (response) {
-                self.domains = _.reject(self.domain, function (obj) {
-                  return obj.id == domain_id
-                })
+                self.domains = self.domains.filter(d => d.id !== domain_id)
               })
               .catch(function (error) {
                 LNbits.utils.notifyApiError(error)
@@ -688,7 +1001,7 @@
           )
           .then(function (response) {
             return LNbits.api.request(
-              'POST',
+              'PUT',
               '/nostrnip5/api/v1/domain/' +
                 formDialog.data.domain_id +
                 '/address/' +
@@ -717,7 +1030,7 @@
             LNbits.api
               .request(
                 'DELETE',
-                '/nostrnip5/api/v1/address/' + address_id,
+                `/nostrnip5/api/v1/address/${domain.id}/${address_id}`,
                 _.findWhere(self.g.user.wallets, {id: domain.wallet}).adminkey
               )
               .then(function (response) {
@@ -741,7 +1054,7 @@
           .onOk(function () {
             return LNbits.api
               .request(
-                'POST',
+                'PUT',
                 '/nostrnip5/api/v1/domain/' +
                   domain_id +
                   '/address/' +
@@ -757,6 +1070,142 @@
               })
           })
       },
+      refreshDomainRanking: function (braket) {
+        var self = this
+        return LNbits.api
+          .request(
+            'PUT',
+            '/nostrnip5/api/v1/domain/ranking/' + braket,
+            self.g.user.wallets[0].adminkey
+          )
+          .then(function (response) {
+            self.$q.notify({
+              type: 'positive',
+              message: `Top ${braket} identifiers refreshed!`
+            })
+          })
+          .catch(function (error) {
+            LNbits.utils.notifyApiError(error)
+          })
+      },
+      addDomainRanking: function () {
+        var self = this
+        return LNbits.api
+          .request(
+            'PATCH',
+            '/nostrnip5/api/v1/domain/ranking/' +
+              this.rankingFormDialog.data.bucket,
+            self.g.user.wallets[0].adminkey,
+            this.rankingFormDialog.data.identifiers
+          )
+          .then(function (response) {
+            self.$q.notify({
+              type: 'positive',
+              message: 'Identifiers updated!'
+            })
+            self.resetFormDialog()
+          })
+          .catch(function (error) {
+            LNbits.utils.notifyApiError(error)
+          })
+      },
+      searchIdentifier: function () {
+        var self = this
+        return LNbits.api
+          .request(
+            'GET',
+            '/nostrnip5/api/v1/ranking/search?q=' +
+              this.identifierFormDialog.data.searchText,
+            self.g.user.wallets[0].adminkey
+          )
+          .then(function (response) {
+            self.identifierFormDialog.data.identifier = response.data
+          })
+          .catch(function (error) {
+            LNbits.utils.notifyApiError(error)
+          })
+      },
+      updateIdentifier: function () {
+        var self = this
+        return LNbits.api
+          .request(
+            'PUT',
+            '/nostrnip5/api/v1/ranking',
+            self.g.user.wallets[0].adminkey,
+            {
+              name: self.identifierFormDialog.data.identifier.name,
+              rank: self.identifierFormDialog.data.identifier.rank
+            }
+          )
+          .then(function (response) {
+            self.$q.notify({
+              type: 'positive',
+              message: 'Identifier updated!'
+            })
+            self.resetFormDialog()
+          })
+          .catch(function (error) {
+            LNbits.utils.notifyApiError(error)
+          })
+      },
+
+      fetchSettings: function () {
+        var self = this
+        return LNbits.api
+          .request(
+            'GET',
+            '/nostrnip5/api/v1/settings',
+            self.g.user.wallets[0].adminkey
+          )
+          .then(function (response) {
+            self.settingsFormDialog.data = response.data
+          })
+          .catch(function (error) {
+            LNbits.utils.notifyApiError(error)
+          })
+      },
+      updateSettings: function () {
+        var self = this
+        return LNbits.api
+          .request(
+            'PUT',
+            '/nostrnip5/api/v1/settings',
+            self.g.user.wallets[0].adminkey,
+            self.settingsFormDialog.data
+          )
+          .then(function (response) {
+            self.resetFormDialog()
+            self.$q.notify({
+              type: 'positive',
+              message: 'Updated settings'
+            })
+          })
+          .catch(function (error) {
+            LNbits.utils.notifyApiError(error)
+          })
+      },
+      addCharCountCost: function () {
+        this.formDialog.data.cost_config.char_count_cost.push({
+          bracket: 0,
+          amount: 1
+        })
+      },
+      removeCharCountCost: function (index) {
+        if (index < this.formDialog.data.cost_config.char_count_cost.length) {
+          this.formDialog.data.cost_config.char_count_cost.splice(index, 1)
+        }
+      },
+      addRankCost: function () {
+        this.formDialog.data.cost_config.rank_cost.push({
+          bracket: 0,
+          amount: 1
+        })
+      },
+      removeRankCost: function (index) {
+        if (index < this.formDialog.data.cost_config.rank_cost.length) {
+          this.formDialog.data.cost_config.rank_cost.splice(index, 1)
+        }
+      },
       exportCSV: function () {
         LNbits.utils.exportCSV(this.domainsTable.columns, this.domains)
       },
@@ -765,9 +1214,11 @@
       }
     },
     created: function () {
+      this.resetFormDialog()
       if (this.g.user.wallets.length) {
         this.getDomains()
         this.getAddresses()
+        this.fetchSettings()
       }
     },
     computed: {
@@ -778,6 +1229,13 @@
             value: el.id
           }
         })
+      },
+      domainRankingAllOptions: function () {
+        const rankings = this.domainRankingBraketOptions.map(r => ({
+          value: r,
+          label: `Top ${r} identifiers`
+        }))
+        return [{value: 0, label: 'Reserved'}].concat(rankings)
       }
     }
   })

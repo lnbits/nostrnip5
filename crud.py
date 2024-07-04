@@ -1,18 +1,50 @@
+import json
 from typing import List, Optional, Union
 
-from lnbits.db import Database
+from lnbits.db import Database, Filters, Page
 from lnbits.helpers import urlsafe_short_hash
 
-from .models import Address, CreateAddressData, CreateDomainData, Domain, EditDomainData
+from .helpers import normalize_identifier
+from .models import (
+    Address,
+    AddressFilters,
+    CreateAddressData,
+    CreateDomainData,
+    Domain,
+    EditDomainData,
+    IdentifierRanking,
+    Nip5Settings,
+    PublicDomain,
+)
 
 db = Database("ext_nostrnip5")
 
 
-async def get_domain(domain_id: str) -> Optional[Domain]:
+async def get_domain(domain_id: str, wallet_id: str) -> Optional[Domain]:
     row = await db.fetchone(
-        "SELECT * FROM nostrnip5.domains WHERE id = ?", (domain_id,)
+        "SELECT * FROM nostrnip5.domains WHERE id = ? AND wallet = ?",
+        (
+            domain_id,
+            wallet_id,
+        ),
     )
     return Domain.from_row(row) if row else None
+
+
+async def get_domain_by_id(domain_id: str) -> Optional[Domain]:
+    row = await db.fetchone(
+        "SELECT * FROM nostrnip5.domains WHERE id = ?",
+        (domain_id,),
+    )
+    return Domain.from_row(row) if row else None
+
+
+async def get_domain_public_data(domain_id: str) -> Optional[PublicDomain]:
+    row = await db.fetchone(
+        "SELECT id, currency, cost, domain FROM nostrnip5.domains WHERE id = ?",
+        (domain_id,),
+    )
+    return PublicDomain.from_row(row) if row else None
 
 
 async def get_domain_by_name(domain: str) -> Optional[Domain]:
@@ -52,7 +84,7 @@ async def get_address_by_local_part(
         "SELECT * FROM nostrnip5.addresses WHERE domain_id = ? AND local_part = ?",
         (
             domain_id,
-            local_part.lower(),
+            normalize_identifier(local_part),
         ),
     )
     return Address.from_row(row) if row else None
@@ -66,11 +98,31 @@ async def get_addresses(domain_id: str) -> List[Address]:
     return [Address.from_row(row) for row in rows]
 
 
+async def get_address_for_owner(
+    owner_id: str, domain_id: str, local_part: str
+) -> Optional[Address]:
+    row = await db.fetchone(
+        "SELECT * FROM nostrnip5.addresses"
+        " WHERE owner_id = ? and domain_id = ? AND local_part = ?",
+        (owner_id, domain_id, local_part),
+    )
+
+    return Address.from_row(row) if row else None
+
+
+async def get_addresses_for_owner(owner_id: str) -> List[Address]:
+    rows = await db.fetchall(
+        "SELECT * FROM nostrnip5.addresses WHERE owner_id = ?", (owner_id,)
+    )
+
+    return [Address.from_row(row) for row in rows]
+
+
 async def get_all_addresses(wallet_ids: Union[str, List[str]]) -> List[Address]:
     if isinstance(wallet_ids, str):
         wallet_ids = [wallet_ids]
 
-    q = ",".join(["?"] * len(wallet_ids))
+    q = ",".join(["?"] * len(wallet_ids))  # todo: re-check
     rows = await db.fetchall(
         f"""
         SELECT a.*
@@ -82,6 +134,29 @@ async def get_all_addresses(wallet_ids: Union[str, List[str]]) -> List[Address]:
     )
 
     return [Address.from_row(row) for row in rows]
+
+
+async def get_all_addresses_paginated(
+    wallet_ids: Union[str, List[str]],
+    filters: Optional[Filters[AddressFilters]] = None,
+) -> Page[Address]:
+    if isinstance(wallet_ids, str):
+        wallet_ids = [wallet_ids]
+
+    q = ",".join(["?"] * len(wallet_ids))
+    query = f"""
+        SELECT a.*
+        FROM nostrnip5.addresses a
+        JOIN nostrnip5.domains d ON d.id = a.domain_id
+        WHERE d.wallet IN ({q})
+        """
+
+    return await db.fetch_page(
+        query,
+        values=wallet_ids,
+        filters=filters,
+        model=Address,
+    )
 
 
 async def activate_address(domain_id: str, address_id: str) -> Address:
@@ -123,7 +198,10 @@ async def rotate_address(domain_id: str, address_id: str, pubkey: str) -> Addres
     return address
 
 
-async def delete_domain(domain_id) -> bool:
+async def delete_domain(domain_id: str, wallet_id: str) -> bool:
+    domain = await get_domain(domain_id, wallet_id)
+    if not domain:
+        return False
     await db.execute(
         """
         DELETE FROM nostrnip5.addresses WHERE domain_id = ?
@@ -141,53 +219,60 @@ async def delete_domain(domain_id) -> bool:
     return True
 
 
-async def delete_address(address_id):
+async def delete_address(domain_id, address_id):
     await db.execute(
         """
-        DELETE FROM nostrnip5.addresses WHERE id = ?
+        DELETE FROM nostrnip5.addresses WHERE domain_id = ? AND id = ?
         """,
-        (address_id,),
+        (
+            domain_id,
+            address_id,
+        ),
     )
 
 
-async def create_address_internal(domain_id: str, data: CreateAddressData) -> Address:
+async def create_address_internal(
+    data: CreateAddressData, owner_id: Optional[str] = None
+) -> Address:
     address_id = urlsafe_short_hash()
 
     await db.execute(
         """
-        INSERT INTO nostrnip5.addresses (id, domain_id, local_part, pubkey, active)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO nostrnip5.addresses
+        (id, domain_id, owner_id, local_part, pubkey, active)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
             address_id,
-            domain_id,
-            data.local_part.lower(),
+            data.domain_id,
+            owner_id,
+            normalize_identifier(data.local_part),
             data.pubkey,
             False,
         ),
     )
 
-    address = await get_address(domain_id, address_id)
+    address = await get_address(data.domain_id, address_id)
     assert address, "Newly created address couldn't be retrieved"
     return address
 
 
 async def update_domain_internal(wallet_id: str, data: EditDomainData) -> Domain:
-    if data.currency != "Satoshis":
-        amount = data.amount * 100
-    else:
-        amount = data.amount
-    print(data)
+    cost_extra = (
+        json.dumps(data.cost_config, default=lambda o: o.__dict__)
+        if data.cost_config
+        else None
+    )
     await db.execute(
         """
         UPDATE nostrnip5.domains
-        SET amount = ?, currency = ?
+        SET cost = ?, currency = ?, cost_extra = ?
         WHERE id = ?
         """,
-        (int(amount), data.currency, data.id),
+        (data.cost, data.currency, cost_extra, data.id),
     )
 
-    domain = await get_domain(data.id)
+    domain = await get_domain(data.id, wallet_id)
     assert domain, "Domain couldn't be updated"
     return domain
 
@@ -195,19 +280,85 @@ async def update_domain_internal(wallet_id: str, data: EditDomainData) -> Domain
 async def create_domain_internal(wallet_id: str, data: CreateDomainData) -> Domain:
     domain_id = urlsafe_short_hash()
 
-    if data.currency != "Satoshis":
-        amount = data.amount * 100
-    else:
-        amount = data.amount
-
+    cost_extra = (
+        json.dumps(data.cost_config, default=lambda o: o.__dict__)
+        if data.cost_config
+        else None
+    )
     await db.execute(
         """
-        INSERT INTO nostrnip5.domains (id, wallet, currency, amount, domain)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO nostrnip5.domains (id, wallet, currency, cost, domain, cost_extra)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (domain_id, wallet_id, data.currency, int(amount), data.domain),
+        (
+            domain_id,
+            wallet_id,
+            data.currency,
+            data.cost,
+            data.domain.lower(),
+            cost_extra,
+        ),
     )
 
-    domain = await get_domain(domain_id)
+    domain = await get_domain(domain_id, wallet_id)
     assert domain, "Newly created domain couldn't be retrieved"
     return domain
+
+
+# todo: rename to identifier
+async def create_identifier_ranking(name: str, rank: int):
+    await db.execute(
+        """
+        INSERT INTO nostrnip5.identifiers_rankings(name, rank) VALUES (?, ?)
+        ON CONFLICT (name) DO NOTHING
+        """,
+        (normalize_identifier(name), rank),
+    )
+
+
+async def update_identifier_ranking(name: str, rank: int):
+    await db.execute(
+        """
+        UPDATE nostrnip5.identifiers_rankings
+        SET rank = ?
+        WHERE name = ?
+        """,
+        (rank, normalize_identifier(name)),
+    )
+
+
+async def get_identifier_ranking(name: str) -> Optional[IdentifierRanking]:
+    row = await db.fetchone(
+        "SELECT * FROM nostrnip5.identifiers_rankings WHERE name = ?",
+        (normalize_identifier(name),),
+    )
+    return IdentifierRanking.from_row(row) if row else None
+
+
+async def delete_inferior_ranking(name: str, rank: int):
+    await db.execute(
+        """
+        DELETE from nostrnip5.identifiers_rankings
+        WHERE name = ? and rank > ?
+        """,
+        (normalize_identifier(name), rank),
+    )
+
+
+async def create_settings(owner_id: str, settings: Nip5Settings):
+    settings_json = json.dumps(settings, default=lambda o: o.__dict__)
+    await db.execute(
+        """
+        INSERT INTO nostrnip5.settings(owner_id, settings) VALUES (?, ?)
+        ON CONFLICT (owner_id) DO UPDATE SET settings = ?
+        """,
+        (owner_id, settings_json, settings_json),
+    )
+
+
+async def get_settings(owner_id: str) -> Nip5Settings:
+    row = await db.fetchone(
+        "SELECT * FROM nostrnip5.settings WHERE owner_id = ?",
+        (owner_id,),
+    )
+    return Nip5Settings.from_row(row) if row else Nip5Settings()
