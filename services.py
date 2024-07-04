@@ -11,6 +11,7 @@ from .crud import (
     create_identifier_ranking,
     delete_inferior_ranking,
     get_address_by_local_part,
+    get_address_for_owner,
     get_all_addresses,
     get_all_addresses_paginated,
     get_domains,
@@ -95,18 +96,19 @@ async def create_address(
     domain: Domain, address_data: CreateAddressData, user_id: Optional[str] = None
 ) -> Tuple[Address, float]:
 
-    address_data.local_part = normalize_identifier(address_data.local_part)
+    identifier = normalize_identifier(address_data.local_part)
+    address_data.local_part = identifier
     address_data.pubkey = validate_pub_key(address_data.pubkey)
 
-    identifier_status = await get_identifier_status(domain, address_data.local_part)
+    identifier_status = await get_identifier_status(domain, identifier)
 
     assert identifier_status.available, "Identifier not available."
-    assert (
-        identifier_status.price
-    ), f"Cannot compute price for {address_data.local_part}"
+    assert identifier_status.price, f"Cannot compute price for {identifier}"
 
     owner_id = owner_id_from_user_id(user_id)
-    address = await create_address_internal(address_data, owner_id)
+    existing_address = await get_address_for_owner(owner_id, domain.id, identifier)
+
+    address = existing_address or await create_address_internal(address_data, owner_id)
 
     price_in_sats = (
         identifier_status.price
@@ -114,7 +116,7 @@ async def create_address(
         else await fiat_amount_as_satoshis(identifier_status.price, domain.currency)
     )
 
-    assert price_in_sats, f"Cannot compute price for {address_data.local_part}"
+    assert price_in_sats, f"Cannot compute price for {identifier}"
 
     return address, price_in_sats
 

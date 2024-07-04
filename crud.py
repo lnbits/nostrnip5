@@ -98,6 +98,18 @@ async def get_addresses(domain_id: str) -> List[Address]:
     return [Address.from_row(row) for row in rows]
 
 
+async def get_address_for_owner(
+    owner_id: str, domain_id: str, local_part: str
+) -> Optional[Address]:
+    row = await db.fetchone(
+        "SELECT * FROM nostrnip5.addresses"
+        " WHERE owner_id = ? and domain_id = ? AND local_part = ?",
+        (owner_id, domain_id, local_part),
+    )
+
+    return Address.from_row(row) if row else None
+
+
 async def get_addresses_for_owner(owner_id: str) -> List[Address]:
     rows = await db.fetchall(
         "SELECT * FROM nostrnip5.addresses WHERE owner_id = ?", (owner_id,)
