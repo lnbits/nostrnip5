@@ -273,7 +273,7 @@ async def api_search_identifier(
 ) -> AddressStatus:
 
     if not q:
-        return AddressStatus()
+        return AddressStatus(identifier="")
 
     domain = await get_domain_by_id(domain_id)
     assert domain, "Unknown domain id."

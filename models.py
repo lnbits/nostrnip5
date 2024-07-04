@@ -124,6 +124,7 @@ class Address(FromRowModel):
 
 
 class AddressStatus(BaseModel):
+    identifier: str
     available: bool = False
     reserved: bool = False
     price: Optional[float] = None

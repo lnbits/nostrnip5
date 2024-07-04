@@ -50,7 +50,7 @@ async def signup(request: Request, domain_id: str, identifier: Optional[str] = N
     status = (
         await get_identifier_status(domain, identifier)
         if identifier
-        else AddressStatus(available=True)
+        else AddressStatus(identifier="", available=True)
     )
 
     return nostrnip5_renderer().TemplateResponse(

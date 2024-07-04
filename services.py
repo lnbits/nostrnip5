@@ -68,10 +68,11 @@ async def get_user_addresses_paginated(
 
 
 async def get_identifier_status(domain: Domain, identifier: str) -> AddressStatus:
+    identifier = normalize_identifier(identifier)
     address = await get_address_by_local_part(domain.id, identifier)
     reserved = address is not None
     if address and address.active:
-        return AddressStatus(available=False, reserved=reserved)
+        return AddressStatus(identifier=identifier, available=False, reserved=reserved)
 
     rank = None
     if domain.cost_config.enable_custom_cost:
@@ -79,11 +80,12 @@ async def get_identifier_status(domain: Domain, identifier: str) -> AddressStatu
         rank = identifier_ranking.rank if identifier_ranking else None
 
     if rank == 0:
-        return AddressStatus(available=False, reserved=True)
+        return AddressStatus(identifier=identifier, available=False, reserved=True)
 
     price, reason = domain.price_for_identifier(identifier, rank)
 
     return AddressStatus(
+        identifier=identifier,
         available=True,
         reserved=reserved,
         price=price,
