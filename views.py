@@ -59,9 +59,7 @@ async def signup(request: Request, domain_id: str, identifier: Optional[str] = N
             "request": request,
             "domain_id": domain_id,
             "domain": domain.public_data(),
-            "identifier": (
-                normalize_identifier(identifier) if identifier else ""
-            ),
+            "identifier": (normalize_identifier(identifier) if identifier else ""),
             "identifier_cost": status.price_formatted,
             "identifier_available": status.available,
         },
