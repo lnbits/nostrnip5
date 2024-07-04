@@ -72,11 +72,11 @@ context %} {% block page %}
         </div>
       </div>
 
-      <div v-if="identifierAvailable">
+      <div v-if="identifier?.length && identifierAvailable">
         <div class="row">
           <div class="col">
             <p>
-              The price for this domain is
+              The price for this identifier is
               <strong> {{identifier_cost}} {{domain.currency}} </strong>
               and will be tied to this nostr pubkey:
             </p>
@@ -158,6 +158,7 @@ context %} {% block page %}
         domain_id: '{{ domain_id }}',
         wallet: '{{ domain.wallet }}',
         currency: '{{ domain.currency }}',
+        identifier: '{{ identifier }}',
         identifierCost: '{{ identifier_cost }}',
         identifierAvailable: '{{ identifier_available }}' === 'True',
         success: false,
