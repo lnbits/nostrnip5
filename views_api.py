@@ -6,11 +6,11 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from lnbits.core.models import User, WalletTypeInfo
 from lnbits.core.services import create_invoice
 from lnbits.db import Filters, Page
-from lnbits.decorators import (
+from lnbits.decorators import (  # type: ignore[attr-defined]
     check_admin,
     check_user_exists,
     get_key_type,
-    optional_user_id,
+    optional_user_id,  # pyright: ignore [reportAttributeAccessIssue]
     parse_filters,
     require_admin_key,
 )

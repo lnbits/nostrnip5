@@ -1,6 +1,6 @@
 import json
 from sqlite3 import Row
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from fastapi.param_functions import Query
 from lnbits.db import FilterModel, FromRowModel
@@ -75,12 +75,14 @@ class Domain(PublicDomain):
     cost_config: DomainCostConfig = DomainCostConfig()
     time: int
 
-    def price_for_identifier(self, identifier: str, rank: Optional[int] = None):
+    def price_for_identifier(
+        self, identifier: str, rank: Optional[int] = None
+    ) -> Tuple[float, str]:
         identifier = normalize_identifier(identifier)
         max_amount = self.cost
         reason = ""
         if not self.cost_config.enable_custom_cost:
-            return max_amount
+            return max_amount, reason
 
         for char_cost in self.cost_config.char_count_cost:
             if len(identifier) <= char_cost.bracket and max_amount < char_cost.amount:
