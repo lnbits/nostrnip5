@@ -209,7 +209,7 @@ async def rotate_address(domain_id: str, address_id: str, pubkey: str) -> Addres
 async def update_address(domain_id: str, address_id: str, **kwargs) -> Address:
     set_clause: List[str] = []
     set_variables: List[Any] = []
-    valid_keys = [k for k in vars(Address) if not k.startswith("__")]
+    valid_keys = [k for k in Address.__fields__.keys() if not k.startswith("_")]
     for key, value in kwargs.items():
         if key not in valid_keys:
             continue
@@ -221,8 +221,8 @@ async def update_address(domain_id: str, address_id: str, **kwargs) -> Address:
             set_clause.append(f"{key} = ?")
             set_variables.append(value)
 
-        set_variables.append(domain_id)
-        set_variables.append(address_id)
+    set_variables.append(domain_id)
+    set_variables.append(address_id)
 
     await db.execute(
         f"""

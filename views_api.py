@@ -32,6 +32,7 @@ from .crud import (
     get_identifier_ranking,
     get_settings,
     rotate_address,
+    update_address,
     update_domain_internal,
     update_identifier_ranking,
 )
@@ -223,27 +224,27 @@ async def api_address_rotate(
 
 
 @http_try_except
-@nostrnip5_api_router.put(
+@nostrnip5_api_router.get(
     "/api/v1/domain/{domain_id}/address/{address_id}/reimburse",
     dependencies=[Depends(check_admin)],
     status_code=HTTPStatus.CREATED,
 )
 async def api_address_reimburse(
     domain_id: str,
-    adddress_id: str,
+    address_id: str,
 ):
 
     # make sure the address belongs to the user
     domain = await get_domain_by_id(domain_id)
     assert domain, "Domain does not exist."
 
-    address = await get_address(domain_id, adddress_id)
+    address = await get_address(domain_id, address_id)
 
     assert address and address.domain_id == domain_id, "Domain ID missmatch"
     payment_hash = address.config.reimburse_payment_hash
     assert payment_hash, f"No payment hash found to reimburse '{address.id}'."
 
-    payment = await get_standalone_payment(checking_id_or_hash=payment_hash)
+    payment = await get_standalone_payment(checking_id_or_hash=payment_hash, incoming=True)
     assert payment, f"No payment found to reimburse '{payment_hash}'."
     wallet_id = payment.extra.get("reimburse_wallet_id")
     assert wallet_id, f"No wallet found to reimburse payment {payment_hash}."
@@ -286,7 +287,7 @@ async def api_address_create(
     address, price_in_sats = await create_address(domain, address_data, user_id)
 
     # in case the user pays, but the identifier is no longer available
-    wallet_id = (await get_wallets(user_id))[0] if user_id else None
+    wallet_id = (await get_wallets(user_id))[0].id if user_id else None
 
     payment_hash, payment_request = await create_invoice(
         wallet_id=domain.wallet,
