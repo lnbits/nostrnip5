@@ -100,3 +100,7 @@ async def m007_add_cost_extra_column_to_addresses(db):
     Adds extra column to  addresses.
     """
     await db.execute("ALTER TABLE nostrnip5.addresses ADD COLUMN extra TEXT")
+    await db.execute(
+        "ALTER TABLE nostrnip5.addresses ADD COLUMN "
+        "reimburse_amount REAL NOT NULL DEFAULT 0"
+    )

@@ -1,5 +1,5 @@
 import json
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 
 from lnbits.db import Database, Filters, Page
 from lnbits.helpers import urlsafe_short_hash
@@ -78,11 +78,14 @@ async def get_address(domain_id: str, address_id: str) -> Optional[Address]:
     return Address.from_row(row) if row else None
 
 
-async def get_address_by_local_part(
+async def get_active_address_by_local_part(
     domain_id: str, local_part: str
 ) -> Optional[Address]:
     row = await db.fetchone(
-        "SELECT * FROM nostrnip5.addresses WHERE domain_id = ? AND local_part = ?",
+        """
+            SELECT * FROM nostrnip5.addresses
+            WHERE active = true AND domain_id = ? AND local_part = ?
+        """,
         (
             domain_id,
             normalize_identifier(local_part),
@@ -196,6 +199,39 @@ async def rotate_address(domain_id: str, address_id: str, pubkey: str) -> Addres
             domain_id,
             address_id,
         ),
+    )
+
+    address = await get_address(domain_id, address_id)
+    assert address, "Newly updated address couldn't be retrieved"
+    return address
+
+
+async def update_address(domain_id: str, address_id: str, **kwargs) -> Address:
+    set_clause: List[str] = []
+    set_variables: List[Any] = []
+    valid_keys = [k for k in vars(Address) if not k.startswith("__")]
+    for key, value in kwargs.items():
+        if key not in valid_keys:
+            continue
+        if key == "config":
+            extra = json.dumps(value or AddressConfig(), default=lambda o: o.__dict__)
+            set_clause.append("extra = ?")
+            set_variables.append(extra)
+        else:
+            set_clause.append(f"{key} = ?")
+            set_variables.append(value)
+
+        set_variables.append(domain_id)
+        set_variables.append(address_id)
+
+    await db.execute(
+        f"""
+            UPDATE nostrnip5.addresses
+            SET {', '.join(set_clause)}
+            WHERE domain_id = ?
+            AND id = ?
+        """,
+        tuple(set_variables),
     )
 
     address = await get_address(domain_id, address_id)

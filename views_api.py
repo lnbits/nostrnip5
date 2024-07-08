@@ -3,6 +3,7 @@ from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Depends, Query, Request, Response
+from lnbits.core.crud import get_standalone_payment, get_wallets
 from lnbits.core.models import User, WalletTypeInfo
 from lnbits.core.services import create_invoice
 from lnbits.db import Filters, Page
@@ -23,6 +24,7 @@ from .crud import (
     create_settings,
     delete_address,
     delete_domain,
+    get_address,
     get_addresses,
     get_addresses_for_owner,
     get_domain,
@@ -221,6 +223,52 @@ async def api_address_rotate(
 
 
 @http_try_except
+@nostrnip5_api_router.put(
+    "/api/v1/domain/{domain_id}/address/{address_id}/reimburse",
+    dependencies=[Depends(check_admin)],
+    status_code=HTTPStatus.CREATED,
+)
+async def api_address_reimburse(
+    domain_id: str,
+    adddress_id: str,
+):
+
+    # make sure the address belongs to the user
+    domain = await get_domain_by_id(domain_id)
+    assert domain, "Domain does not exist."
+
+    address = await get_address(domain_id, adddress_id)
+
+    assert address and address.domain_id == domain_id, "Domain ID missmatch"
+    payment_hash = address.config.reimburse_payment_hash
+    assert payment_hash, f"No payment hash found to reimburse '{address.id}'."
+
+    payment = get_standalone_payment(checking_id_or_hash=payment_hash)
+    assert payment, f"No payment found to reimburse '{payment_hash}'."
+    wallet_id = payment.extra.get("reimburse_wallet_id")
+    assert wallet_id, f"No wallet found to reimburse payment {payment_hash}."
+
+    payment_hash, payment_request = await create_invoice(
+        wallet_id=wallet_id,
+        amount=address.reimburse_amount,
+        memo=f"Reimbursement for NIP-05 for {address.local_part}@{domain.domain}",
+        extra={
+            "tag": "nostrnip5",
+            "domain_id": domain_id,
+            "address_id": address.id,
+            "local_part": address.local_part,
+            "action": "reimburse",
+        },
+    )
+
+    return {
+        "payment_hash": payment_hash,
+        "payment_request": payment_request,
+        "address_id": address.id,
+    }
+
+
+@http_try_except
 @nostrnip5_api_router.post(
     "/api/v1/domain/{domain_id}/address", status_code=HTTPStatus.CREATED
 )
@@ -237,6 +285,9 @@ async def api_address_create(
     assert address_data.domain_id == domain_id, "Domain ID missmatch"
     address, price_in_sats = await create_address(domain, address_data, user_id)
 
+    # in case the user pays, but the identifier is no longer available
+    wallet_id = await get_wallets(user_id)[0] if user_id else None
+
     payment_hash, payment_request = await create_invoice(
         wallet_id=domain.wallet,
         amount=price_in_sats,
@@ -245,6 +296,8 @@ async def api_address_create(
             "tag": "nostrnip5",
             "domain_id": domain_id,
             "address_id": address.id,
+            "action": "activate",
+            "reimburse_wallet_id": wallet_id,
         },
     )
 

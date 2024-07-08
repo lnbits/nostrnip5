@@ -113,6 +113,7 @@ class Domain(PublicDomain):
 
 class AddressConfig(BaseModel):
     payment_hash: Optional[str] = None
+    reimburse_payment_hash: Optional[str] = None
     activated_by_owner: bool = False
     relays: List[str] = []
 
@@ -125,6 +126,7 @@ class Address(FromRowModel):
     pubkey: str
     active: bool
     time: int
+    reimburse_amount: int = 0
 
     config: AddressConfig = AddressConfig()
 
@@ -139,7 +141,6 @@ class Address(FromRowModel):
 class AddressStatus(BaseModel):
     identifier: str
     available: bool = False
-    reserved: bool = False
     price: Optional[float] = None
     price_reason: Optional[str] = None
     currency: Optional[str] = None
