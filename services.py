@@ -104,8 +104,8 @@ async def create_address(
 
     identifier_status = await get_identifier_status(domain, identifier)
 
-    assert identifier_status.available, "Identifier not available."
-    assert identifier_status.price, f"Cannot compute price for {identifier}"
+    assert identifier_status.available, f"Identifier '{identifier}' not available."
+    assert identifier_status.price, f"Cannot compute price for '{identifier}'."
 
     owner_id = owner_id_from_user_id(user_id)
     existing_address = await get_address_for_owner(owner_id, domain.id, identifier)
