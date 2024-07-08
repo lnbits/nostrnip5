@@ -111,6 +111,12 @@ class Domain(PublicDomain):
         return domain
 
 
+class AddressConfig(BaseModel):
+    payment_hash: Optional[str] = None
+    activated_by_owner: bool = False
+    relays: List[str] = []
+
+
 class Address(FromRowModel):
     id: str
     owner_id: Optional[str] = None
@@ -120,9 +126,14 @@ class Address(FromRowModel):
     active: bool
     time: int
 
+    config: AddressConfig = AddressConfig()
+
     @classmethod
     def from_row(cls, row: Row) -> "Address":
-        return cls(**dict(row))
+        address = cls(**dict(row))
+        if row["extra"]:
+            address.config = AddressConfig(**json.loads(row["extra"]))
+        return address
 
 
 class AddressStatus(BaseModel):

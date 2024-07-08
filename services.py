@@ -7,9 +7,11 @@ from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
 
 from .crud import (
+    activate_domain_address,
     create_address_internal,
     create_identifier_ranking,
     delete_inferior_ranking,
+    get_address,
     get_address_by_local_part,
     get_address_for_owner,
     get_all_addresses,
@@ -121,6 +123,26 @@ async def create_address(
     assert price_in_sats, f"Cannot compute price for {identifier}"
 
     return address, price_in_sats
+
+
+async def activate_address(
+    domain_id: str, address_id: str, payment_hash: Optional[str] = None
+) -> bool:
+    logger.info(f"Activating NOSTR NIP-05 '{address_id}' for {domain_id}")
+    try:
+        address = await get_address(domain_id, address_id)
+        assert address, f"Cannot find address '{address_id}' for {domain_id}."
+        assert not address.active, f"Address '{address_id}' already active."
+
+        address.config.activated_by_owner = payment_hash is None
+        address.config.payment_hash = payment_hash
+        await activate_domain_address(domain_id, address_id, address.config)
+
+        return True
+    except Exception as exc:
+        logger.warning(exc)
+        logger.info(f"Failed to acivate NOSTR NIP-05 '{address_id}' for {domain_id}.")
+        return False
 
 
 async def check_address_payment(domain_id: str, payment_hash: str) -> bool:

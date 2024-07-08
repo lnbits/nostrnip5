@@ -7,6 +7,7 @@ from lnbits.helpers import urlsafe_short_hash
 from .helpers import normalize_identifier
 from .models import (
     Address,
+    AddressConfig,
     AddressFilters,
     CreateAddressData,
     CreateDomainData,
@@ -159,15 +160,19 @@ async def get_all_addresses_paginated(
     )
 
 
-async def activate_address(domain_id: str, address_id: str) -> Address:
+async def activate_domain_address(
+    domain_id: str, address_id: str, config: AddressConfig
+) -> Address:
+    extra = json.dumps(config, default=lambda o: o.__dict__)
     await db.execute(
         """
         UPDATE nostrnip5.addresses
-        SET active = true
+        SET active = true, extra = ?
         WHERE domain_id = ?
         AND id = ?
         """,
         (
+            extra,
             domain_id,
             address_id,
         ),
@@ -232,15 +237,17 @@ async def delete_address(domain_id, address_id):
 
 
 async def create_address_internal(
-    data: CreateAddressData, owner_id: Optional[str] = None
+    data: CreateAddressData,
+    owner_id: Optional[str] = None,
+    config: Optional[AddressConfig] = None,
 ) -> Address:
     address_id = urlsafe_short_hash()
-
+    extra = json.dumps(config or AddressConfig(), default=lambda o: o.__dict__)
     await db.execute(
         """
         INSERT INTO nostrnip5.addresses
-        (id, domain_id, owner_id, local_part, pubkey, active)
-        VALUES (?, ?, ?, ?, ?, ?)
+        (id, domain_id, owner_id, local_part, pubkey, active, extra)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         (
             address_id,
@@ -249,6 +256,7 @@ async def create_address_internal(
             normalize_identifier(data.local_part),
             data.pubkey,
             False,
+            extra,
         ),
     )
 

@@ -19,7 +19,6 @@ from loguru import logger
 from starlette.exceptions import HTTPException
 
 from .crud import (
-    activate_address,
     create_domain_internal,
     create_settings,
     delete_address,
@@ -52,6 +51,7 @@ from .models import (
     RotateAddressData,
 )
 from .services import (
+    activate_address,
     check_address_payment,
     create_address,
     get_identifier_status,
