@@ -243,7 +243,7 @@ async def api_address_reimburse(
     payment_hash = address.config.reimburse_payment_hash
     assert payment_hash, f"No payment hash found to reimburse '{address.id}'."
 
-    payment = get_standalone_payment(checking_id_or_hash=payment_hash)
+    payment = await get_standalone_payment(checking_id_or_hash=payment_hash)
     assert payment, f"No payment found to reimburse '{payment_hash}'."
     wallet_id = payment.extra.get("reimburse_wallet_id")
     assert wallet_id, f"No wallet found to reimburse payment {payment_hash}."
@@ -286,7 +286,7 @@ async def api_address_create(
     address, price_in_sats = await create_address(domain, address_data, user_id)
 
     # in case the user pays, but the identifier is no longer available
-    wallet_id = await get_wallets(user_id)[0] if user_id else None
+    wallet_id = (await get_wallets(user_id))[0] if user_id else None
 
     payment_hash, payment_request = await create_invoice(
         wallet_id=domain.wallet,
