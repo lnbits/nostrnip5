@@ -181,7 +181,9 @@
               <q-td v-text="props.row.id"></q-td>
               <q-td v-text="props.row.active"></q-td>
               <q-td v-text="props.row.domain_id"></q-td>
-              <q-td v-text="props.row.local_part"></q-td>
+              <q-td>
+                <span v-text="addressFullName(props.row)"></span>
+              </q-td>
               <q-td v-text="props.row.pubkey"></q-td>
               <q-td
                 v-text="props.row.reimburse_amount"
@@ -852,7 +854,7 @@
             {
               name: 'local_part',
               align: 'left',
-              label: 'Local Part',
+              label: 'Address',
               field: 'local_part',
               sortable: true
             },
@@ -1284,6 +1286,19 @@
         if (index < this.formDialog.data.cost_config.rank_cost.length) {
           this.formDialog.data.cost_config.rank_cost.splice(index, 1)
         }
+      },
+      domainNameFromId: function (domainId) {
+        console.log('### domainId', domainId)
+        const domain = this.domains.find(d => d.id === domainId) || {}
+        return domain.domain || ''
+      },
+      addressFullName: function (address) {
+        console.log('### ', address)
+        if (!address) {
+          return ''
+        }
+        const domain = this.domainNameFromId(address.domain_id)
+        return `${address.local_part}@${domain}`
       },
       exportCSV: function () {
         LNbits.utils.exportCSV(this.domainsTable.columns, this.domains)
