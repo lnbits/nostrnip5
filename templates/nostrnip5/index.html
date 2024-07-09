@@ -180,8 +180,12 @@
 
               <q-td v-text="props.row.id"></q-td>
               <q-td v-text="props.row.active"></q-td>
-              <q-td v-text="props.row.domain_id"></q-td>
+
               <q-td>
+                <q-tooltip>
+                  <span>Domain ID:</span>
+                  <span v-text="props.row.domain_id"></span
+                ></q-tooltip>
                 <span v-text="addressFullName(props.row)"></span>
               </q-td>
               <q-td v-text="props.row.pubkey"></q-td>
@@ -845,13 +849,6 @@
               sortable: true
             },
             {
-              name: 'domain_id',
-              align: 'left',
-              label: 'Domain',
-              field: 'domain_id',
-              sortable: true
-            },
-            {
               name: 'local_part',
               align: 'left',
               label: 'Address',
@@ -1123,7 +1120,6 @@
           })
       },
       showReimburseInvoice: function (address) {
-        console.log('### address', address)
         if (!address || address.reimburse_amount <= 0) {
           this.$q.notify({
             type: 'warning',
@@ -1288,12 +1284,10 @@
         }
       },
       domainNameFromId: function (domainId) {
-        console.log('### domainId', domainId)
         const domain = this.domains.find(d => d.id === domainId) || {}
         return domain.domain || ''
       },
       addressFullName: function (address) {
-        console.log('### ', address)
         if (!address) {
           return ''
         }

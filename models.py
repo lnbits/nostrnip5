@@ -156,6 +156,7 @@ class AddressStatus(BaseModel):
 class AddressFilters(FilterModel):
     domain_id: str
     local_part: str
+    reimburse_amount: str
     pubkey: str
     active: bool
     time: int
