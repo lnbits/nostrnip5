@@ -32,7 +32,6 @@ from .crud import (
     get_identifier_ranking,
     get_settings,
     rotate_address,
-    update_address,
     update_domain_internal,
     update_identifier_ranking,
 )
@@ -239,12 +238,14 @@ async def api_address_reimburse(
     assert domain, "Domain does not exist."
 
     address = await get_address(domain_id, address_id)
+    assert address and (address.domain_id == domain_id), "Domain ID missmatch"
 
-    assert address and address.domain_id == domain_id, "Domain ID missmatch"
     payment_hash = address.config.reimburse_payment_hash
     assert payment_hash, f"No payment hash found to reimburse '{address.id}'."
 
-    payment = await get_standalone_payment(checking_id_or_hash=payment_hash, incoming=True)
+    payment = await get_standalone_payment(
+        checking_id_or_hash=payment_hash, incoming=True
+    )
     assert payment, f"No payment found to reimburse '{payment_hash}'."
     wallet_id = payment.extra.get("reimburse_wallet_id")
     assert wallet_id, f"No wallet found to reimburse payment {payment_hash}."

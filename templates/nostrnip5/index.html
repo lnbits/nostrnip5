@@ -177,9 +177,19 @@
                   @click="deleteAddress(props.row.id)"
                 ></q-btn>
               </q-td>
-              <q-td v-for="col in props.cols" :key="col.name" :props="props">
-                {{ col.value }}
+
+              <q-td v-text="props.row.id"></q-td>
+              <q-td v-text="props.row.active"></q-td>
+              <q-td v-text="props.row.domain_id"></q-td>
+              <q-td v-text="props.row.local_part"></q-td>
+              <q-td v-text="props.row.pubkey"></q-td>
+              <q-td
+                v-text="props.row.reimburse_amount"
+                @click="showReimburseInvoice(props.row)"
+                class="cursor-pointer"
+              >
               </q-td>
+              <q-td v-text="props.row.time"></q-td>
             </q-tr>
           </template>
           {% endraw %}
@@ -239,10 +249,10 @@
         <q-input
           filled
           dense
-          v-model.trim="formDialog.data.cost"
+          v-model="formDialog.data.cost"
           type="number"
           min="0"
-          step="1"
+          step="any"
           label="Price"
           placeholder="How much do you want to charge per address?"
         ></q-input>
@@ -580,6 +590,30 @@
       </q-form>
     </q-card>
   </q-dialog>
+
+  <q-dialog v-model="qrCodeDialog.show" position="top">
+    <q-card class="q-pa-lg q-pt-xl lnbits__dialog-card text-center">
+      <a
+        class="text-secondary"
+        :href="'lightning:' + qrCodeDialog.data.payment_request"
+      >
+        <q-responsive :ratio="1" class="q-mx-xs">
+          <qrcode
+            :value="qrCodeDialog.data.payment_request"
+            :options="{width: 400}"
+            class="rounded-borders"
+          ></qrcode>
+        </q-responsive>
+      </a>
+      <br />
+      <q-btn
+        outline
+        color="grey"
+        @click="copyText('lightning:' + qrCodeDialog.data.payment_request, 'Invoice copied to clipboard!')"
+        >Copy Invoice</q-btn
+      >
+    </q-card>
+  </q-dialog>
 </div>
 {% endblock %} {% block scripts %} {{ window_vars(user) }}
 <script>
@@ -589,11 +623,12 @@
       'YYYY-MM-DD HH:mm'
     )
 
-    obj.cost = parseFloat(obj.cost).toFixed(2)
+    // obj.cost = parseFloat(obj.cost).toFixed(2)
 
     return obj
   }
 
+  Vue.component(VueQrcode.name, VueQrcode)
   new Vue({
     el: '#vue',
     mixins: [windowMixin],
@@ -829,6 +864,13 @@
               sortable: true
             },
             {
+              name: 'reimburse_amount',
+              align: 'left',
+              label: 'Reimburse',
+              field: 'reimburse_amount',
+              sortable: true
+            },
+            {
               name: 'time',
               align: 'left',
               label: 'Created At',
@@ -862,6 +904,10 @@
         settingsFormDialog: {
           show: false,
           data: {}
+        },
+        qrCodeDialog: {
+          show: false,
+          data: {}
         }
       }
     },
@@ -888,6 +934,10 @@
           identifier: ''
         }
         this.settingsFormDialog.show = false
+        this.qrCodeDialog.show = false
+        this.qrCodeDialog.data = {
+          payment_request: ''
+        }
       },
       closeAddressFormDialog: function () {
         this.resetFormDialog()
@@ -1068,6 +1118,35 @@
               .catch(function (error) {
                 LNbits.utils.notifyApiError(error)
               })
+          })
+      },
+      showReimburseInvoice: function (address) {
+        console.log('### address', address)
+        if (!address || address.reimburse_amount <= 0) {
+          this.$q.notify({
+            type: 'warning',
+            message: 'Nothing to reimburse.'
+          })
+          return
+        }
+        var self = this
+        self.$q.notify({
+          type: 'positive',
+          message: 'Generating reimbursement invoice.'
+        })
+        return LNbits.api
+          .request(
+            'GET',
+            `/nostrnip5/api/v1/domain/${address.domain_id}` +
+              `/address/${address.id}/reimburse`,
+            self.g.user.wallets[0].adminkey
+          )
+          .then(function (response) {
+            self.qrCodeDialog.show = true
+            self.qrCodeDialog.data = response.data
+          })
+          .catch(function (error) {
+            LNbits.utils.notifyApiError(error)
           })
       },
       refreshDomainRanking: function (braket) {
