@@ -32,6 +32,7 @@ from .crud import (
     get_identifier_ranking,
     get_settings,
     rotate_address,
+    update_address,
     update_domain_internal,
     update_identifier_ranking,
 )
@@ -51,6 +52,7 @@ from .models import (
     IdentifierRanking,
     Nip5Settings,
     RotateAddressData,
+    UpdateAddressData,
 )
 from .services import (
     activate_address,
@@ -171,7 +173,8 @@ async def api_domain_delete(
 
 @http_try_except
 @nostrnip5_api_router.delete(
-    "/api/v1/address/{domain_id}/{address_id}", status_code=HTTPStatus.GONE
+    "/api/v1/address/{domain_id}/{address_id}",
+    status_code=HTTPStatus.GONE,  # todo add /address
 )
 async def api_delete_address(
     domain_id: str,
@@ -222,6 +225,31 @@ async def api_address_rotate(
     await rotate_address(domain_id, address_id, post_data.pubkey)
 
     return True
+
+
+# todo: anonimous
+@http_try_except
+@nostrnip5_api_router.put(
+    "/api/v1/domain/{domain_id}/address/{address_id}",
+    status_code=HTTPStatus.OK,
+)
+async def api_set_address_update(
+    domain_id: str,
+    address_id: str,
+    data: UpdateAddressData,
+    w: WalletTypeInfo = Depends(require_admin_key),  # todo: change my own address
+):
+    # make sure the address belongs to the user
+    domain = await get_domain(domain_id, w.wallet.id)
+    assert domain, "Domain does not exist."
+
+    address = await get_address(domain.id, address_id)
+    assert address and (address.domain_id == domain.id), "Domain ID missmatch"
+
+    pubkey = data.pubkey if data.pubkey else address.pubkey
+    if data.relays:
+        address.config.relays = data.relays
+    await update_address(domain.id, address.id, pubkey=pubkey, config=address.config)
 
 
 @http_try_except

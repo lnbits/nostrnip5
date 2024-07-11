@@ -174,7 +174,7 @@
                   size="xs"
                   icon="edit"
                   :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
-                  @click="activateAddress(props.row.domain_id, props.row.id)"
+                  @click="editAddress(props.row)"
                 ></q-btn>
                 <q-btn
                   unelevated
@@ -424,6 +424,7 @@
     <q-card class="q-pa-lg q-pt-xl" style="width: 500px">
       <q-form @submit="saveAddress" class="q-gutter-md">
         <q-select
+          v-if="!addressFormDialog.data.id"
           filled
           dense
           emit-value
@@ -439,12 +440,34 @@
           placeholder="npub or hex"
         ></q-input>
         <q-input
+          v-if="!addressFormDialog.data.id"
           filled
           dense
           v-model.trim="addressFormDialog.data.local_part"
           label="Local Part"
           placeholder="benarc"
         ></q-input>
+        <q-input
+          filled
+          dense
+          v-model="addressFormDialog.data.relay"
+          @keydown.enter="addRelayForAddress"
+          type="text"
+          label="Relay"
+        >
+          <q-btn @click="addRelayForAddress" dense flat icon="add"></q-btn>
+        </q-input>
+        <div>
+          <q-chip
+            v-for="relay in addressFormDialog.data.config.relays"
+            :key="relay"
+            removable
+            @remove="removeRelayForAddress(relay)"
+            color="primary"
+            text-color="white"
+            ><span v-text="relay"></span
+          ></q-chip>
+        </div>
 
         <div class="row q-mt-lg">
           <q-btn
@@ -452,7 +475,9 @@
             color="primary"
             :disable="addressFormDialog.data.domain_id == null || addressFormDialog.data.pubkey == null || addressFormDialog.data.local_part == null"
             type="submit"
-            >Create Address</q-btn
+          >
+            <span v-if="!addressFormDialog.data.id"> Create Address</span>
+            <span v-else> Update Address</span></q-btn
           >
           <q-btn v-close-popup flat color="grey" class="q-ml-auto"
             >Cancel</q-btn
@@ -929,6 +954,15 @@
             rank_cost: []
           }
         }
+        this.addressFormDialog.show = false
+        this.addressFormDialog.data = {
+          relay: '',
+          config: {
+            relays: []
+          },
+          pubkey: '',
+          local_part: ''
+        }
         this.rankingFormDialog.show = false
         this.rankingFormDialog.data = {
           bucket: 0,
@@ -997,6 +1031,25 @@
             })
           })
       },
+      editAddress: function (address) {
+        this.addressFormDialog.show = true
+        this.addressFormDialog.data = address
+      },
+      addRelayForAddress: function (event) {
+        event.preventDefault()
+        this.removeRelayForAddress(this.addressFormDialog.data.relay)
+        if (this.addressFormDialog.data.relay) {
+          this.addressFormDialog.data.config.relays.push(
+            this.addressFormDialog.data.relay
+          )
+        }
+        this.addressFormDialog.data.relay = ''
+      },
+      removeRelayForAddress: function (relay) {
+        this.addressFormDialog.data.config.relays = (
+          this.addressFormDialog.data.config.relays || []
+        ).filter(r => r !== relay)
+      },
       saveDomain: function () {
         var data = this.formDialog.data
         var self = this
@@ -1047,8 +1100,11 @@
       saveAddress: function () {
         var self = this
         var formDialog = this.addressFormDialog
+        if (formDialog.data.id) {
+          this.updateAddress()
+          return
+        }
         var domain = _.findWhere(this.domains, {id: formDialog.data.domain_id})
-
         axios
           .post(
             '/nostrnip5/api/v1/domain/' +
@@ -1068,8 +1124,32 @@
             )
           })
           .then(function (response) {
-            self.addressFormDialog.data = {}
-            self.addressFormDialog.show = false
+            self.resetFormDialog()
+            self.getAddresses()
+          })
+          .catch(function (error) {
+            LNbits.utils.notifyApiError(error)
+          })
+      },
+      updateAddress: function () {
+        var self = this
+        var data = this.addressFormDialog.data
+        var domain = _.findWhere(this.domains, {id: data.domain_id})
+        return LNbits.api
+          .request(
+            'PUT',
+            '/nostrnip5/api/v1/domain/' +
+              data.domain_id +
+              '/address/' +
+              data.id,
+            _.findWhere(self.g.user.wallets, {id: domain.wallet}).adminkey,
+            {
+              pubkey: data.pubkey,
+              relays: data.config.relays
+            }
+          )
+          .then(function (response) {
+            self.resetFormDialog()
             self.getAddresses()
           })
           .catch(function (error) {

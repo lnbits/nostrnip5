@@ -19,10 +19,16 @@ class RotateAddressData(BaseModel):
     pubkey: str
 
 
+class UpdateAddressData(BaseModel):
+    pubkey: Optional[str] = None
+    relays: Optional[List[str]] = None
+
+
 class CreateAddressData(BaseModel):
     domain_id: str
     local_part: str
     pubkey: str
+    relays: Optional[List[str]] = None
 
 
 class DomainCostConfig(BaseModel):
