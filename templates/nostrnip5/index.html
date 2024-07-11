@@ -153,7 +153,7 @@
                   unelevated
                   dense
                   size="xs"
-                  icon="edit"
+                  icon="link"
                   :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
                   type="a"
                   target="_blank"
@@ -166,6 +166,14 @@
                   icon="check"
                   :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
                   :disable="props.row.active == true"
+                  @click="activateAddress(props.row.domain_id, props.row.id)"
+                ></q-btn>
+                <q-btn
+                  unelevated
+                  dense
+                  size="xs"
+                  icon="edit"
+                  :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
                   @click="activateAddress(props.row.domain_id, props.row.id)"
                 ></q-btn>
                 <q-btn
@@ -1112,6 +1120,12 @@
                 _.findWhere(self.g.user.wallets, {id: domain.wallet}).adminkey
               )
               .then(function (response) {
+                if (response.data.success) {
+                  self.$q.notify({
+                    type: 'positive',
+                    message: 'Address activated'
+                  })
+                }
                 self.getAddresses()
               })
               .catch(function (error) {

@@ -4,7 +4,7 @@ from typing import Optional
 import httpx
 from fastapi import APIRouter, Depends, Query, Request, Response
 from lnbits.core.crud import get_wallets
-from lnbits.core.models import User, WalletTypeInfo
+from lnbits.core.models import SimpleStatus, User, WalletTypeInfo
 from lnbits.core.services import create_invoice
 from lnbits.db import Filters, Page
 from lnbits.decorators import (  # type: ignore[attr-defined]
@@ -199,7 +199,8 @@ async def api_activate_address(
     domain = await get_domain(domain_id, w.wallet.id)
     assert domain, "Domain does not exist."
 
-    return await activate_address(domain_id, address_id)
+    success = await activate_address(domain_id, address_id)
+    return SimpleStatus(success=success, message="")
 
 
 @http_try_except
