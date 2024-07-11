@@ -3,7 +3,7 @@ from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Depends, Query, Request, Response
-from lnbits.core.crud import get_standalone_payment, get_wallets
+from lnbits.core.crud import get_wallets
 from lnbits.core.models import User, WalletTypeInfo
 from lnbits.core.services import create_invoice
 from lnbits.db import Filters, Page
@@ -57,6 +57,7 @@ from .services import (
     check_address_payment,
     create_address,
     get_identifier_status,
+    get_reimburse_wallet_id,
     get_user_addresses,
     get_user_addresses_paginated,
     get_user_domains,
@@ -237,18 +238,10 @@ async def api_address_reimburse(
     domain = await get_domain_by_id(domain_id)
     assert domain, "Domain does not exist."
 
-    address = await get_address(domain_id, address_id)
-    assert address and (address.domain_id == domain_id), "Domain ID missmatch"
+    address = await get_address(domain.id, address_id)
+    assert address and (address.domain_id == domain.id), "Domain ID missmatch"
 
-    payment_hash = address.config.reimburse_payment_hash
-    assert payment_hash, f"No payment hash found to reimburse '{address.id}'."
-
-    payment = await get_standalone_payment(
-        checking_id_or_hash=payment_hash, incoming=True
-    )
-    assert payment, f"No payment found to reimburse '{payment_hash}'."
-    wallet_id = payment.extra.get("reimburse_wallet_id")
-    assert wallet_id, f"No wallet found to reimburse payment {payment_hash}."
+    wallet_id = await get_reimburse_wallet_id(address)
 
     payment_hash, payment_request = await create_invoice(
         wallet_id=wallet_id,

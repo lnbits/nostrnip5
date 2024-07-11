@@ -164,6 +164,19 @@ async def check_address_payment(domain_id: str, payment_hash: str) -> bool:
     return status.success
 
 
+async def get_reimburse_wallet_id(address: Address) -> str:
+    payment_hash = address.config.reimburse_payment_hash
+    assert payment_hash, f"No payment hash found to reimburse '{address.id}'."
+
+    payment = await get_standalone_payment(
+        checking_id_or_hash=payment_hash, incoming=True
+    )
+    assert payment, f"No payment found to reimburse '{payment_hash}'."
+    wallet_id = payment.extra.get("reimburse_wallet_id")
+    assert wallet_id, f"No wallet found to reimburse payment {payment_hash}."
+    return wallet_id
+
+
 async def reimburse_payment(payment: Payment):
     reimburse_wallet_ids = payment.extra.get("reimburse_wallet_ids", [])
     domain_id = payment.extra.get("domain_id")
