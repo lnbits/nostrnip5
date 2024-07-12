@@ -119,14 +119,18 @@ async def api_get_addresses_paginated(
 @http_try_except
 @nostrnip5_api_router.get("/api/v1/addresses/user", status_code=HTTPStatus.OK)
 async def api_get_user_addresses(
-    user_id: Optional[str] = Depends(optional_user_id),
+    user_id: Optional[str] = Depends(optional_user_id), local_part: Optional[str] = None
 ):
     if not user_id:
         raise HTTPException(HTTPStatus.UNAUTHORIZED)
 
     owner_id = owner_id_from_user_id(user_id)
     assert owner_id
-    return [address.dict() for address in await get_addresses_for_owner(owner_id)]
+    return [
+        address.dict()
+        for address in await get_addresses_for_owner(owner_id)
+        if not local_part or address.local_part == local_part
+    ]
 
 
 @http_try_except
@@ -233,23 +237,29 @@ async def api_address_rotate(
     "/api/v1/domain/{domain_id}/address/{address_id}",
     status_code=HTTPStatus.OK,
 )
-async def api_set_address_update(
+async def api_update_address(
     domain_id: str,
     address_id: str,
     data: UpdateAddressData,
-    w: WalletTypeInfo = Depends(require_admin_key),  # todo: change my own address
-):
-    # make sure the address belongs to the user
-    domain = await get_domain(domain_id, w.wallet.id)
-    assert domain, "Domain does not exist."
+    user_id: Optional[str] = Depends(optional_user_id),
+) -> Address:
 
-    address = await get_address(domain.id, address_id)
-    assert address and (address.domain_id == domain.id), "Domain ID missmatch"
+    if not user_id:
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
+
+    address = await get_address(domain_id, address_id)
+    assert address, "Address not found"
+    assert address.domain_id == domain_id, "Domain ID missmatch"
+
+    owner_id = owner_id_from_user_id(user_id)  # todo: allow for admins
+    assert address.owner_id == owner_id, "Address does not belong to this user"
 
     pubkey = data.pubkey if data.pubkey else address.pubkey
     if data.relays:
         address.config.relays = data.relays
-    await update_address(domain.id, address.id, pubkey=pubkey, config=address.config)
+    await update_address(domain_id, address.id, pubkey=pubkey, config=address.config)
+
+    return address
 
 
 @http_try_except
