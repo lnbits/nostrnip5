@@ -26,7 +26,6 @@ from .crud import (
     delete_domain,
     get_address,
     get_addresses,
-    get_addresses_for_owner,
     get_domain,
     get_domain_by_id,
     get_identifier_ranking,
@@ -63,6 +62,7 @@ from .services import (
     get_user_addresses,
     get_user_addresses_paginated,
     get_user_domains,
+    get_valid_addresses_for_owner,
     refresh_buckets,
     update_identifiers,
 )
@@ -119,18 +119,16 @@ async def api_get_addresses_paginated(
 @http_try_except
 @nostrnip5_api_router.get("/api/v1/addresses/user", status_code=HTTPStatus.OK)
 async def api_get_user_addresses(
-    user_id: Optional[str] = Depends(optional_user_id), local_part: Optional[str] = None
+    user_id: Optional[str] = Depends(optional_user_id),
+    local_part: Optional[str] = None,
+    active: Optional[bool] = None,
 ):
     if not user_id:
         raise HTTPException(HTTPStatus.UNAUTHORIZED)
 
     owner_id = owner_id_from_user_id(user_id)
     assert owner_id
-    return [
-        address.dict()
-        for address in await get_addresses_for_owner(owner_id)
-        if not local_part or address.local_part == local_part
-    ]
+    return await get_valid_addresses_for_owner(owner_id, local_part, active)
 
 
 @http_try_except
@@ -170,6 +168,7 @@ async def api_domain_delete(
     domain_id: str,
     w: WalletTypeInfo = Depends(require_admin_key),
 ):
+    # make sure the address belongs to the user
     deleted = await delete_domain(domain_id, w.wallet.id)
 
     return deleted

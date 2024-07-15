@@ -15,8 +15,10 @@ from .crud import (
     get_active_address_by_local_part,
     get_address,
     get_address_for_owner,
+    get_addresses_for_owner,
     get_all_addresses,
     get_all_addresses_paginated,
+    get_domain_by_id,
     get_domains,
     get_identifier_ranking,
     update_address,
@@ -96,10 +98,17 @@ async def get_identifier_status(
 
     price, reason = domain.price_for_identifier(identifier, years, rank)
 
+    price_in_sats = (
+        price
+        if domain.currency == "sats"
+        else await fiat_amount_as_satoshis(price, domain.currency)
+    )
+
     return AddressStatus(
         identifier=identifier,
         available=True,
         price=price,
+        price_in_sats=price_in_sats,
         price_reason=reason,
         currency=domain.currency,
     )
@@ -162,6 +171,36 @@ async def activate_address(
         logger.warning(exc)
         logger.info(f"Failed to acivate NOSTR NIP-05 '{address_id}' for {domain_id}.")
         return False
+
+
+async def get_valid_addresses_for_owner(
+    owner_id: str, local_part: Optional[str] = None, active: Optional[bool] = None
+) -> List[Address]:
+
+    valid_addresses = []
+    addresses = await get_addresses_for_owner(owner_id)
+    for address in addresses:
+        if active is not None and active != address.active:
+            continue
+        if local_part and address.local_part != local_part:
+            continue
+        domain = await get_domain_by_id(address.domain_id)
+        if not domain:
+            continue
+        status = await get_identifier_status(domain, address.local_part, years=1)
+
+        if status.available:
+            # update to latest price
+            address.config.price_in_sats = status.price_in_sats
+            address.config.price = status.price
+        elif not address.active:
+            # do not return addresses which cannot be sold
+            continue
+
+        address.config.currency = domain.currency
+        valid_addresses.append(address)
+
+    return valid_addresses
 
 
 async def check_address_payment(domain_id: str, payment_hash: str) -> bool:

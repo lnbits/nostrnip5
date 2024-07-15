@@ -126,6 +126,7 @@ class Domain(PublicDomain):
 
 
 class AddressConfig(BaseModel):
+    currency: Optional[str] = None
     price: Optional[float] = None
     price_in_sats: Optional[float] = None
     payment_hash: Optional[str] = None
@@ -158,6 +159,7 @@ class AddressStatus(BaseModel):
     identifier: str
     available: bool = False
     price: Optional[float] = None
+    price_in_sats: Optional[float] = None
     price_reason: Optional[str] = None
     currency: Optional[str] = None
 
