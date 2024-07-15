@@ -267,9 +267,20 @@
           type="number"
           min="0"
           step="any"
-          label="Price"
+          label="Price per Year"
           placeholder="How much do you want to charge per address?"
         ></q-input>
+        <q-input
+          filled
+          dense
+          v-model="formDialog.data.cost_config.max_years"
+          type="number"
+          min="1"
+          step="1"
+          label="Max Years"
+          hint="Maximum number of years a user can have an address before renewing."
+        ></q-input>
+
         <q-toggle
           v-model="formDialog.data.cost_config.enable_custom_cost"
           label="Advanced cost configurations"
@@ -949,6 +960,7 @@
         this.domainTab = 'charCount'
         this.formDialog.data = {
           cost_config: {
+            max_years: 1,
             enable_custom_cost: false,
             char_count_cost: [],
             rank_cost: []

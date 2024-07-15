@@ -28,10 +28,12 @@ class CreateAddressData(BaseModel):
     domain_id: str
     local_part: str
     pubkey: str
+    years: int
     relays: Optional[List[str]] = None
 
 
 class DomainCostConfig(BaseModel):
+    max_years: int = 1
     enable_custom_cost: bool = False
     char_count_cost: List[CustomCost] = []
     rank_cost: List[CustomCost] = []
@@ -82,13 +84,17 @@ class Domain(PublicDomain):
     time: int
 
     def price_for_identifier(
-        self, identifier: str, rank: Optional[int] = None
+        self, identifier: str, years: int, rank: Optional[int] = None
     ) -> Tuple[float, str]:
+        assert (
+            1 <= years <= self.cost_config.max_years
+        ), f"Number of years must be between '1' and '{self.cost_config.max_years}'."
+
         identifier = normalize_identifier(identifier)
         max_amount = self.cost
         reason = ""
         if not self.cost_config.enable_custom_cost:
-            return max_amount, reason
+            return max_amount * years, reason
 
         for char_cost in self.cost_config.char_count_cost:
             if len(identifier) <= char_cost.bracket and max_amount < char_cost.amount:
@@ -96,17 +102,19 @@ class Domain(PublicDomain):
                 reason = f"{len(identifier)} characters"
 
         if not rank:
-            return max_amount, reason
+            return max_amount * years, reason
 
         for rank_cost in self.cost_config.rank_cost:
             if rank <= rank_cost.bracket and max_amount < rank_cost.amount:
                 max_amount = rank_cost.amount
                 reason = f"Top {rank_cost.bracket} identifier"
 
-        return max_amount, reason
+        return max_amount * years, reason
 
     def public_data(self):
-        return PublicDomain(**dict(self))
+        data = dict(PublicDomain(**dict(self)))
+        data["max_years"] = self.cost_config.max_years
+        return data
 
     @classmethod
     def from_row(cls, row: Row) -> "Domain":
@@ -118,6 +126,8 @@ class Domain(PublicDomain):
 
 
 class AddressConfig(BaseModel):
+    price: Optional[float] = None
+    price_in_sats: Optional[float] = None
     payment_hash: Optional[str] = None
     reimburse_payment_hash: Optional[str] = None
     activated_by_owner: bool = False

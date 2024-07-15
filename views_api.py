@@ -356,7 +356,7 @@ async def api_check_address_payment(domain_id: str, payment_hash: str):
     "/api/v1/domain/{domain_id}/search", status_code=HTTPStatus.OK
 )
 async def api_search_identifier(
-    domain_id: str, q: Optional[str] = None
+    domain_id: str, q: Optional[str] = None, years: Optional[int] = None
 ) -> AddressStatus:
 
     if not q:
@@ -365,7 +365,7 @@ async def api_search_identifier(
     domain = await get_domain_by_id(domain_id)
     assert domain, "Unknown domain id."
 
-    return await get_identifier_status(domain, q)
+    return await get_identifier_status(domain, q, years or 1)
 
 
 @http_try_except

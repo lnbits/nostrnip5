@@ -19,13 +19,21 @@ from .crud import (
     get_all_addresses_paginated,
     get_domains,
     get_identifier_ranking,
+    update_address,
 )
 from .helpers import (
     normalize_identifier,
     owner_id_from_user_id,
     validate_pub_key,
 )
-from .models import Address, AddressFilters, AddressStatus, CreateAddressData, Domain
+from .models import (
+    Address,
+    AddressConfig,
+    AddressFilters,
+    AddressStatus,
+    CreateAddressData,
+    Domain,
+)
 
 
 async def get_user_domains(
@@ -70,7 +78,9 @@ async def get_user_addresses_paginated(
     return await get_all_addresses_paginated(wallet_ids, filters)
 
 
-async def get_identifier_status(domain: Domain, identifier: str) -> AddressStatus:
+async def get_identifier_status(
+    domain: Domain, identifier: str, years: int
+) -> AddressStatus:
     identifier = normalize_identifier(identifier)
     address = await get_active_address_by_local_part(domain.id, identifier)
     if address:
@@ -84,7 +94,7 @@ async def get_identifier_status(domain: Domain, identifier: str) -> AddressStatu
     if rank == 0:
         return AddressStatus(identifier=identifier, available=False)
 
-    price, reason = domain.price_for_identifier(identifier, rank)
+    price, reason = domain.price_for_identifier(identifier, years, rank)
 
     return AddressStatus(
         identifier=identifier,
@@ -96,30 +106,37 @@ async def get_identifier_status(domain: Domain, identifier: str) -> AddressStatu
 
 
 async def create_address(
-    domain: Domain, address_data: CreateAddressData, user_id: Optional[str] = None
+    domain: Domain, data: CreateAddressData, user_id: Optional[str] = None
 ) -> Tuple[Address, float]:
 
-    identifier = normalize_identifier(address_data.local_part)
-    address_data.local_part = identifier
-    address_data.pubkey = validate_pub_key(address_data.pubkey)
+    identifier = normalize_identifier(data.local_part)
+    data.local_part = identifier
+    data.pubkey = validate_pub_key(data.pubkey)
 
-    identifier_status = await get_identifier_status(domain, identifier)
+    identifier_status = await get_identifier_status(domain, identifier, data.years)
 
     assert identifier_status.available, f"Identifier '{identifier}' not available."
     assert identifier_status.price, f"Cannot compute price for '{identifier}'."
-
-    owner_id = owner_id_from_user_id(user_id)
-    existing_address = await get_address_for_owner(owner_id, domain.id, identifier)
-
-    address = existing_address or await create_address_internal(address_data, owner_id)
 
     price_in_sats = (
         identifier_status.price
         if domain.currency == "sats"
         else await fiat_amount_as_satoshis(identifier_status.price, domain.currency)
     )
+    assert price_in_sats, f"Cannot compute price for '{identifier}'."
 
-    assert price_in_sats, f"Cannot compute price for {identifier}"
+    owner_id = owner_id_from_user_id(user_id)
+    existing_address = await get_address_for_owner(owner_id, domain.id, identifier)
+    if existing_address:
+        config = existing_address.config
+        config.price = identifier_status.price
+        config.price_in_sats = price_in_sats
+        address = await update_address(domain.id, existing_address.id, config=config)
+    else:
+        config = AddressConfig(
+            price=identifier_status.price, price_in_sats=price_in_sats
+        )
+        address = await create_address_internal(data, owner_id, config=config)
 
     return address, price_in_sats
 
