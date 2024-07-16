@@ -27,8 +27,8 @@ class UpdateAddressData(BaseModel):
 class CreateAddressData(BaseModel):
     domain_id: str
     local_part: str
-    pubkey: str
-    years: int
+    pubkey: str = ""
+    years: int = 1
     relays: Optional[List[str]] = None
 
 
@@ -144,8 +144,13 @@ class Address(FromRowModel):
     active: bool
     time: int
     reimburse_amount: int = 0
+    # todo: expire
 
     config: AddressConfig = AddressConfig()
+
+    @property
+    def has_pubkey(self):
+        return self.pubkey != ""
 
     @classmethod
     def from_row(cls, row: Row) -> "Address":

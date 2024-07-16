@@ -316,23 +316,29 @@ async def api_address_create(
     assert domain, "Domain does not exist."
 
     assert address_data.domain_id == domain_id, "Domain ID missmatch"
-    address, price_in_sats = await create_address(domain, address_data, user_id)
+    address = await create_address(domain, address_data, user_id)
+    assert (
+        address.config.price_in_sats
+    ), f"Cannot compute price for '{address_data.local_part}'."
 
-    # in case the user pays, but the identifier is no longer available
-    wallet_id = (await get_wallets(user_id))[0].id if user_id else None
-
-    payment_hash, payment_request = await create_invoice(
-        wallet_id=domain.wallet,
-        amount=price_in_sats,
-        memo=f"Payment for NIP-05 for {address_data.local_part}@{domain.domain}",
-        extra={
-            "tag": "nostrnip5",
-            "domain_id": domain_id,
-            "address_id": address.id,
-            "action": "activate",
-            "reimburse_wallet_id": wallet_id,
-        },
-    )
+    if address.has_pubkey:
+        # in case the user pays, but the identifier is no longer available
+        wallet_id = (await get_wallets(user_id))[0].id if user_id else None
+        payment_hash, payment_request = await create_invoice(
+            wallet_id=domain.wallet,
+            amount=int(address.config.price_in_sats),
+            memo=f"Payment of {address.config.price} {address.config.currency} "
+            f"for NIP-05 for {address_data.local_part}@{domain.domain}",
+            extra={
+                "tag": "nostrnip5",
+                "domain_id": domain_id,
+                "address_id": address.id,
+                "action": "activate",
+                "reimburse_wallet_id": wallet_id,
+            },
+        )
+    else:
+        payment_hash, payment_request = None, None
 
     return {
         "payment_hash": payment_hash,

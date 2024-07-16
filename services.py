@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import httpx
 from lnbits.core.crud import get_standalone_payment, get_user
@@ -116,11 +116,12 @@ async def get_identifier_status(
 
 async def create_address(
     domain: Domain, data: CreateAddressData, user_id: Optional[str] = None
-) -> Tuple[Address, float]:
+) -> Address:
 
     identifier = normalize_identifier(data.local_part)
     data.local_part = identifier
-    data.pubkey = validate_pub_key(data.pubkey)
+    if data.pubkey != "":
+        data.pubkey = validate_pub_key(data.pubkey)
 
     identifier_status = await get_identifier_status(domain, identifier, data.years)
 
@@ -140,14 +141,16 @@ async def create_address(
         config = existing_address.config
         config.price = identifier_status.price
         config.price_in_sats = price_in_sats
-        address = await update_address(domain.id, existing_address.id, config=config)
+        address = await update_address(
+            domain.id, existing_address.id, config=config, pubkey=data.pubkey
+        )
     else:
         config = AddressConfig(
             price=identifier_status.price, price_in_sats=price_in_sats
         )
         address = await create_address_internal(data, owner_id, config=config)
 
-    return address, price_in_sats
+    return address
 
 
 async def activate_address(
