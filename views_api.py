@@ -177,18 +177,19 @@ async def api_domain_delete(
 @http_try_except
 @nostrnip5_api_router.delete(
     "/api/v1/address/{domain_id}/{address_id}",
-    status_code=HTTPStatus.GONE,  # todo add /address
+    status_code=HTTPStatus.OK,
 )
 async def api_delete_address(
     domain_id: str,
     address_id: str,
-    w: WalletTypeInfo = Depends(require_admin_key),
+    user_id: Optional[str] = Depends(optional_user_id),
 ):
-    # make sure the address belongs to the user
-    domain = await get_domain(domain_id, w.wallet.id)
-    assert domain, "Domain does not exist."
 
-    return await delete_address(domain_id, address_id)
+    if not user_id:
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
+
+    owner_id = owner_id_from_user_id(user_id)  # todo: allow for admins
+    return await delete_address(domain_id, address_id, owner_id)
 
 
 @http_try_except
@@ -343,7 +344,7 @@ async def api_address_create(
     return {
         "payment_hash": payment_hash,
         "payment_request": payment_request,
-        "address_id": address.id,
+        **dict(address),
     }
 
 

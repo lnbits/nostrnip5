@@ -141,12 +141,17 @@ async def create_address(
         config = existing_address.config
         config.price = identifier_status.price
         config.price_in_sats = price_in_sats
+        config.currency = domain.currency
+        config.years = data.years
         address = await update_address(
             domain.id, existing_address.id, config=config, pubkey=data.pubkey
         )
     else:
         config = AddressConfig(
-            price=identifier_status.price, price_in_sats=price_in_sats
+            price=identifier_status.price,
+            price_in_sats=price_in_sats,
+            currency=domain.currency,
+            years=data.years,
         )
         address = await create_address_internal(data, owner_id, config=config)
 

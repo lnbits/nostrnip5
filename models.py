@@ -132,6 +132,7 @@ class AddressConfig(BaseModel):
     payment_hash: Optional[str] = None
     reimburse_payment_hash: Optional[str] = None
     activated_by_owner: bool = False
+    years: int = 1
     relays: List[str] = []
 
 

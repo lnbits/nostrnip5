@@ -264,15 +264,13 @@ async def delete_domain(domain_id: str, wallet_id: str) -> bool:
     return True
 
 
-async def delete_address(domain_id, address_id):
+async def delete_address(domain_id, address_id, owner_id):
     await db.execute(
         """
-        DELETE FROM nostrnip5.addresses WHERE domain_id = ? AND id = ?
+        DELETE FROM nostrnip5.addresses
+        WHERE domain_id = ? AND id = ? AND owner_id = ?
         """,
-        (
-            domain_id,
-            address_id,
-        ),
+        (domain_id, address_id, owner_id),
     )
 
 
