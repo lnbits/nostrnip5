@@ -195,7 +195,9 @@ async def get_valid_addresses_for_owner(
         domain = await get_domain_by_id(address.domain_id)
         if not domain:
             continue
-        status = await get_identifier_status(domain, address.local_part, years=1)
+        status = await get_identifier_status(
+            domain, address.local_part, address.config.years
+        )
 
         if status.available:
             # update to latest price
