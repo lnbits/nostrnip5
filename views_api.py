@@ -24,8 +24,8 @@ from .crud import (
     create_settings,
     delete_address,
     delete_domain,
+    get_active_address_by_local_part,
     get_address,
-    get_addresses,
     get_domain,
     get_domain_by_id,
     get_identifier_ranking,
@@ -37,7 +37,6 @@ from .crud import (
 )
 from .helpers import (
     http_try_except,
-    normalize_identifier,
     owner_id_from_user_id,
     validate_pub_key,
 )
@@ -118,13 +117,13 @@ async def api_get_addresses_paginated(
 
 @http_try_except
 @nostrnip5_api_router.get("/api/v1/addresses/user", status_code=HTTPStatus.OK)
-async def api_get_user_addresses(
+async def api_get_addresses_for_owner(
     user_id: Optional[str] = Depends(optional_user_id),
     local_part: Optional[str] = None,
     active: Optional[bool] = None,
 ):
     if not user_id:
-        raise HTTPException(HTTPStatus.UNAUTHORIZED)
+        raise HTTPException(HTTPStatus.FORBIDDEN)
 
     owner_id = owner_id_from_user_id(user_id)
     assert owner_id
@@ -136,7 +135,7 @@ async def api_get_user_addresses(
     "/api/v1/domain/{domain_id}",
     status_code=HTTPStatus.OK,
 )
-async def api_get_domaint(domain_id: str, w: WalletTypeInfo = Depends(get_key_type)):
+async def api_get_domains(domain_id: str, w: WalletTypeInfo = Depends(get_key_type)):
     domain = await get_domain(domain_id, w.wallet.id)
     assert domain, "Domain does not exist."
     return domain
@@ -145,7 +144,7 @@ async def api_get_domaint(domain_id: str, w: WalletTypeInfo = Depends(get_key_ty
 @http_try_except
 @nostrnip5_api_router.post("/api/v1/domain", status_code=HTTPStatus.CREATED)
 async def api_create_domain(
-    data: CreateDomainData, wallet: WalletTypeInfo = Depends(get_key_type)
+    data: CreateDomainData, wallet: WalletTypeInfo = Depends(require_admin_key)
 ):
 
     return await create_domain_internal(wallet_id=wallet.wallet.id, data=data)
@@ -154,7 +153,7 @@ async def api_create_domain(
 @http_try_except
 @nostrnip5_api_router.put("/api/v1/domain", status_code=HTTPStatus.OK)
 async def api_update_domain(
-    data: EditDomainData, wallet: WalletTypeInfo = Depends(get_key_type)
+    data: EditDomainData, wallet: WalletTypeInfo = Depends(require_admin_key)
 ):
 
     return await update_domain_internal(wallet_id=wallet.wallet.id, data=data)
@@ -186,7 +185,7 @@ async def api_delete_address(
 ):
 
     if not user_id:
-        raise HTTPException(HTTPStatus.UNAUTHORIZED)
+        raise HTTPException(HTTPStatus.FORBIDDEN)
 
     owner_id = owner_id_from_user_id(user_id)  # todo: allow for admins
     return await delete_address(domain_id, address_id, owner_id)
@@ -245,7 +244,7 @@ async def api_update_address(
 ) -> Address:
 
     if not user_id:
-        raise HTTPException(HTTPStatus.UNAUTHORIZED)
+        raise HTTPException(HTTPStatus.FORBIDDEN)
 
     data.validate_relays_urls()
 
@@ -267,7 +266,7 @@ async def api_update_address(
 @http_try_except
 @nostrnip5_api_router.get(
     "/api/v1/domain/{domain_id}/address/{address_id}/reimburse",
-    dependencies=[Depends(check_admin)],
+    dependencies=[Depends(require_admin_key)],
     status_code=HTTPStatus.CREATED,
 )
 async def api_address_reimburse(
@@ -355,6 +354,7 @@ async def api_request_address(
     "/api/v1/domain/{domain_id}/payments/{payment_hash}", status_code=HTTPStatus.OK
 )
 async def api_check_address_payment(domain_id: str, payment_hash: str):
+    # todo: can it be replaced with websocket?
     paid = await check_address_payment(domain_id, payment_hash)
     return {"paid": paid}
 
@@ -383,27 +383,21 @@ async def api_search_identifier(
 async def api_get_nostr_json(
     response: Response, domain_id: str, name: str = Query(None)
 ):
-    addresses = [address.dict() for address in await get_addresses(domain_id)]
-    output = {}
-
-    for address in addresses:
-        local_part = address.get("local_part")
-        if not local_part:
-            continue
-        local_part = normalize_identifier(local_part)
-
-        if address.get("active") is False:
-            continue
-
-        if name and normalize_identifier(name) != local_part:
-            continue
-
-        output[local_part] = address.get("pubkey")
-
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "GET,OPTIONS"
 
-    return {"names": output}
+    if not name:
+        return {"names": {}, "relays": {}}
+
+    address = await get_active_address_by_local_part(domain_id, name)
+
+    if not address:
+        return {"names": {}, "relays": {}}
+
+    return {
+        "names": {address.local_part: address.pubkey},
+        "relays": {address.pubkey: address.config.relays},
+    }
 
 
 @http_try_except
