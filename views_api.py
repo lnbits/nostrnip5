@@ -247,6 +247,8 @@ async def api_update_address(
     if not user_id:
         raise HTTPException(HTTPStatus.UNAUTHORIZED)
 
+    data.validate_relays_urls()
+
     address = await get_address(domain_id, address_id)
     assert address, "Address not found"
     assert address.domain_id == domain_id, "Domain ID missmatch"
@@ -306,7 +308,7 @@ async def api_address_reimburse(
 @nostrnip5_api_router.post(
     "/api/v1/domain/{domain_id}/address", status_code=HTTPStatus.CREATED
 )
-async def api_address_create(
+async def api_request_address(
     address_data: CreateAddressData,
     domain_id: str,
     user_id: Optional[str] = Depends(optional_user_id),
@@ -322,7 +324,7 @@ async def api_address_create(
         address.config.price_in_sats
     ), f"Cannot compute price for '{address_data.local_part}'."
 
-    if address.has_pubkey:
+    if address_data.create_invoice:
         # in case the user pays, but the identifier is no longer available
         wallet_id = (await get_wallets(user_id))[0].id if user_id else None
         payment_hash, payment_request = await create_invoice(

@@ -6,7 +6,7 @@ from fastapi.param_functions import Query
 from lnbits.db import FilterModel, FromRowModel
 from pydantic import BaseModel
 
-from .helpers import format_amount, normalize_identifier
+from .helpers import format_amount, is_ws_url, normalize_identifier
 
 
 class CustomCost(BaseModel):
@@ -23,6 +23,13 @@ class UpdateAddressData(BaseModel):
     pubkey: Optional[str] = None
     relays: Optional[List[str]] = None
 
+    def validate_relays_urls(self):
+        if not self.relays:
+            return
+        for r in self.relays:
+            if not is_ws_url(r):
+                raise ValueError(f"Relay '{r}' is not valid!")
+
 
 class CreateAddressData(BaseModel):
     domain_id: str
@@ -30,6 +37,7 @@ class CreateAddressData(BaseModel):
     pubkey: str = ""
     years: int = 1
     relays: Optional[List[str]] = None
+    create_invoice: bool = False
 
 
 class DomainCostConfig(BaseModel):
@@ -133,6 +141,7 @@ class AddressConfig(BaseModel):
     reimburse_payment_hash: Optional[str] = None
     activated_by_owner: bool = False
     years: int = 1
+    max_years: int = 1
     relays: List[str] = []
 
 
@@ -145,7 +154,7 @@ class Address(FromRowModel):
     active: bool
     time: int
     reimburse_amount: int = 0
-    # todo: expire
+    expires_at: Optional[float]
 
     config: AddressConfig = AddressConfig()
 

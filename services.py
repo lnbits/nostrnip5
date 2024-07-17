@@ -136,23 +136,21 @@ async def create_address(
     assert price_in_sats, f"Cannot compute price for '{identifier}'."
 
     owner_id = owner_id_from_user_id(user_id)
-    existing_address = await get_address_for_owner(owner_id, domain.id, identifier)
-    if existing_address:
-        config = existing_address.config
-        config.price = identifier_status.price
-        config.price_in_sats = price_in_sats
-        config.currency = domain.currency
-        config.years = data.years
+    addresss = await get_address_for_owner(owner_id, domain.id, identifier)
+
+    config = addresss.config if addresss else AddressConfig()
+    config.price = identifier_status.price
+    config.price_in_sats = price_in_sats
+    config.currency = domain.currency
+    config.years = data.years
+    config.max_years = domain.cost_config.max_years
+
+    if addresss:
+        assert not addresss.active, f"Identifier '{data.local_part}' already activated."
         address = await update_address(
-            domain.id, existing_address.id, config=config, pubkey=data.pubkey
+            domain.id, addresss.id, config=config, pubkey=data.pubkey
         )
     else:
-        config = AddressConfig(
-            price=identifier_status.price,
-            price_in_sats=price_in_sats,
-            currency=domain.currency,
-            years=data.years,
-        )
         address = await create_address_internal(data, owner_id, config=config)
 
     return address

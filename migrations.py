@@ -97,9 +97,10 @@ async def m006_make_amount_type_real(db):
 
 async def m007_add_cost_extra_column_to_addresses(db):
     """
-    Adds extra column to  addresses.
+    Adds extra, expires_at and reimburse_amount columns to  addresses.
     """
     await db.execute("ALTER TABLE nostrnip5.addresses ADD COLUMN extra TEXT")
+    await db.execute("ALTER TABLE nostrnip5.addresses ADD COLUMN expires_at TIMESTAMP")
     await db.execute(
         "ALTER TABLE nostrnip5.addresses ADD COLUMN "
         "reimburse_amount REAL NOT NULL DEFAULT 0"

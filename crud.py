@@ -1,3 +1,4 @@
+import datetime
 import json
 from typing import Any, List, Optional, Union
 
@@ -218,9 +219,16 @@ async def update_address(domain_id: str, address_id: str, **kwargs) -> Address:
         if key not in valid_keys:
             continue
         if key == "config":
-            extra = json.dumps(value or AddressConfig(), default=lambda o: o.__dict__)
+            config = value or AddressConfig()
+            extra = json.dumps(config, default=lambda o: o.__dict__)
             set_clause.append("extra = ?")
             set_variables.append(extra)
+
+            expires_at = datetime.datetime.now() + datetime.timedelta(
+                days=365 * config.years
+            )
+            set_clause.append("expires_at = ?")
+            set_variables.append(expires_at)
         else:
             set_clause.append(f"{key} = ?")
             set_variables.append(value)
@@ -281,11 +289,12 @@ async def create_address_internal(
 ) -> Address:
     address_id = urlsafe_short_hash()
     extra = json.dumps(config or AddressConfig(), default=lambda o: o.__dict__)
+    expires_at = datetime.datetime.now() + datetime.timedelta(days=365 * data.years)
     await db.execute(
         """
         INSERT INTO nostrnip5.addresses
-        (id, domain_id, owner_id, local_part, pubkey, active, extra)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        (id, domain_id, owner_id, local_part, pubkey, active, extra, expires_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             address_id,
@@ -295,6 +304,7 @@ async def create_address_internal(
             data.pubkey,
             False,
             extra,
+            expires_at,
         ),
     )
 
