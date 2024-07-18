@@ -71,6 +71,9 @@ nostrnip5_api_router: APIRouter = APIRouter()
 address_filters = parse_filters(AddressFilters)
 
 
+##################################### DOMAINS #####################################
+
+
 @http_try_except
 @nostrnip5_api_router.get("/api/v1/domains", status_code=HTTPStatus.OK)
 async def api_domains(
@@ -79,6 +82,52 @@ async def api_domains(
     domains = await get_user_domains(wallet.wallet.user, wallet.wallet.id, all_wallets)
 
     return [domain.dict() for domain in domains]
+
+
+@http_try_except
+@nostrnip5_api_router.get(
+    "/api/v1/domain/{domain_id}",
+    status_code=HTTPStatus.OK,
+)
+async def api_get_domains(domain_id: str, w: WalletTypeInfo = Depends(get_key_type)):
+    domain = await get_domain(domain_id, w.wallet.id)
+    assert domain, "Domain does not exist."
+    return domain
+
+
+@http_try_except
+@nostrnip5_api_router.post("/api/v1/domain", status_code=HTTPStatus.CREATED)
+async def api_create_domain(
+    data: CreateDomainData, wallet: WalletTypeInfo = Depends(require_admin_key)
+):
+
+    return await create_domain_internal(wallet_id=wallet.wallet.id, data=data)
+
+
+@http_try_except
+@nostrnip5_api_router.put("/api/v1/domain", status_code=HTTPStatus.OK)
+async def api_update_domain(
+    data: EditDomainData, wallet: WalletTypeInfo = Depends(require_admin_key)
+):
+
+    return await update_domain_internal(wallet_id=wallet.wallet.id, data=data)
+
+
+@http_try_except
+@nostrnip5_api_router.delete(
+    "/api/v1/domain/{domain_id}", status_code=HTTPStatus.CREATED
+)
+async def api_domain_delete(
+    domain_id: str,
+    w: WalletTypeInfo = Depends(require_admin_key),
+):
+    # make sure the address belongs to the user
+    deleted = await delete_domain(domain_id, w.wallet.id)
+
+    return deleted
+
+
+##################################### ADDRESSES #####################################
 
 
 @http_try_except
@@ -128,49 +177,6 @@ async def api_get_addresses_for_owner(
     owner_id = owner_id_from_user_id(user_id)
     assert owner_id
     return await get_valid_addresses_for_owner(owner_id, local_part, active)
-
-
-@http_try_except
-@nostrnip5_api_router.get(
-    "/api/v1/domain/{domain_id}",
-    status_code=HTTPStatus.OK,
-)
-async def api_get_domains(domain_id: str, w: WalletTypeInfo = Depends(get_key_type)):
-    domain = await get_domain(domain_id, w.wallet.id)
-    assert domain, "Domain does not exist."
-    return domain
-
-
-@http_try_except
-@nostrnip5_api_router.post("/api/v1/domain", status_code=HTTPStatus.CREATED)
-async def api_create_domain(
-    data: CreateDomainData, wallet: WalletTypeInfo = Depends(require_admin_key)
-):
-
-    return await create_domain_internal(wallet_id=wallet.wallet.id, data=data)
-
-
-@http_try_except
-@nostrnip5_api_router.put("/api/v1/domain", status_code=HTTPStatus.OK)
-async def api_update_domain(
-    data: EditDomainData, wallet: WalletTypeInfo = Depends(require_admin_key)
-):
-
-    return await update_domain_internal(wallet_id=wallet.wallet.id, data=data)
-
-
-@http_try_except
-@nostrnip5_api_router.delete(
-    "/api/v1/domain/{domain_id}", status_code=HTTPStatus.CREATED
-)
-async def api_domain_delete(
-    domain_id: str,
-    w: WalletTypeInfo = Depends(require_admin_key),
-):
-    # make sure the address belongs to the user
-    deleted = await delete_domain(domain_id, w.wallet.id)
-
-    return deleted
 
 
 @http_try_except
