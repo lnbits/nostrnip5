@@ -169,6 +169,16 @@ async def api_search_identifier(
     return await get_identifier_status(domain, q, years or 1)
 
 
+@http_try_except
+@nostrnip5_api_router.get(
+    "/api/v1/domain/{domain_id}/payments/{payment_hash}", status_code=HTTPStatus.OK
+)
+async def api_check_address_payment(domain_id: str, payment_hash: str):
+    # todo: can it be replaced with websocket?
+    paid = await check_address_payment(domain_id, payment_hash)
+    return {"paid": paid}
+
+
 ##################################### ADDRESSES #####################################
 
 
@@ -281,12 +291,42 @@ async def api_address_reimburse(
     }
 
 
+@http_try_except
+@nostrnip5_api_router.put(
+    "/api/v1/domain/{domain_id}/address/{address_id}",
+    status_code=HTTPStatus.OK,
+)
+async def api_update_address(
+    domain_id: str,
+    address_id: str,
+    data: UpdateAddressData,
+    w: WalletTypeInfo = Depends(require_admin_key),
+) -> Address:
+
+    data.validate_relays_urls()
+
+    # make sure the domain belongs to the user
+    domain = await get_domain(domain_id, w.wallet.id)
+    assert domain, "Domain does not exist."
+
+    address = await get_address(domain_id, address_id)
+    assert address, "Address not found"
+    assert address.domain_id == domain_id, "Domain ID missmatch"
+
+    pubkey = data.pubkey if data.pubkey else address.pubkey
+    if data.relays:
+        address.config.relays = data.relays
+    await update_address(domain_id, address.id, pubkey=pubkey, config=address.config)
+
+    return address
+
+
 ##################################### USER ADDRESSES ###################################
 
 
 @http_try_except
 @nostrnip5_api_router.get("/api/v1/user/addresses", status_code=HTTPStatus.OK)
-async def api_get_addresses_for_owner(
+async def api_get_user_addresses(
     user_id: Optional[str] = Depends(optional_user_id),
     local_part: Optional[str] = None,
     active: Optional[bool] = None,
@@ -322,7 +362,7 @@ async def api_delete_user_address(
     "/api/v1/domain/{domain_id}/address/{address_id}/rotate",
     status_code=HTTPStatus.OK,
 )
-async def api_address_rotate(
+async def api_rotate_user_address(
     domain_id: str,
     address_id: str,
     post_data: RotateAddressData,
@@ -344,7 +384,7 @@ async def api_address_rotate(
     "/api/v1/user/domain/{domain_id}/address/{address_id}",
     status_code=HTTPStatus.OK,
 )
-async def api_update_address(
+async def api_update_user_address(
     domain_id: str,
     address_id: str,
     data: UpdateAddressData,
@@ -375,7 +415,7 @@ async def api_update_address(
 @nostrnip5_api_router.post(
     "/api/v1/user/domain/{domain_id}/address", status_code=HTTPStatus.CREATED
 )
-async def api_request_address(
+async def api_request_user_address(
     address_data: CreateAddressData,
     domain_id: str,
     user_id: Optional[str] = Depends(optional_user_id),
@@ -415,16 +455,6 @@ async def api_request_address(
         "payment_request": payment_request,
         **dict(address),
     }
-
-
-@http_try_except
-@nostrnip5_api_router.get(
-    "/api/v1/user/domain/{domain_id}/payments/{payment_hash}", status_code=HTTPStatus.OK
-)
-async def api_check_address_payment(domain_id: str, payment_hash: str):
-    # todo: can it be replaced with websocket?
-    paid = await check_address_payment(domain_id, payment_hash)
-    return {"paid": paid}
 
 
 ##################################### RANKING #####################################
