@@ -213,7 +213,9 @@ async def get_valid_addresses_for_owner(
 
 async def check_address_payment(domain_id: str, payment_hash: str) -> bool:
     payment = await get_standalone_payment(payment_hash, incoming=True)
-    assert payment, "Payment does not exist."
+    if not payment:
+        logger.debug(f"No payment found for hash {payment_hash}")
+        return False
 
     payment_address_id = payment.extra.get("address_id")
     assert payment_address_id, "Payment does not exist for this address."
