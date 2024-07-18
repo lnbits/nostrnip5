@@ -23,6 +23,7 @@ from .crud import (
     create_domain_internal,
     create_settings,
     delete_address,
+    delete_address_by_id,
     delete_domain,
     get_active_address_by_local_part,
     get_address,
@@ -124,7 +125,48 @@ async def api_domain_delete(
     # make sure the address belongs to the user
     deleted = await delete_domain(domain_id, w.wallet.id)
 
-    return deleted
+    return SimpleStatus(success=deleted, message="Deleted")
+
+
+@http_try_except
+@nostrnip5_api_router.get(
+    "/api/v1/domain/{domain_id}/nostr.json", status_code=HTTPStatus.OK
+)
+async def api_get_nostr_json(
+    response: Response, domain_id: str, name: str = Query(None)
+):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET,OPTIONS"
+
+    if not name:
+        return {"names": {}, "relays": {}}
+
+    address = await get_active_address_by_local_part(domain_id, name)
+
+    if not address:
+        return {"names": {}, "relays": {}}
+
+    return {
+        "names": {address.local_part: address.pubkey},
+        "relays": {address.pubkey: address.config.relays},
+    }
+
+
+@http_try_except
+@nostrnip5_api_router.get(
+    "/api/v1/domain/{domain_id}/search", status_code=HTTPStatus.OK
+)
+async def api_search_identifier(
+    domain_id: str, q: Optional[str] = None, years: Optional[int] = None
+) -> AddressStatus:
+
+    if not q:
+        return AddressStatus(identifier="")
+
+    domain = await get_domain_by_id(domain_id)
+    assert domain, "Unknown domain id."
+
+    return await get_identifier_status(domain, q, years or 1)
 
 
 ##################################### ADDRESSES #####################################
@@ -165,36 +207,21 @@ async def api_get_addresses_paginated(
 
 
 @http_try_except
-@nostrnip5_api_router.get("/api/v1/addresses/user", status_code=HTTPStatus.OK)
-async def api_get_addresses_for_owner(
-    user_id: Optional[str] = Depends(optional_user_id),
-    local_part: Optional[str] = None,
-    active: Optional[bool] = None,
-):
-    if not user_id:
-        raise HTTPException(HTTPStatus.FORBIDDEN)
-
-    owner_id = owner_id_from_user_id(user_id)
-    assert owner_id
-    return await get_valid_addresses_for_owner(owner_id, local_part, active)
-
-
-@http_try_except
 @nostrnip5_api_router.delete(
-    "/api/v1/address/{domain_id}/{address_id}",
+    "/api/v1/domain/{domain_id}/address/{address_id}",
     status_code=HTTPStatus.OK,
 )
 async def api_delete_address(
     domain_id: str,
     address_id: str,
-    user_id: Optional[str] = Depends(optional_user_id),
+    w: WalletTypeInfo = Depends(get_key_type),
 ):
 
-    if not user_id:
-        raise HTTPException(HTTPStatus.FORBIDDEN)
+    # make sure the address belongs to the user
+    domain = await get_domain(domain_id, w.wallet.id)
+    assert domain, "Domain does not exist."
 
-    owner_id = owner_id_from_user_id(user_id)  # todo: allow for admins
-    return await delete_address(domain_id, address_id, owner_id)
+    await delete_address_by_id(domain_id, address_id)
 
 
 @http_try_except
@@ -206,67 +233,12 @@ async def api_activate_address(
     domain_id: str,
     address_id: str,
     w: WalletTypeInfo = Depends(require_admin_key),
-):
+) -> Address:
     # make sure the address belongs to the user
     domain = await get_domain(domain_id, w.wallet.id)
     assert domain, "Domain does not exist."
 
-    success = await activate_address(domain_id, address_id)
-    return SimpleStatus(success=success, message="")
-
-
-@http_try_except
-@nostrnip5_api_router.put(
-    "/api/v1/domain/{domain_id}/address/{address_id}/rotate",
-    status_code=HTTPStatus.OK,
-)
-async def api_address_rotate(
-    domain_id: str,
-    address_id: str,
-    post_data: RotateAddressData,
-    user_id: Optional[str] = Depends(optional_user_id),
-):
-    # todo: improve checks
-
-    post_data.pubkey = validate_pub_key(post_data.pubkey)
-
-    # todo: owner id
-    await rotate_address(domain_id, address_id, post_data.pubkey)
-
-    return True
-
-
-# todo: anonimous
-@http_try_except
-@nostrnip5_api_router.put(
-    "/api/v1/domain/{domain_id}/address/{address_id}",
-    status_code=HTTPStatus.OK,
-)
-async def api_update_address(
-    domain_id: str,
-    address_id: str,
-    data: UpdateAddressData,
-    user_id: Optional[str] = Depends(optional_user_id),
-) -> Address:
-
-    if not user_id:
-        raise HTTPException(HTTPStatus.FORBIDDEN)
-
-    data.validate_relays_urls()
-
-    address = await get_address(domain_id, address_id)
-    assert address, "Address not found"
-    assert address.domain_id == domain_id, "Domain ID missmatch"
-
-    owner_id = owner_id_from_user_id(user_id)  # todo: allow for admins
-    assert address.owner_id == owner_id, "Address does not belong to this user"
-
-    pubkey = data.pubkey if data.pubkey else address.pubkey
-    if data.relays:
-        address.config.relays = data.relays
-    await update_address(domain_id, address.id, pubkey=pubkey, config=address.config)
-
-    return address
+    return await activate_address(domain_id, address_id)
 
 
 @http_try_except
@@ -309,9 +281,99 @@ async def api_address_reimburse(
     }
 
 
+##################################### USER ADDRESSES ###################################
+
+
+@http_try_except
+@nostrnip5_api_router.get("/api/v1/user/addresses", status_code=HTTPStatus.OK)
+async def api_get_addresses_for_owner(
+    user_id: Optional[str] = Depends(optional_user_id),
+    local_part: Optional[str] = None,
+    active: Optional[bool] = None,
+):
+    if not user_id:
+        raise HTTPException(HTTPStatus.FORBIDDEN)
+
+    owner_id = owner_id_from_user_id(user_id)
+    assert owner_id
+    return await get_valid_addresses_for_owner(owner_id, local_part, active)
+
+
+@http_try_except
+@nostrnip5_api_router.delete(
+    "/api/v1/user/address/{domain_id}/{address_id}",
+    status_code=HTTPStatus.OK,
+)
+async def api_delete_user_address(
+    domain_id: str,
+    address_id: str,
+    user_id: Optional[str] = Depends(optional_user_id),
+):
+
+    if not user_id:
+        raise HTTPException(HTTPStatus.FORBIDDEN)
+
+    owner_id = owner_id_from_user_id(user_id)  # todo: allow for admins
+    return await delete_address(domain_id, address_id, owner_id)
+
+
+@http_try_except
+@nostrnip5_api_router.put(
+    "/api/v1/domain/{domain_id}/address/{address_id}/rotate",
+    status_code=HTTPStatus.OK,
+)
+async def api_address_rotate(
+    domain_id: str,
+    address_id: str,
+    post_data: RotateAddressData,
+    user_id: Optional[str] = Depends(optional_user_id),
+):
+    # todo: improve checks
+
+    post_data.pubkey = validate_pub_key(post_data.pubkey)
+
+    # todo: owner id
+    await rotate_address(domain_id, address_id, post_data.pubkey)
+
+    return True
+
+
+# todo: anonimous
+@http_try_except
+@nostrnip5_api_router.put(
+    "/api/v1/user/domain/{domain_id}/address/{address_id}",
+    status_code=HTTPStatus.OK,
+)
+async def api_update_address(
+    domain_id: str,
+    address_id: str,
+    data: UpdateAddressData,
+    user_id: Optional[str] = Depends(optional_user_id),
+) -> Address:
+
+    if not user_id:
+        raise HTTPException(HTTPStatus.FORBIDDEN)
+
+    data.validate_relays_urls()
+
+    address = await get_address(domain_id, address_id)
+    assert address, "Address not found"
+    assert address.domain_id == domain_id, "Domain ID missmatch"
+
+    owner_id = owner_id_from_user_id(user_id)  # todo: allow for admins
+    assert address.owner_id == owner_id, "Address does not belong to this user"
+
+    pubkey = data.pubkey if data.pubkey else address.pubkey
+    if data.relays:
+        address.config.relays = data.relays
+    await update_address(domain_id, address.id, pubkey=pubkey, config=address.config)
+
+    return address
+
+
 @http_try_except
 @nostrnip5_api_router.post(
-    "/api/v1/domain/{domain_id}/address", status_code=HTTPStatus.CREATED
+    "/api/v1/user/domain/{domain_id}/address", status_code=HTTPStatus.CREATED
 )
 async def api_request_address(
     address_data: CreateAddressData,
@@ -357,7 +419,7 @@ async def api_request_address(
 
 @http_try_except
 @nostrnip5_api_router.get(
-    "/api/v1/domain/{domain_id}/payments/{payment_hash}", status_code=HTTPStatus.OK
+    "/api/v1/user/domain/{domain_id}/payments/{payment_hash}", status_code=HTTPStatus.OK
 )
 async def api_check_address_payment(domain_id: str, payment_hash: str):
     # todo: can it be replaced with websocket?
@@ -365,45 +427,7 @@ async def api_check_address_payment(domain_id: str, payment_hash: str):
     return {"paid": paid}
 
 
-@http_try_except
-@nostrnip5_api_router.get(
-    "/api/v1/domain/{domain_id}/search", status_code=HTTPStatus.OK
-)
-async def api_search_identifier(
-    domain_id: str, q: Optional[str] = None, years: Optional[int] = None
-) -> AddressStatus:
-
-    if not q:
-        return AddressStatus(identifier="")
-
-    domain = await get_domain_by_id(domain_id)
-    assert domain, "Unknown domain id."
-
-    return await get_identifier_status(domain, q, years or 1)
-
-
-@http_try_except
-@nostrnip5_api_router.get(
-    "/api/v1/domain/{domain_id}/nostr.json", status_code=HTTPStatus.OK
-)
-async def api_get_nostr_json(
-    response: Response, domain_id: str, name: str = Query(None)
-):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET,OPTIONS"
-
-    if not name:
-        return {"names": {}, "relays": {}}
-
-    address = await get_active_address_by_local_part(domain_id, name)
-
-    if not address:
-        return {"names": {}, "relays": {}}
-
-    return {
-        "names": {address.local_part: address.pubkey},
-        "relays": {address.pubkey: address.config.relays},
-    }
+##################################### RANKING #####################################
 
 
 @http_try_except

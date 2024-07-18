@@ -282,6 +282,16 @@ async def delete_address(domain_id, address_id, owner_id):
     )
 
 
+async def delete_address_by_id(domain_id, address_id):
+    await db.execute(
+        """
+        DELETE FROM nostrnip5.addresses
+        WHERE domain_id = ? AND id = ?
+        """,
+        (domain_id, address_id),
+    )
+
+
 async def create_address_internal(
     data: CreateAddressData,
     owner_id: Optional[str] = None,

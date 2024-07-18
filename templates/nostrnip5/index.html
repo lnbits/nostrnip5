@@ -1070,7 +1070,7 @@
             method,
             '/nostrnip5/api/v1/domain',
             _.findWhere(this.g.user.wallets, {id: this.formDialog.data.wallet})
-              .inkey,
+              .adminkey,
             data
           )
           .then(function (response) {
@@ -1177,7 +1177,7 @@
             LNbits.api
               .request(
                 'DELETE',
-                `/nostrnip5/api/v1/address/${domain.id}/${address_id}`,
+                `/nostrnip5/api/v1/domain/${domain.id}/address/${address_id}`,
                 _.findWhere(self.g.user.wallets, {id: domain.wallet}).adminkey
               )
               .then(function (response) {
