@@ -341,7 +341,7 @@ async def api_get_user_addresses(
 
 @http_try_except
 @nostrnip5_api_router.delete(
-    "/api/v1/user/address/{domain_id}/{address_id}",
+    "/api/v1/user/domain/{domain_id}/address/{address_id}",
     status_code=HTTPStatus.OK,
 )
 async def api_delete_user_address(
