@@ -77,7 +77,7 @@ context %} {% block page %}
           <div class="col">
             <p>
               The price for this identifier is
-              <strong> {{identifier_cost}} {{domain.currency}} </strong>
+              <strong> {{identifier_cost}} {{domain.currency}} per year</strong>
               and will be tied to this nostr pubkey:
             </p>
           </div>
@@ -99,6 +99,21 @@ context %} {% block page %}
           </div>
           <div class="col-md-2 col-sm-1 q-mt-sm"><span></span></div>
         </div>
+        <div class="row">
+          <div class="col-md-2 col-sm-11 q-mt-sm">
+            <q-select
+              filled
+              dense
+              :options="Array.from({length: maxYears}, (_, i) => i + 1)"
+              v-model="formDialog.data.years"
+              label="Years"
+              hint="Buy for this number of years."
+              class="q-mr-md"
+            >
+            </q-select>
+          </div>
+          <div class="col-md-10 col-sm-1 q-mt-sm"><span></span></div>
+        </div>
 
         <div class="row q-mt-lg">
           <q-btn
@@ -110,7 +125,7 @@ context %} {% block page %}
           >
         </div>
       </div>
-      <div v-else>
+      <div v-else-if="identifier">
         <p>This identifier is not available.</p>
       </div>
     </q-form>
@@ -158,6 +173,7 @@ context %} {% block page %}
         domain_id: '{{ domain_id }}',
         wallet: '{{ domain.wallet }}',
         currency: '{{ domain.currency }}',
+        maxYears: '{{ domain.max_years }}',
         identifier: '{{ identifier }}',
         identifierCost: '{{ identifier_cost }}',
         identifierAvailable: '{{ identifier_available }}' === 'True',
@@ -175,6 +191,7 @@ context %} {% block page %}
         formDialog: {
           data: {
             local_part: '{{ identifier or "" }}',
+            years: 1,
             pubkey: ''
           }
         },

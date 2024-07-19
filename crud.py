@@ -1,5 +1,6 @@
+import datetime
 import json
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 
 from lnbits.db import Database, Filters, Page
 from lnbits.helpers import urlsafe_short_hash
@@ -7,6 +8,7 @@ from lnbits.helpers import urlsafe_short_hash
 from .helpers import normalize_identifier
 from .models import (
     Address,
+    AddressConfig,
     AddressFilters,
     CreateAddressData,
     CreateDomainData,
@@ -77,11 +79,14 @@ async def get_address(domain_id: str, address_id: str) -> Optional[Address]:
     return Address.from_row(row) if row else None
 
 
-async def get_address_by_local_part(
+async def get_active_address_by_local_part(
     domain_id: str, local_part: str
 ) -> Optional[Address]:
     row = await db.fetchone(
-        "SELECT * FROM nostrnip5.addresses WHERE domain_id = ? AND local_part = ?",
+        """
+            SELECT * FROM nostrnip5.addresses
+            WHERE active = true AND domain_id = ? AND local_part = ?
+        """,
         (
             domain_id,
             normalize_identifier(local_part),
@@ -112,7 +117,11 @@ async def get_address_for_owner(
 
 async def get_addresses_for_owner(owner_id: str) -> List[Address]:
     rows = await db.fetchall(
-        "SELECT * FROM nostrnip5.addresses WHERE owner_id = ?", (owner_id,)
+        """
+            SELECT * FROM nostrnip5.addresses WHERE owner_id = ?
+            ORDER BY time DESC
+        """,
+        (owner_id,),
     )
 
     return [Address.from_row(row) for row in rows]
@@ -159,15 +168,19 @@ async def get_all_addresses_paginated(
     )
 
 
-async def activate_address(domain_id: str, address_id: str) -> Address:
+async def activate_domain_address(
+    domain_id: str, address_id: str, config: AddressConfig
+) -> Address:
+    extra = json.dumps(config, default=lambda o: o.__dict__)
     await db.execute(
         """
         UPDATE nostrnip5.addresses
-        SET active = true
+        SET active = true, extra = ?
         WHERE domain_id = ?
         AND id = ?
         """,
         (
+            extra,
             domain_id,
             address_id,
         ),
@@ -198,6 +211,46 @@ async def rotate_address(domain_id: str, address_id: str, pubkey: str) -> Addres
     return address
 
 
+async def update_address(domain_id: str, address_id: str, **kwargs) -> Address:
+    set_clause: List[str] = []
+    set_variables: List[Any] = []
+    valid_keys = [k for k in Address.__fields__.keys() if not k.startswith("_")]
+    for key, value in kwargs.items():
+        if key not in valid_keys:
+            continue
+        if key == "config":
+            config = value or AddressConfig()
+            extra = json.dumps(config, default=lambda o: o.__dict__)
+            set_clause.append("extra = ?")
+            set_variables.append(extra)
+
+            expires_at = datetime.datetime.now() + datetime.timedelta(
+                days=365 * config.years
+            )
+            set_clause.append("expires_at = ?")
+            set_variables.append(expires_at)
+        else:
+            set_clause.append(f"{key} = ?")
+            set_variables.append(value)
+
+    set_variables.append(domain_id)
+    set_variables.append(address_id)
+
+    await db.execute(
+        f"""
+            UPDATE nostrnip5.addresses
+            SET {', '.join(set_clause)}
+            WHERE domain_id = ?
+            AND id = ?
+        """,
+        tuple(set_variables),
+    )
+
+    address = await get_address(domain_id, address_id)
+    assert address, "Newly updated address couldn't be retrieved"
+    return address
+
+
 async def delete_domain(domain_id: str, wallet_id: str) -> bool:
     domain = await get_domain(domain_id, wallet_id)
     if not domain:
@@ -219,28 +272,39 @@ async def delete_domain(domain_id: str, wallet_id: str) -> bool:
     return True
 
 
-async def delete_address(domain_id, address_id):
+async def delete_address(domain_id, address_id, owner_id):
     await db.execute(
         """
-        DELETE FROM nostrnip5.addresses WHERE domain_id = ? AND id = ?
+        DELETE FROM nostrnip5.addresses
+        WHERE domain_id = ? AND id = ? AND owner_id = ?
         """,
-        (
-            domain_id,
-            address_id,
-        ),
+        (domain_id, address_id, owner_id),
+    )
+
+
+async def delete_address_by_id(domain_id, address_id):
+    await db.execute(
+        """
+        DELETE FROM nostrnip5.addresses
+        WHERE domain_id = ? AND id = ?
+        """,
+        (domain_id, address_id),
     )
 
 
 async def create_address_internal(
-    data: CreateAddressData, owner_id: Optional[str] = None
+    data: CreateAddressData,
+    owner_id: Optional[str] = None,
+    config: Optional[AddressConfig] = None,
 ) -> Address:
     address_id = urlsafe_short_hash()
-
+    extra = json.dumps(config or AddressConfig(), default=lambda o: o.__dict__)
+    expires_at = datetime.datetime.now() + datetime.timedelta(days=365 * data.years)
     await db.execute(
         """
         INSERT INTO nostrnip5.addresses
-        (id, domain_id, owner_id, local_part, pubkey, active)
-        VALUES (?, ?, ?, ?, ?, ?)
+        (id, domain_id, owner_id, local_part, pubkey, active, extra, expires_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             address_id,
@@ -249,6 +313,8 @@ async def create_address_internal(
             normalize_identifier(data.local_part),
             data.pubkey,
             False,
+            extra,
+            expires_at,
         ),
     )
 

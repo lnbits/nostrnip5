@@ -1,28 +1,41 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import httpx
 from lnbits.core.crud import get_standalone_payment, get_user
+from lnbits.core.models import Payment
 from lnbits.db import Filters, Page
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
 
 from .crud import (
+    activate_domain_address,
     create_address_internal,
     create_identifier_ranking,
     delete_inferior_ranking,
-    get_address_by_local_part,
+    get_active_address_by_local_part,
+    get_address,
     get_address_for_owner,
+    get_addresses_for_owner,
     get_all_addresses,
     get_all_addresses_paginated,
+    get_domain_by_id,
     get_domains,
     get_identifier_ranking,
+    update_address,
 )
 from .helpers import (
     normalize_identifier,
     owner_id_from_user_id,
     validate_pub_key,
 )
-from .models import Address, AddressFilters, AddressStatus, CreateAddressData, Domain
+from .models import (
+    Address,
+    AddressConfig,
+    AddressFilters,
+    AddressStatus,
+    CreateAddressData,
+    Domain,
+)
 
 
 async def get_user_domains(
@@ -67,12 +80,13 @@ async def get_user_addresses_paginated(
     return await get_all_addresses_paginated(wallet_ids, filters)
 
 
-async def get_identifier_status(domain: Domain, identifier: str) -> AddressStatus:
+async def get_identifier_status(
+    domain: Domain, identifier: str, years: int
+) -> AddressStatus:
     identifier = normalize_identifier(identifier)
-    address = await get_address_by_local_part(domain.id, identifier)
-    reserved = address is not None
-    if address and address.active:
-        return AddressStatus(identifier=identifier, available=False, reserved=reserved)
+    address = await get_active_address_by_local_part(domain.id, identifier)
+    if address:
+        return AddressStatus(identifier=identifier, available=False)
 
     rank = None
     if domain.cost_config.enable_custom_cost:
@@ -80,52 +94,122 @@ async def get_identifier_status(domain: Domain, identifier: str) -> AddressStatu
         rank = identifier_ranking.rank if identifier_ranking else None
 
     if rank == 0:
-        return AddressStatus(identifier=identifier, available=False, reserved=True)
+        return AddressStatus(identifier=identifier, available=False)
 
-    price, reason = domain.price_for_identifier(identifier, rank)
+    price, reason = domain.price_for_identifier(identifier, years, rank)
+
+    price_in_sats = (
+        price
+        if domain.currency == "sats"
+        else await fiat_amount_as_satoshis(price, domain.currency)
+    )
 
     return AddressStatus(
         identifier=identifier,
         available=True,
-        reserved=reserved,
         price=price,
+        price_in_sats=price_in_sats,
         price_reason=reason,
         currency=domain.currency,
     )
 
 
 async def create_address(
-    domain: Domain, address_data: CreateAddressData, user_id: Optional[str] = None
-) -> Tuple[Address, float]:
+    domain: Domain, data: CreateAddressData, user_id: Optional[str] = None
+) -> Address:
 
-    identifier = normalize_identifier(address_data.local_part)
-    address_data.local_part = identifier
-    address_data.pubkey = validate_pub_key(address_data.pubkey)
+    identifier = normalize_identifier(data.local_part)
+    data.local_part = identifier
+    if data.pubkey != "":
+        data.pubkey = validate_pub_key(data.pubkey)
 
-    identifier_status = await get_identifier_status(domain, identifier)
+    identifier_status = await get_identifier_status(domain, identifier, data.years)
 
-    assert identifier_status.available, "Identifier not available."
-    assert identifier_status.price, f"Cannot compute price for {identifier}"
-
-    owner_id = owner_id_from_user_id(user_id)
-    existing_address = await get_address_for_owner(owner_id, domain.id, identifier)
-
-    address = existing_address or await create_address_internal(address_data, owner_id)
+    assert identifier_status.available, f"Identifier '{identifier}' not available."
+    assert identifier_status.price, f"Cannot compute price for '{identifier}'."
 
     price_in_sats = (
         identifier_status.price
         if domain.currency == "sats"
         else await fiat_amount_as_satoshis(identifier_status.price, domain.currency)
     )
+    assert price_in_sats, f"Cannot compute price for '{identifier}'."
 
-    assert price_in_sats, f"Cannot compute price for {identifier}"
+    owner_id = owner_id_from_user_id(user_id)
+    addresss = await get_address_for_owner(owner_id, domain.id, identifier)
 
-    return address, price_in_sats
+    config = addresss.config if addresss else AddressConfig()
+    config.price = identifier_status.price
+    config.price_in_sats = price_in_sats
+    config.currency = domain.currency
+    config.years = data.years
+    config.max_years = domain.cost_config.max_years
+
+    if addresss:
+        assert not addresss.active, f"Identifier '{data.local_part}' already activated."
+        address = await update_address(
+            domain.id, addresss.id, config=config, pubkey=data.pubkey
+        )
+    else:
+        address = await create_address_internal(data, owner_id, config=config)
+
+    return address
+
+
+async def activate_address(
+    domain_id: str, address_id: str, payment_hash: Optional[str] = None
+) -> Address:
+    logger.info(f"Activating NOSTR NIP-05 '{address_id}' for {domain_id}")
+
+    address = await get_address(domain_id, address_id)
+    assert address, f"Cannot find address '{address_id}' for {domain_id}."
+    active_address = await get_active_address_by_local_part(
+        domain_id, address.local_part
+    )
+    assert not active_address, f"Address '{address.local_part}' already active."
+
+    address.config.activated_by_owner = payment_hash is None
+    address.config.payment_hash = payment_hash
+    return await activate_domain_address(domain_id, address_id, address.config)
+
+
+async def get_valid_addresses_for_owner(
+    owner_id: str, local_part: Optional[str] = None, active: Optional[bool] = None
+) -> List[Address]:
+
+    valid_addresses = []
+    addresses = await get_addresses_for_owner(owner_id)
+    for address in addresses:
+        if active is not None and active != address.active:
+            continue
+        if local_part and address.local_part != local_part:
+            continue
+        domain = await get_domain_by_id(address.domain_id)
+        if not domain:
+            continue
+        status = await get_identifier_status(
+            domain, address.local_part, address.config.years
+        )
+
+        if status.available:
+            # update to latest price
+            address.config.price_in_sats = status.price_in_sats
+            address.config.price = status.price
+        elif not address.active:
+            # do not return addresses which cannot be sold
+            continue
+
+        address.config.currency = domain.currency
+        valid_addresses.append(address)
+
+    return valid_addresses
 
 
 async def check_address_payment(domain_id: str, payment_hash: str) -> bool:
     payment = await get_standalone_payment(payment_hash, incoming=True)
-    assert payment, "Payment does not exist."
+    if not payment:
+        logger.debug(f"No payment found for hash {payment_hash}")
+        return False
 
     payment_address_id = payment.extra.get("address_id")
     assert payment_address_id, "Payment does not exist for this address."
@@ -138,6 +222,31 @@ async def check_address_payment(domain_id: str, payment_hash: str) -> bool:
 
     status = await payment.check_status()
     return status.success
+
+
+async def get_reimburse_wallet_id(address: Address) -> str:
+    payment_hash = address.config.reimburse_payment_hash
+    assert payment_hash, f"No payment hash found to reimburse '{address.id}'."
+
+    payment = await get_standalone_payment(
+        checking_id_or_hash=payment_hash, incoming=True
+    )
+    assert payment, f"No payment found to reimburse '{payment_hash}'."
+    wallet_id = payment.extra.get("reimburse_wallet_id")
+    assert wallet_id, f"No wallet found to reimburse payment {payment_hash}."
+    return wallet_id
+
+
+async def reimburse_payment(payment: Payment):
+    reimburse_wallet_ids = payment.extra.get("reimburse_wallet_ids", [])
+    domain_id = payment.extra.get("domain_id")
+    address_id = payment.extra.get("address_id")
+
+    if len(reimburse_wallet_ids) == 0:
+        logger.info(
+            f"Cannot reimburse failed activation for payment '{payment.payment_hash}'"
+            f"Info: domain ID ({domain_id}), address ID ({address_id})."
+        )
 
 
 async def update_identifiers(identifiers: List[str], bucket: int):

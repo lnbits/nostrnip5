@@ -3,6 +3,7 @@ from functools import wraps
 from hashlib import sha256
 from http import HTTPStatus
 from typing import Optional
+from urllib.parse import urlparse
 
 from bech32 import bech32_decode, convertbits
 from loguru import logger
@@ -39,9 +40,13 @@ def validate_pub_key(pubkey: str):
             decoded_data = convertbits(data, 5, 8, False)
             if decoded_data:
                 pubkey = bytes(decoded_data).hex()
+    try:
+        _hex = bytes.fromhex(pubkey)
+    except Exception as exc:
+        raise ValueError("Pubkey must be in npub or hex format.") from exc
 
-    if len(bytes.fromhex(pubkey)) != 32:
-        raise ValueError("Pubkey must be in npub or hex format.")
+    if len(_hex) != 32:
+        raise ValueError("Pubkey length incorrect.")
 
     return pubkey
 
@@ -55,6 +60,16 @@ def validate_local_part(local_part: str):
         raise ValueError(
             "Only a-z, 0-9 and .-_ are allowed characters, case insensitive."
         )
+
+
+def is_ws_url(url):
+    try:
+        result = urlparse(url)
+        if not all([result.scheme, result.netloc]):
+            return False
+        return result.scheme in ["ws", "wss"]
+    except ValueError:
+        return False
 
 
 def owner_id_from_user_id(user_id: Optional[str] = None) -> str:

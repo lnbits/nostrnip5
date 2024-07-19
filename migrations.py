@@ -44,7 +44,7 @@ async def m002_add_owner_id_to_addresess(db):
 
 async def m003_add_cost_extra_column_to_domains(db):
     """
-    Adds cost_extra column to  addresses.
+    Adds cost_extra column to domains.
     """
     await db.execute("ALTER TABLE nostrnip5.domains ADD COLUMN cost_extra TEXT")
 
@@ -93,3 +93,15 @@ async def m006_make_amount_type_real(db):
         )
 
     await db.execute("ALTER TABLE nostrnip5.domains DROP COLUMN amount")
+
+
+async def m007_add_cost_extra_column_to_addresses(db):
+    """
+    Adds extra, expires_at and reimburse_amount columns to  addresses.
+    """
+    await db.execute("ALTER TABLE nostrnip5.addresses ADD COLUMN extra TEXT")
+    await db.execute("ALTER TABLE nostrnip5.addresses ADD COLUMN expires_at TIMESTAMP")
+    await db.execute(
+        "ALTER TABLE nostrnip5.addresses ADD COLUMN "
+        "reimburse_amount REAL NOT NULL DEFAULT 0"
+    )

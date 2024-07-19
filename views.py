@@ -41,14 +41,19 @@ async def index(request: Request, user: User = Depends(check_user_exists)):
 
 
 @nostrnip5_generic_router.get("/signup/{domain_id}", response_class=HTMLResponse)
-async def signup(request: Request, domain_id: str, identifier: Optional[str] = None):
+async def signup(
+    request: Request,
+    domain_id: str,
+    identifier: Optional[str] = None,
+    years: Optional[int] = None,
+):
     domain = await get_domain_by_id(domain_id)
 
     if not domain:
         raise HTTPException(HTTPStatus.NOT_FOUND, "Domain does not exist.")
 
     status = (
-        await get_identifier_status(domain, identifier)
+        await get_identifier_status(domain, identifier, years or 1)
         if identifier
         else AddressStatus(identifier="", available=True)
     )
