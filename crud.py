@@ -228,7 +228,7 @@ async def update_address(domain_id: str, address_id: str, **kwargs) -> Address:
                 days=365 * config.years
             )
             set_clause.append("expires_at = ?")
-            set_variables.append(expires_at)
+            set_variables.append(db.datetime_to_timestamp(expires_at))
         else:
             set_clause.append(f"{key} = ?")
             set_variables.append(value)
@@ -300,6 +300,7 @@ async def create_address_internal(
     address_id = urlsafe_short_hash()
     extra = json.dumps(config or AddressConfig(), default=lambda o: o.__dict__)
     expires_at = datetime.datetime.now() + datetime.timedelta(days=365 * data.years)
+
     await db.execute(
         """
         INSERT INTO nostrnip5.addresses
@@ -314,7 +315,7 @@ async def create_address_internal(
             data.pubkey,
             False,
             extra,
-            expires_at,
+            db.datetime_to_timestamp(expires_at),
         ),
     )
 

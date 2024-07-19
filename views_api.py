@@ -321,6 +321,32 @@ async def api_update_address(
     return address
 
 
+@http_try_except
+@nostrnip5_api_router.post(
+    "/api/v1/domain/{domain_id}/address", status_code=HTTPStatus.CREATED
+)
+async def api_request_address(
+    address_data: CreateAddressData,
+    domain_id: str,
+    w: WalletTypeInfo = Depends(require_admin_key),
+):
+    # make sure the domain belongs to the user
+    domain = await get_domain(domain_id, w.wallet.id)
+    assert domain, "Domain does not exist."
+
+    assert address_data.domain_id == domain_id, "Domain ID missmatch"
+    address = await create_address(domain, address_data, w.wallet.user)
+    assert (
+        address.config.price_in_sats
+    ), f"Cannot compute price for '{address_data.local_part}'."
+
+    return {
+        "payment_hash": None,
+        "payment_request": None,
+        **dict(address),
+    }
+
+
 ##################################### USER ADDRESSES ###################################
 
 

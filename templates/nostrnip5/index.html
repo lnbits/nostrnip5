@@ -1115,24 +1115,19 @@
           return
         }
         var domain = _.findWhere(this.domains, {id: formDialog.data.domain_id})
-        axios
-          .post(
+        var adminkey = _.findWhere(self.g.user.wallets, {
+          id: domain.wallet
+        }).adminkey
+
+        LNbits.api
+          .request(
+            'POST',
             '/nostrnip5/api/v1/domain/' +
               formDialog.data.domain_id +
               '/address',
+            adminkey,
             formDialog.data
           )
-          .then(function (response) {
-            return LNbits.api.request(
-              'PUT',
-              '/nostrnip5/api/v1/domain/' +
-                formDialog.data.domain_id +
-                '/address/' +
-                response.data.address_id +
-                '/activate',
-              _.findWhere(self.g.user.wallets, {id: domain.wallet}).adminkey
-            )
-          })
           .then(function (response) {
             self.resetFormDialog()
             self.getAddresses()
