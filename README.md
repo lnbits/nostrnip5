@@ -44,7 +44,7 @@ location /.well-known/nostr.json {
 }
 ```
 
-Example Caddy configuration
+### Example Caddy configuration
 
 ```
 my.lnbits.instance {
