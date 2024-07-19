@@ -6,7 +6,7 @@ from fastapi.param_functions import Query
 from lnbits.db import FilterModel, FromRowModel
 from pydantic import BaseModel
 
-from .helpers import format_amount, is_ws_url, normalize_identifier
+from .helpers import format_amount, is_ws_url, normalize_identifier, validate_pub_key
 
 
 class CustomCost(BaseModel):
@@ -23,12 +23,20 @@ class UpdateAddressData(BaseModel):
     pubkey: Optional[str] = None
     relays: Optional[List[str]] = None
 
+    def validate_data(self):
+        self.validate_relays_urls()
+        self.validate_pubkey()
+
     def validate_relays_urls(self):
         if not self.relays:
             return
         for r in self.relays:
             if not is_ws_url(r):
                 raise ValueError(f"Relay '{r}' is not valid!")
+
+    def validate_pubkey(self):
+        if self.pubkey and self.pubkey != "":
+            self.pubkey = validate_pub_key(self.pubkey)
 
 
 class CreateAddressData(BaseModel):

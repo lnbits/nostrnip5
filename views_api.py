@@ -420,7 +420,7 @@ async def api_update_user_address(
     if not user_id:
         raise HTTPException(HTTPStatus.FORBIDDEN)
 
-    data.validate_relays_urls()
+    data.validate_data()
 
     address = await get_address(domain_id, address_id)
     assert address, "Address not found"

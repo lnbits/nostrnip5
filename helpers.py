@@ -33,7 +33,7 @@ def normalize_identifier(identifier: str):
     return identifier
 
 
-def validate_pub_key(pubkey: str):
+def validate_pub_key(pubkey: str) -> str:
     if pubkey.startswith("npub"):
         _, data = bech32_decode(pubkey)
         if data:
