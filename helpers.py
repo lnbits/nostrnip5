@@ -58,6 +58,7 @@ def validate_local_part(local_part: str):
     regex = re.compile(r"^[a-z0-9_.]+$")
     if not re.fullmatch(regex, local_part.lower()):
         raise ValueError(
+            f"Identifier '{local_part}' not allowed! "
             "Only a-z, 0-9 and .-_ are allowed characters, case insensitive."
         )
 

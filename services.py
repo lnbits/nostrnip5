@@ -251,7 +251,10 @@ async def reimburse_payment(payment: Payment):
 
 async def update_identifiers(identifiers: List[str], bucket: int):
     for identifier in identifiers:
-        await update_identifier(identifier, bucket)
+        try:
+            await update_identifier(identifier, bucket)
+        except Exception as exc:
+            logger.warning(exc)
 
 
 async def update_identifier(identifier, bucket):
@@ -294,5 +297,9 @@ async def refresh_bucket(
     resp.raise_for_status()
 
     for identifier in resp.text.split("\n"):
-        identifier_name = identifier.split(".")[0]
-        await update_identifier(identifier_name, bucket)
+        try:
+            identifier_name = identifier.split(".")[0]
+            await update_identifier(identifier_name, bucket)
+            await update_identifier(identifier, bucket)
+        except Exception as exc:
+            logger.warning(exc)
