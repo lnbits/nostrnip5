@@ -7,11 +7,11 @@ from lnbits.core.crud import get_wallets
 from lnbits.core.models import SimpleStatus, User, WalletTypeInfo
 from lnbits.core.services import create_invoice
 from lnbits.db import Filters, Page
-from lnbits.decorators import (  # type: ignore[attr-defined]
+from lnbits.decorators import (
     check_admin,
     check_user_exists,
     get_key_type,
-    optional_user_id,  # pyright: ignore [reportAttributeAccessIssue]
+    optional_user_id,
     parse_filters,
     require_admin_key,
 )
