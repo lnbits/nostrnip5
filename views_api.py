@@ -1,5 +1,6 @@
 from http import HTTPStatus
 from typing import Optional
+from uuid import uuid4
 
 import httpx
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -31,7 +32,6 @@ from .crud import (
     get_domain_by_id,
     get_identifier_ranking,
     get_settings,
-    rotate_address,
     update_address,
     update_domain_internal,
     update_identifier_ranking,
@@ -70,6 +70,8 @@ from .services import (
 nostrnip5_api_router: APIRouter = APIRouter()
 
 address_filters = parse_filters(AddressFilters)
+
+rotation_secret_prefix = "nostr_nip_5_rotation_secret_"
 
 
 ##################################### DOMAINS #####################################
@@ -391,15 +393,24 @@ async def api_delete_user_address(
 async def api_rotate_user_address(
     domain_id: str,
     address_id: str,
-    post_data: RotateAddressData,
-    user_id: Optional[str] = Depends(optional_user_id),
+    data: RotateAddressData,
 ):
-    # todo: improve checks
+    data.pubkey = validate_pub_key(data.pubkey)
+    assert data.secret.startswith(
+        rotation_secret_prefix
+    ), f"Rotation secret must start with: '{rotation_secret_prefix}' "
 
-    post_data.pubkey = validate_pub_key(post_data.pubkey)
+    # make sure the domain belongs to the user
+    domain = await get_domain_by_id(domain_id)
+    assert domain, "Domain does not exist."
 
-    # todo: owner id
-    await rotate_address(domain_id, address_id, post_data.pubkey)
+    address = await get_address(domain_id, address_id)
+    assert address, "Address not found"
+    assert address.domain_id == domain_id, "Domain ID missmatch"
+    owner_id = owner_id_from_user_id(data.secret)
+    assert address.owner_id == owner_id, "Address secret is incorrect."
+
+    await update_address(domain_id, address_id, pubkey=data.pubkey)
 
     return True
 
@@ -452,7 +463,10 @@ async def api_request_user_address(
     assert domain, "Domain does not exist."
 
     assert address_data.domain_id == domain_id, "Domain ID missmatch"
-    address = await create_address(domain, address_data, user_id)
+
+    # used when the user is not authenticated
+    temp_user_id = rotation_secret_prefix + uuid4().hex
+    address = await create_address(domain, address_data, user_id or temp_user_id)
     assert (
         address.config.price_in_sats
     ), f"Cannot compute price for '{address_data.local_part}'."
@@ -476,11 +490,15 @@ async def api_request_user_address(
     else:
         payment_hash, payment_request = None, None
 
-    return {
+    resp = {
         "payment_hash": payment_hash,
         "payment_request": payment_request,
         **dict(address),
     }
+    if not user_id:
+        resp["rotation_secret"] = temp_user_id
+
+    return resp
 
 
 ##################################### RANKING #####################################

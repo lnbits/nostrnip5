@@ -20,9 +20,17 @@ context %} {% block page %}
         filled
         dense
         v-model.trim="formDialog.data.pubkey"
-        label="Pub Key"
+        label="New Pub Key"
         placeholder="abc234"
         :rules="[ val => val.length = 64 || val.indexOf('npub') === 0 ||'Please enter a hex pubkey' ]"
+      >
+      </q-input>
+
+      <q-input
+        filled
+        dense
+        v-model.trim="formDialog.data.secret"
+        label="Rotation Secret"
       >
       </q-input>
 
@@ -52,7 +60,8 @@ context %} {% block page %}
         address_id: '{{ address_id }}',
         formDialog: {
           data: {
-            pubkey: null
+            pubkey: null,
+            secret: '{{ secret }}'
           }
         }
       }

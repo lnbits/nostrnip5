@@ -15,7 +15,7 @@ class CustomCost(BaseModel):
 
 
 class RotateAddressData(BaseModel):
-    owner_id: Optional[str] = None
+    secret: str
     pubkey: str
 
 
