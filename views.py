@@ -33,13 +33,6 @@ async def index(request: Request, user: User = Depends(check_user_exists)):
     )
 
 
-# @nostrnip5_generic_router.get("/signup/{domain}", response_class=HTMLResponse)
-# async def index(request: Request, user: User = Depends(check_user_exists)):
-#     return nostrnip5_renderer().TemplateResponse(
-#         "nostrnip5/domain.html", {"request": request, "user": user.dict()}
-#     )
-
-
 @nostrnip5_generic_router.get("/signup/{domain_id}", response_class=HTMLResponse)
 async def signup(
     request: Request,
@@ -74,7 +67,9 @@ async def signup(
 @nostrnip5_generic_router.get(
     "/rotate/{domain_id}/{address_id}", response_class=HTMLResponse
 )
-async def rotate(request: Request, domain_id: str, address_id: str):
+async def rotate(
+    request: Request, domain_id: str, address_id: str, secret: Optional[str] = None
+):
     domain = await get_domain_public_data(domain_id)
     address = await get_address(domain_id, address_id)
 
@@ -96,5 +91,6 @@ async def rotate(request: Request, domain_id: str, address_id: str):
             "domain": domain,
             "address_id": address_id,
             "address": address,
+            "secret": secret,
         },
     )

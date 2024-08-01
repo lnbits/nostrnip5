@@ -16,11 +16,13 @@ context %} {% block page %}
       Bookmark this link:
       <a
         class="text-secondary"
-        v-bind:href="'/nostrnip5/rotate/' + domain_id + '/' + successData.address_id"
+        v-bind:href="`/nostrnip5/rotate/${domain_id}/${successData.address_id}?secret=${successData.rotation_secret}`"
         target="_blank"
-        >{{ base_url }}nostrnip5/rotate/{{ domain_id }}/{{
-        successData.address_id }}</a
       >
+        <span
+          v-text="`${base_url}/nostrnip5/rotate/${domain_id}/${successData.address_id}?secret=${successData.rotation_secret}`"
+        ></span>
+      </a>
     </p>
     <p>
       In case you ever need to change your pubkey, you can still keep this NIP-5
@@ -215,11 +217,12 @@ context %} {% block page %}
         var qrCodeDialog = this.qrCodeDialog
         var formDialog = this.formDialog
         formDialog.data.domain_id = this.domain_id
+        formDialog.data.create_invoice = true
         var localPart = formDialog.data.local_part
 
         axios
           .post(
-            '/nostrnip5/api/v1/domain/' + this.domain_id + '/address',
+            '/nostrnip5/api/v1/user/domain/' + this.domain_id + '/address',
             formDialog.data
           )
           .then(function (response) {
@@ -248,7 +251,9 @@ context %} {% block page %}
                     qrCodeDialog.show = false
 
                     self.successData.local_part = localPart
-                    self.successData.address_id = qrCodeDialog.data.address_id
+                    self.successData.address_id = qrCodeDialog.data.id
+                    self.successData.rotation_secret =
+                      qrCodeDialog.data.rotation_secret
                     self.success = true
                   }
                 })
