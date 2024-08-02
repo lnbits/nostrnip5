@@ -49,6 +49,7 @@ from .models import (
     CreateDomainData,
     EditDomainData,
     IdentifierRanking,
+    LnAddressConfig,
     Nip5Settings,
     RotateAddressData,
     UpdateAddressData,
@@ -269,7 +270,8 @@ async def api_address_reimburse(
     assert domain, "Domain does not exist."
 
     address = await get_address(domain.id, address_id)
-    assert address and (address.domain_id == domain.id), "Domain ID missmatch"
+    assert address, "Address not found"
+    assert address.domain_id == domain_id, "Domain ID missmatch"
 
     wallet_id = await get_reimburse_wallet_id(address)
 
@@ -436,7 +438,7 @@ async def api_update_user_address(
     assert address, "Address not found"
     assert address.domain_id == domain_id, "Domain ID missmatch"
 
-    owner_id = owner_id_from_user_id(user_id)  # todo: allow for admins
+    owner_id = owner_id_from_user_id(user_id)
     assert address.owner_id == owner_id, "Address does not belong to this user"
 
     pubkey = data.pubkey if data.pubkey else address.pubkey
@@ -500,25 +502,71 @@ async def api_request_user_address(
     return resp
 
 
-##################################### LNURL #####################################
+##################################### LNADDRESS #####################################
 @http_try_except
 @nostrnip5_api_router.post(
-    "/api/v1/lnurl",
+    "/api/v1/user/domain/{domain_id}/address/{address_id}/lnaddress",
     status_code=HTTPStatus.OK,
 )
 @nostrnip5_api_router.put(
-    "/api/v1/lnurl",
+    "/api/v1/user/domain/{domain_id}/address/{address_id}/lnaddress",
     status_code=HTTPStatus.OK,
 )
 async def api_lnurl_create_or_update(
-    req: Request,
-    user: User = Depends(check_user_exists),
+    domain_id: str,
+    address_id: str,
+    data: LnAddressConfig,
+    user_id: Optional[str] = Depends(optional_user_id),
 ):
-    owner_id = owner_id_from_user_id("admin" if user.admin else user.id)
-    nip5_settings = await get_settings(owner_id)
+    if not user_id:
+        raise HTTPException(HTTPStatus.FORBIDDEN)
+
+    # make sure the address belongs to the user
+    domain = await get_domain_by_id(domain_id)
+    assert domain, "Domain does not exist."
+
+    address = await get_address(domain.id, address_id)
+    assert address, "Address not found"
+    assert address.domain_id == domain_id, "Domain ID missmatch"
+    owner_id = owner_id_from_user_id(user_id)
+    assert address.owner_id == owner_id, "Address does not belong to this user"
+
+    nip5_settings = await get_settings(owner_id_from_user_id("admin"))
 
     assert nip5_settings.lnaddress_api_endpoint, "No endpoint found for LN Address."
     assert nip5_settings.lnaddress_api_admin_key, "No api key found for LN Address."
+
+    address.config.ln_address = data
+    await update_address(domain_id, address.id, config=address.config)
+
+    ln_address_url = f"{nip5_settings.lnaddress_api_endpoint}/api/v1/links"
+    with httpx.Client() as client:
+        headers = {
+            "Content-Type": "application/json; charset=utf-8",
+            "X-API-KEY": nip5_settings.lnaddress_api_admin_key,
+        }
+        payload = {
+            "description": f"Lightning Address for {address.local_part}",
+            "wallet": data.wallet,
+            "min": data.min_sats,
+            "max": data.max_sats,
+            # "currency": str = Query(None),
+            "comment_chars": "255",
+            "username": address.local_part,
+            "zaps": True,
+        }
+        try:
+            client.post(
+                ln_address_url,
+                headers=headers,
+                json=payload,
+            )
+            logger.success(f"Updated Lightning Address for address {address_id}.")
+        except Exception as e:
+            logger.error(e)
+            logger.warning(
+                f"Faild to updated Lightning Address for address {address_id}."
+            )
 
 
 ##################################### RANKING #####################################

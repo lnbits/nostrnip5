@@ -141,6 +141,12 @@ class Domain(PublicDomain):
         return domain
 
 
+class LnAddressConfig(BaseModel):
+    wallet: str
+    min_sats: int = 1
+    max_sats: int = 10_000_000
+
+
 class AddressConfig(BaseModel):
     currency: Optional[str] = None
     price: Optional[float] = None
@@ -151,6 +157,8 @@ class AddressConfig(BaseModel):
     years: int = 1
     max_years: int = 1
     relays: List[str] = []
+
+    ln_address: LnAddressConfig = LnAddressConfig()
 
 
 class Address(FromRowModel):
@@ -206,7 +214,7 @@ class AddressFilters(FilterModel):
 class Nip5Settings(BaseModel):
     cloudflare_access_token: Optional[str] = None
     lnaddress_api_endpoint: Optional[str] = "https://nostr.com"
-    lnaddress_api_admin_key: Optional[str] = "https://nostr.com"
+    lnaddress_api_admin_key: Optional[str] = ""
 
     @classmethod
     def from_row(cls, row: Row) -> "Nip5Settings":
