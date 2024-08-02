@@ -264,7 +264,7 @@ async def update_identifier(identifier, bucket):
     await create_identifier_ranking(identifier, bucket)
 
 
-async def update_ln_address(identifier: str, data: LnAddressConfig) -> dict:
+async def update_ln_address(identifier: str, data: LnAddressConfig) -> LnAddressConfig:
     nip5_settings = await get_settings(owner_id_from_user_id("admin"))
 
     assert nip5_settings.lnaddress_api_endpoint, "No endpoint found for LN Address."
@@ -299,7 +299,9 @@ async def update_ln_address(identifier: str, data: LnAddressConfig) -> dict:
         )
 
         resp.raise_for_status()
-        return resp.json()
+        pay_link_data = resp.json()
+        data.pay_link_id = pay_link_data["id"]
+        return LnAddressConfig(**dict(data))
 
 
 async def refresh_buckets(

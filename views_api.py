@@ -535,7 +535,7 @@ async def api_lnurl_create_or_update(
 
     data.pay_link_id = address.config.ln_address.pay_link_id
     pay_link_data = await update_ln_address(address.local_part, data)
-    address.config.ln_address.pay_link_id = pay_link_data["id"]
+    address.config.ln_address = pay_link_data
     logger.success(f"Updated Lightning Address for '{address_id}'.")
 
     await update_address(domain_id, address.id, config=address.config)
