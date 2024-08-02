@@ -205,6 +205,8 @@ class AddressFilters(FilterModel):
 
 class Nip5Settings(BaseModel):
     cloudflare_access_token: Optional[str] = None
+    lnaddress_api_endpoint: Optional[str] = "https://nostr.com"
+    lnaddress_api_admin_key: Optional[str] = "https://nostr.com"
 
     @classmethod
     def from_row(cls, row: Row) -> "Nip5Settings":

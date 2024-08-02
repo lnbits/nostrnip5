@@ -415,7 +415,6 @@ async def api_rotate_user_address(
     return True
 
 
-# todo: anonimous
 @http_try_except
 @nostrnip5_api_router.put(
     "/api/v1/user/domain/{domain_id}/address/{address_id}",
@@ -499,6 +498,27 @@ async def api_request_user_address(
         resp["rotation_secret"] = temp_user_id
 
     return resp
+
+
+##################################### LNURL #####################################
+@http_try_except
+@nostrnip5_api_router.post(
+    "/api/v1/lnurl",
+    status_code=HTTPStatus.OK,
+)
+@nostrnip5_api_router.put(
+    "/api/v1/lnurl",
+    status_code=HTTPStatus.OK,
+)
+async def api_lnurl_create_or_update(
+    req: Request,
+    user: User = Depends(check_user_exists),
+):
+    owner_id = owner_id_from_user_id("admin" if user.admin else user.id)
+    nip5_settings = await get_settings(owner_id)
+
+    assert nip5_settings.lnaddress_api_endpoint, "No endpoint found for LN Address."
+    assert nip5_settings.lnaddress_api_admin_key, "No api key found for LN Address."
 
 
 ##################################### RANKING #####################################
