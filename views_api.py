@@ -528,6 +528,7 @@ async def api_lnurl_create_or_update(
     address = await get_address(domain.id, address_id)
     assert address, "Address not found"
     assert address.domain_id == domain_id, "Domain ID missmatch"
+    assert address.active, "Address not active."
     owner_id = owner_id_from_user_id(user_id)
     assert address.owner_id == owner_id, "Address does not belong to this user"
 
@@ -536,11 +537,14 @@ async def api_lnurl_create_or_update(
     assert nip5_settings.lnaddress_api_endpoint, "No endpoint found for LN Address."
     assert nip5_settings.lnaddress_api_admin_key, "No api key found for LN Address."
 
-    address.config.ln_address = data
-    await update_address(domain_id, address.id, config=address.config)
+    async with httpx.AsyncClient(verify=False) as client:
+        if address.config.ln_address.pay_link_id:
+            _client_fn = client.put
+            pay_link_id = f"/{address.config.ln_address.pay_link_id}"
+        else:
+            _client_fn = client.post
+            pay_link_id = ""
 
-    ln_address_url = f"{nip5_settings.lnaddress_api_endpoint}/api/v1/links"
-    with httpx.Client() as client:
         headers = {
             "Content-Type": "application/json; charset=utf-8",
             "X-API-KEY": nip5_settings.lnaddress_api_admin_key,
@@ -548,25 +552,28 @@ async def api_lnurl_create_or_update(
         payload = {
             "description": f"Lightning Address for {address.local_part}",
             "wallet": data.wallet,
-            "min": data.min_sats,
-            "max": data.max_sats,
-            # "currency": str = Query(None),
+            "min": data.min,
+            "max": data.max,
             "comment_chars": "255",
             "username": address.local_part,
             "zaps": True,
         }
-        try:
-            client.post(
-                ln_address_url,
-                headers=headers,
-                json=payload,
-            )
-            logger.success(f"Updated Lightning Address for address {address_id}.")
-        except Exception as e:
-            logger.error(e)
-            logger.warning(
-                f"Faild to updated Lightning Address for address {address_id}."
-            )
+
+        resp = await _client_fn(
+            f"{nip5_settings.lnaddress_api_endpoint}/lnurlp/api/v1/links{pay_link_id}",
+            headers=headers,
+            json=payload,
+        )
+
+        resp.raise_for_status()
+        pay_link_data = resp.json()
+
+        data.pay_link_id = pay_link_data["id"]
+        logger.success(f"Updated Lightning Address for '{address_id}'.")
+
+    address.config.ln_address = data
+    # address.config.ln_address.pay_link_id =
+    await update_address(domain_id, address.id, config=address.config)
 
 
 ##################################### RANKING #####################################

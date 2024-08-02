@@ -646,7 +646,7 @@
                     dense
                     v-model.trim="settingsFormDialog.data.lnaddress_api_endpoint"
                     label="Lightning Address API Endpoint"
-                    hint="Allow this extension to create lightning addreses."
+                    hint="LNURLp requires an https endpoint."
                     placeholder="httsp://nostr.com"
                   ></q-input>
                 </div>
@@ -656,13 +656,12 @@
                   <q-input
                     filled
                     dense
-                    v-model.trim="settingsFormDialog.data.lnaddress_admin_key"
+                    v-model.trim="settingsFormDialog.data.lnaddress_api_admin_key"
                     hint="This admin key must belong to an admin user."
                     label="Lightning Address Admin Key"
                   ></q-input>
                 </div>
               </div>
-              
             </q-card-section>
           </q-card>
         </q-expansion-item>

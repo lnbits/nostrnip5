@@ -143,8 +143,9 @@ class Domain(PublicDomain):
 
 class LnAddressConfig(BaseModel):
     wallet: str
-    min_sats: int = 1
-    max_sats: int = 10_000_000
+    min: int = 1
+    max: int = 10_000_000
+    pay_link_id: Optional[str] = ""
 
 
 class AddressConfig(BaseModel):
@@ -158,7 +159,7 @@ class AddressConfig(BaseModel):
     max_years: int = 1
     relays: List[str] = []
 
-    ln_address: LnAddressConfig = LnAddressConfig()
+    ln_address: LnAddressConfig = LnAddressConfig(wallet="")
 
 
 class Address(FromRowModel):
