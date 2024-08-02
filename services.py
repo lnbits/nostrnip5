@@ -21,6 +21,7 @@ from .crud import (
     get_domain_by_id,
     get_domains,
     get_identifier_ranking,
+    get_settings,
     update_address,
 )
 from .helpers import (
@@ -35,6 +36,7 @@ from .models import (
     AddressStatus,
     CreateAddressData,
     Domain,
+    LnAddressConfig,
 )
 
 
@@ -260,6 +262,44 @@ async def update_identifiers(identifiers: List[str], bucket: int):
 async def update_identifier(identifier, bucket):
     await delete_inferior_ranking(identifier, bucket)
     await create_identifier_ranking(identifier, bucket)
+
+
+async def update_ln_address(identifier: str, data: LnAddressConfig) -> dict:
+    nip5_settings = await get_settings(owner_id_from_user_id("admin"))
+
+    assert nip5_settings.lnaddress_api_endpoint, "No endpoint found for LN Address."
+    assert nip5_settings.lnaddress_api_admin_key, "No api key found for LN Address."
+
+    async with httpx.AsyncClient(verify=False) as client:
+        if data.pay_link_id:
+            _client_fn = client.put
+            pay_link_id = f"/{data.pay_link_id}"
+        else:
+            _client_fn = client.post
+            pay_link_id = ""
+
+        headers = {
+            "Content-Type": "application/json; charset=utf-8",
+            "X-API-KEY": nip5_settings.lnaddress_api_admin_key,
+        }
+        payload = {
+            "description": f"Lightning Address for {identifier}",
+            "wallet": data.wallet,
+            "min": data.min,
+            "max": data.max,
+            "comment_chars": "255",
+            "username": identifier,
+            "zaps": True,
+        }
+
+        resp = await _client_fn(
+            f"{nip5_settings.lnaddress_api_endpoint}/lnurlp/api/v1/links{pay_link_id}",
+            headers=headers,
+            json=payload,
+        )
+
+        resp.raise_for_status()
+        return resp.json()
 
 
 async def refresh_buckets(
