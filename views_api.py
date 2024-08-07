@@ -49,6 +49,7 @@ from .models import (
     CreateDomainData,
     EditDomainData,
     IdentifierRanking,
+    LnAddressConfig,
     Nip5Settings,
     RotateAddressData,
     UpdateAddressData,
@@ -65,6 +66,7 @@ from .services import (
     get_valid_addresses_for_owner,
     refresh_buckets,
     update_identifiers,
+    update_ln_address,
 )
 
 nostrnip5_api_router: APIRouter = APIRouter()
@@ -250,7 +252,9 @@ async def api_activate_address(
     domain = await get_domain(domain_id, w.wallet.id)
     assert domain, "Domain does not exist."
 
-    return await activate_address(domain_id, address_id)
+    active_address = await activate_address(domain_id, address_id)
+    active_address.config.ln_address.wallet = w.wallet.id
+    return await update_ln_address(active_address)
 
 
 @http_try_except
@@ -269,7 +273,8 @@ async def api_address_reimburse(
     assert domain, "Domain does not exist."
 
     address = await get_address(domain.id, address_id)
-    assert address and (address.domain_id == domain.id), "Domain ID missmatch"
+    assert address, "Address not found"
+    assert address.domain_id == domain_id, "Domain ID missmatch"
 
     wallet_id = await get_reimburse_wallet_id(address)
 
@@ -315,7 +320,7 @@ async def api_update_address(
     assert address, "Address not found"
     assert address.domain_id == domain_id, "Domain ID missmatch"
 
-    pubkey = data.pubkey if data.pubkey else address.pubkey
+    pubkey = validate_pub_key(data.pubkey if data.pubkey else address.pubkey)
     if data.relays:
         address.config.relays = data.relays
     await update_address(domain_id, address.id, pubkey=pubkey, config=address.config)
@@ -415,7 +420,6 @@ async def api_rotate_user_address(
     return True
 
 
-# todo: anonimous
 @http_try_except
 @nostrnip5_api_router.put(
     "/api/v1/user/domain/{domain_id}/address/{address_id}",
@@ -437,7 +441,7 @@ async def api_update_user_address(
     assert address, "Address not found"
     assert address.domain_id == domain_id, "Domain ID missmatch"
 
-    owner_id = owner_id_from_user_id(user_id)  # todo: allow for admins
+    owner_id = owner_id_from_user_id(user_id)
     assert address.owner_id == owner_id, "Address does not belong to this user"
 
     pubkey = data.pubkey if data.pubkey else address.pubkey
@@ -499,6 +503,41 @@ async def api_request_user_address(
         resp["rotation_secret"] = temp_user_id
 
     return resp
+
+
+##################################### LNADDRESS #####################################
+@http_try_except
+@nostrnip5_api_router.post(
+    "/api/v1/user/domain/{domain_id}/address/{address_id}/lnaddress",
+    status_code=HTTPStatus.OK,
+)
+@nostrnip5_api_router.put(
+    "/api/v1/user/domain/{domain_id}/address/{address_id}/lnaddress",
+    status_code=HTTPStatus.OK,
+)
+async def api_lnurl_create_or_update(
+    domain_id: str,
+    address_id: str,
+    data: LnAddressConfig,
+    user_id: Optional[str] = Depends(optional_user_id),
+):
+    if not user_id:
+        raise HTTPException(HTTPStatus.FORBIDDEN)
+
+    # make sure the address belongs to the user
+    domain = await get_domain_by_id(domain_id)
+    assert domain, "Domain does not exist."
+
+    address = await get_address(domain.id, address_id)
+    assert address, "Address not found"
+    assert address.domain_id == domain_id, "Domain ID missmatch"
+    assert address.active, "Address not active."
+    owner_id = owner_id_from_user_id(user_id)
+    assert address.owner_id == owner_id, "Address does not belong to this user"
+
+    data.pay_link_id = address.config.ln_address.pay_link_id
+    address.config.ln_address = data
+    await update_ln_address(address)
 
 
 ##################################### RANKING #####################################

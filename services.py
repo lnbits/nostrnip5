@@ -2,7 +2,6 @@ from typing import List, Optional
 
 import httpx
 from lnbits.core.crud import get_standalone_payment, get_user
-from lnbits.core.models import Payment
 from lnbits.db import Filters, Page
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
@@ -21,6 +20,7 @@ from .crud import (
     get_domain_by_id,
     get_domains,
     get_identifier_ranking,
+    get_settings,
     update_address,
 )
 from .helpers import (
@@ -237,18 +237,6 @@ async def get_reimburse_wallet_id(address: Address) -> str:
     return wallet_id
 
 
-async def reimburse_payment(payment: Payment):
-    reimburse_wallet_ids = payment.extra.get("reimburse_wallet_ids", [])
-    domain_id = payment.extra.get("domain_id")
-    address_id = payment.extra.get("address_id")
-
-    if len(reimburse_wallet_ids) == 0:
-        logger.info(
-            f"Cannot reimburse failed activation for payment '{payment.payment_hash}'"
-            f"Info: domain ID ({domain_id}), address ID ({address_id})."
-        )
-
-
 async def update_identifiers(identifiers: List[str], bucket: int):
     for identifier in identifiers:
         try:
@@ -260,6 +248,55 @@ async def update_identifiers(identifiers: List[str], bucket: int):
 async def update_identifier(identifier, bucket):
     await delete_inferior_ranking(identifier, bucket)
     await create_identifier_ranking(identifier, bucket)
+
+
+async def update_ln_address(address: Address) -> Address:
+    nip5_settings = await get_settings(owner_id_from_user_id("admin"))
+
+    assert nip5_settings.lnaddress_api_endpoint, "No endpoint found for LN Address."
+    assert nip5_settings.lnaddress_api_admin_key, "No api key found for LN Address."
+
+    ln_address = address.config.ln_address
+
+    async with httpx.AsyncClient(verify=False) as client:
+        method = "PUT" if ln_address.pay_link_id else "POST"
+        url = f"{nip5_settings.lnaddress_api_endpoint}/lnurlp/api/v1/links"
+        url = f"{url}/{ln_address.pay_link_id}" if ln_address.pay_link_id else url
+        headers = {
+            "Content-Type": "application/json; charset=utf-8",
+            "X-API-KEY": nip5_settings.lnaddress_api_admin_key,
+        }
+        payload = {
+            "description": f"Lightning Address for NIP05 {address.local_part}",
+            "wallet": ln_address.wallet,
+            "min": ln_address.min,
+            "max": ln_address.max,
+            "comment_chars": "255",
+            "username": address.local_part,
+            "zaps": True,
+        }
+
+        resp = await client.request(
+            method,
+            url,
+            headers=headers,
+            json=payload,
+        )
+
+        resp.raise_for_status()
+
+        pay_link_data = resp.json()
+        ln_address.pay_link_id = pay_link_data["id"]
+
+        logger.success(
+            f"Updated Lightning Address for '{address.local_part}' ({address.id})."
+        )
+
+        address = await update_address(
+            address.domain_id, address.id, config=address.config
+        )
+        logger.info(f"Updated address for '{address.local_part}' ({address.id}).")
+        return address
 
 
 async def refresh_buckets(
