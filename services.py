@@ -251,7 +251,6 @@ async def update_identifier(identifier, bucket):
 
 
 async def update_ln_address(address: Address) -> Address:
-    print("### address", address)
     nip5_settings = await get_settings(owner_id_from_user_id("admin"))
 
     assert nip5_settings.lnaddress_api_endpoint, "No endpoint found for LN Address."
@@ -293,9 +292,11 @@ async def update_ln_address(address: Address) -> Address:
             f"Updated Lightning Address for '{address.local_part}' ({address.id})."
         )
 
-        return await update_address(
+        address = await update_address(
             address.domain_id, address.id, config=address.config
         )
+        logger.info(f"Updated address for '{address.local_part}' ({address.id}).")
+        return address
 
 
 async def refresh_buckets(

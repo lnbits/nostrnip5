@@ -45,7 +45,7 @@ async def on_invoice_paid(payment: Payment) -> None:
         await _handle_action(action, payment, address)
     except Exception as exc:
         logger.warning(exc)
-        logger.info(f"Failed to {action} address `{domain_id}/{address_id}`")
+        logger.info(f"Issues on {action} address `{domain_id}/{address_id}`")
 
 
 async def _handle_action(action: str, payment: Payment, address: Address):

@@ -252,7 +252,9 @@ async def api_activate_address(
     domain = await get_domain(domain_id, w.wallet.id)
     assert domain, "Domain does not exist."
 
-    return await activate_address(domain_id, address_id)
+    active_address = await activate_address(domain_id, address_id)
+    active_address.config.ln_address.wallet = w.wallet.id
+    return await update_ln_address(active_address)
 
 
 @http_try_except
@@ -318,7 +320,7 @@ async def api_update_address(
     assert address, "Address not found"
     assert address.domain_id == domain_id, "Domain ID missmatch"
 
-    pubkey = data.pubkey if data.pubkey else address.pubkey
+    pubkey = validate_pub_key(data.pubkey if data.pubkey else address.pubkey)
     if data.relays:
         address.config.relays = data.relays
     await update_address(domain_id, address.id, pubkey=pubkey, config=address.config)
