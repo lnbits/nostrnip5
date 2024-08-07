@@ -534,11 +534,8 @@ async def api_lnurl_create_or_update(
     assert address.owner_id == owner_id, "Address does not belong to this user"
 
     data.pay_link_id = address.config.ln_address.pay_link_id
-    pay_link_data = await update_ln_address(address.local_part, data)
-    address.config.ln_address = pay_link_data
-    logger.success(f"Updated Lightning Address for '{address_id}'.")
-
-    await update_address(domain_id, address.id, config=address.config)
+    address.config.ln_address = data
+    await update_ln_address(address)
 
 
 ##################################### RANKING #####################################

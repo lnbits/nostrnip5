@@ -84,13 +84,7 @@ async def _create_ln_address(payment: Payment, address: Address):
         )
         return
     address.config.ln_address.wallet = wallet
-    pay_link_data = await update_ln_address(
-        address.local_part, address.config.ln_address
-    )
-    address.config.ln_address = pay_link_data
-    logger.success(f"Updated Lightning Address for '{address.id}'.")
-
-    await update_address(address.domain_id, address.id, config=address.config)
+    await update_ln_address(address)
 
 
 async def _reimburse_payment(address: Address):
