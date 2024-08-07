@@ -5,7 +5,8 @@ from lnbits.tasks import register_invoice_listener
 from loguru import logger
 
 from .crud import get_address, update_address
-from .services import activate_address
+from .models import LnAddressConfig
+from .services import activate_address, update_ln_address
 
 
 async def wait_for_paid_invoices():
@@ -41,14 +42,23 @@ async def on_invoice_paid(payment: Payment) -> None:
         return
 
     if action == "activate":
-        activated = await activate_address(domain_id, address_id, payment.payment_hash)
-        if not activated:
+        activated = await activate_address(domain_id, address.id, payment.payment_hash)
+        if activated:
+            wallet = payment.extra.get("reimburse_wallet_id")
+            config = LnAddressConfig(wallet=wallet)
+            pay_link_data = await update_ln_address(address.local_part, config)
+            config.ln_address = pay_link_data
+            logger.success(f"Updated Lightning Address for '{address.id}'.")
+
+            await update_address(address.domain_id, address.id, config=config)
+
+        else:
             address.config.reimburse_payment_hash = payment.payment_hash
             await update_address(
-                domain_id,
-                address_id,
+                address.domain_id,
+                address.id,
                 reimburse_amount=payment.amount,
                 config=address.config,
             )
     elif action == "reimburse":
-        await update_address(domain_id, address_id, reimburse_amount=0)
+        await update_address(address.domain_id, address.id, reimburse_amount=0)
