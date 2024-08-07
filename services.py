@@ -271,19 +271,15 @@ async def update_ln_address(identifier: str, data: LnAddressConfig) -> LnAddress
     assert nip5_settings.lnaddress_api_admin_key, "No api key found for LN Address."
 
     async with httpx.AsyncClient(verify=False) as client:
-        if data.pay_link_id:
-            _client_fn = client.put
-            pay_link_id = f"/{data.pay_link_id}"
-        else:
-            _client_fn = client.post
-            pay_link_id = ""
-
+        method = "PUT" if data.pay_link_id else "POST"
+        url = f"{nip5_settings.lnaddress_api_endpoint}/lnurlp/api/v1/links"
+        url = f"{url}/{data.pay_link_id}" if data.pay_link_id else url
         headers = {
             "Content-Type": "application/json; charset=utf-8",
             "X-API-KEY": nip5_settings.lnaddress_api_admin_key,
         }
         payload = {
-            "description": f"Lightning Address for {identifier}",
+            "description": f"Lightning Address for NIP05 {identifier}",
             "wallet": data.wallet,
             "min": data.min,
             "max": data.max,
@@ -292,8 +288,9 @@ async def update_ln_address(identifier: str, data: LnAddressConfig) -> LnAddress
             "zaps": True,
         }
 
-        resp = await _client_fn(
-            f"{nip5_settings.lnaddress_api_endpoint}/lnurlp/api/v1/links{pay_link_id}",
+        resp = await client.request(
+            method,
+            url,
             headers=headers,
             json=payload,
         )
