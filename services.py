@@ -115,7 +115,10 @@ async def get_identifier_status(
 
 
 async def create_address(
-    domain: Domain, data: CreateAddressData, user_id: Optional[str] = None
+    domain: Domain,
+    data: CreateAddressData,
+    wallet_id: Optional[str] = None,
+    user_id: Optional[str] = None,
 ) -> Address:
 
     identifier = normalize_identifier(data.local_part)
@@ -144,6 +147,7 @@ async def create_address(
     config.currency = domain.currency
     config.years = data.years
     config.max_years = domain.cost_config.max_years
+    config.ln_address.wallet = wallet_id or ""
 
     if addresss:
         assert not addresss.active, f"Identifier '{data.local_part}' already activated."

@@ -79,7 +79,7 @@ async def _create_ln_address(payment: Payment, address: Address):
     wallet = payment.extra.get("reimburse_wallet_id")
     if not wallet:
         logger.warning(
-            "Now wallet found for Lightning Address"
+            "No wallet found for Lightning Address"
             f" '{address.local_part} ({address.id}')."
         )
         return
