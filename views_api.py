@@ -253,7 +253,6 @@ async def api_activate_address(
     assert domain, "Domain does not exist."
 
     active_address = await activate_address(domain_id, address_id)
-    active_address.config.ln_address.wallet = w.wallet.id
     return await update_ln_address(active_address)
 
 
@@ -342,7 +341,7 @@ async def api_request_address(
     assert domain, "Domain does not exist."
 
     assert address_data.domain_id == domain_id, "Domain ID missmatch"
-    address = await create_address(domain, address_data, w.wallet.user)
+    address = await create_address(domain, address_data, w.wallet.id, w.wallet.user)
     assert (
         address.config.price_in_sats
     ), f"Cannot compute price for '{address_data.local_part}'."
@@ -468,16 +467,19 @@ async def api_request_user_address(
 
     assert address_data.domain_id == domain_id, "Domain ID missmatch"
 
+    wallet_id = (await get_wallets(user_id))[0].id if user_id else None
     # used when the user is not authenticated
     temp_user_id = rotation_secret_prefix + uuid4().hex
-    address = await create_address(domain, address_data, user_id or temp_user_id)
+    address = await create_address(
+        domain, address_data, wallet_id, user_id or temp_user_id
+    )
     assert (
         address.config.price_in_sats
     ), f"Cannot compute price for '{address_data.local_part}'."
 
     if address_data.create_invoice:
         # in case the user pays, but the identifier is no longer available
-        wallet_id = (await get_wallets(user_id))[0].id if user_id else None
+
         payment_hash, payment_request = await create_invoice(
             wallet_id=domain.wallet,
             amount=int(address.config.price_in_sats),
