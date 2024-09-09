@@ -364,7 +364,7 @@ async def api_get_user_addresses(
     active: Optional[bool] = None,
 ):
     if not user_id:
-        raise HTTPException(HTTPStatus.FORBIDDEN)
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
 
     owner_id = owner_id_from_user_id(user_id)
     assert owner_id
@@ -383,7 +383,7 @@ async def api_delete_user_address(
 ):
 
     if not user_id:
-        raise HTTPException(HTTPStatus.FORBIDDEN)
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
 
     owner_id = owner_id_from_user_id(user_id)  # todo: allow for admins
     return await delete_address(domain_id, address_id, owner_id)
@@ -432,7 +432,7 @@ async def api_update_user_address(
 ) -> Address:
 
     if not user_id:
-        raise HTTPException(HTTPStatus.FORBIDDEN)
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
 
     data.validate_data()
 
@@ -524,7 +524,7 @@ async def api_lnurl_create_or_update(
     user_id: Optional[str] = Depends(optional_user_id),
 ):
     if not user_id:
-        raise HTTPException(HTTPStatus.FORBIDDEN)
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
 
     # make sure the address belongs to the user
     domain = await get_domain_by_id(domain_id)
