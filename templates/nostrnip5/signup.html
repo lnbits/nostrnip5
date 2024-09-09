@@ -222,7 +222,7 @@ context %} {% block page %}
 
         axios
           .post(
-            '/nostrnip5/api/v1/user/domain/' + this.domain_id + '/address',
+            '/nostrnip5/api/v1/public/domain/' + this.domain_id + '/address',
             formDialog.data
           )
           .then(function (response) {

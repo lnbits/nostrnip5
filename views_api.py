@@ -497,7 +497,7 @@ async def api_request_public_user_address(
     temp_user_id = rotation_secret_prefix + uuid4().hex
 
     resp = await request_user_address(
-        domain, address_data, wallet_id, user_id or temp_user_id
+        domain, address_data, wallet_id or "", user_id or temp_user_id
     )
     if not user_id:
         resp["rotation_secret"] = temp_user_id
