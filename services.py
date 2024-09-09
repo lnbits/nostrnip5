@@ -2,6 +2,7 @@ from typing import List, Optional
 
 import httpx
 from lnbits.core.crud import get_standalone_payment, get_user
+from lnbits.core.services import create_invoice
 from lnbits.db import Filters, Page
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
@@ -112,6 +113,44 @@ async def get_identifier_status(
         price_reason=reason,
         currency=domain.currency,
     )
+
+
+async def request_user_address(
+    domain: Domain,
+    address_data: CreateAddressData,
+    wallet_id: str,
+    user_id: str,
+):
+    address = await create_address(domain, address_data, wallet_id, user_id)
+    assert (
+        address.config.price_in_sats
+    ), f"Cannot compute price for '{address_data.local_part}'."
+
+    if address_data.create_invoice:
+        # in case the user pays, but the identifier is no longer available
+        payment_hash, payment_request = await create_invoice(
+            wallet_id=domain.wallet,
+            amount=int(address.config.price_in_sats),
+            memo=f"Payment of {address.config.price} {address.config.currency} "
+            f"for NIP-05 for {address_data.local_part}@{domain.domain}",
+            extra={
+                "tag": "nostrnip5",
+                "domain_id": domain.id,
+                "address_id": address.id,
+                "action": "activate",
+                "reimburse_wallet_id": wallet_id,
+            },
+        )
+    else:
+        payment_hash, payment_request = None, None
+
+    resp = {
+        "payment_hash": payment_hash,
+        "payment_request": payment_request,
+        **dict(address),
+    }
+
+    return resp
 
 
 async def create_address(
