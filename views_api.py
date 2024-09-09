@@ -65,6 +65,7 @@ from .services import (
     get_user_domains,
     get_valid_addresses_for_owner,
     refresh_buckets,
+    request_user_address,
     update_identifiers,
     update_ln_address,
 )
@@ -364,7 +365,7 @@ async def api_get_user_addresses(
     active: Optional[bool] = None,
 ):
     if not user_id:
-        raise HTTPException(HTTPStatus.FORBIDDEN)
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
 
     owner_id = owner_id_from_user_id(user_id)
     assert owner_id
@@ -383,7 +384,7 @@ async def api_delete_user_address(
 ):
 
     if not user_id:
-        raise HTTPException(HTTPStatus.FORBIDDEN)
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
 
     owner_id = owner_id_from_user_id(user_id)  # todo: allow for admins
     return await delete_address(domain_id, address_id, owner_id)
@@ -432,7 +433,7 @@ async def api_update_user_address(
 ) -> Address:
 
     if not user_id:
-        raise HTTPException(HTTPStatus.FORBIDDEN)
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
 
     data.validate_data()
 
@@ -461,6 +462,30 @@ async def api_request_user_address(
     user_id: Optional[str] = Depends(optional_user_id),
 ):
 
+    if not user_id:
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
+
+    # make sure the address belongs to the user
+    domain = await get_domain_by_id(address_data.domain_id)
+    assert domain, "Domain does not exist."
+
+    assert address_data.domain_id == domain_id, "Domain ID missmatch"
+
+    wallet_id = (await get_wallets(user_id))[0].id
+
+    return await request_user_address(domain, address_data, wallet_id, user_id)
+
+
+@http_try_except
+@nostrnip5_api_router.post(
+    "/api/v1/public/domain/{domain_id}/address", status_code=HTTPStatus.CREATED
+)
+async def api_request_public_user_address(
+    address_data: CreateAddressData,
+    domain_id: str,
+    user_id: Optional[str] = Depends(optional_user_id),
+):
+
     # make sure the address belongs to the user
     domain = await get_domain_by_id(address_data.domain_id)
     assert domain, "Domain does not exist."
@@ -470,37 +495,10 @@ async def api_request_user_address(
     wallet_id = (await get_wallets(user_id))[0].id if user_id else None
     # used when the user is not authenticated
     temp_user_id = rotation_secret_prefix + uuid4().hex
-    address = await create_address(
-        domain, address_data, wallet_id, user_id or temp_user_id
+
+    resp = await request_user_address(
+        domain, address_data, wallet_id or "", user_id or temp_user_id
     )
-    assert (
-        address.config.price_in_sats
-    ), f"Cannot compute price for '{address_data.local_part}'."
-
-    if address_data.create_invoice:
-        # in case the user pays, but the identifier is no longer available
-
-        payment_hash, payment_request = await create_invoice(
-            wallet_id=domain.wallet,
-            amount=int(address.config.price_in_sats),
-            memo=f"Payment of {address.config.price} {address.config.currency} "
-            f"for NIP-05 for {address_data.local_part}@{domain.domain}",
-            extra={
-                "tag": "nostrnip5",
-                "domain_id": domain_id,
-                "address_id": address.id,
-                "action": "activate",
-                "reimburse_wallet_id": wallet_id,
-            },
-        )
-    else:
-        payment_hash, payment_request = None, None
-
-    resp = {
-        "payment_hash": payment_hash,
-        "payment_request": payment_request,
-        **dict(address),
-    }
     if not user_id:
         resp["rotation_secret"] = temp_user_id
 
@@ -524,7 +522,7 @@ async def api_lnurl_create_or_update(
     user_id: Optional[str] = Depends(optional_user_id),
 ):
     if not user_id:
-        raise HTTPException(HTTPStatus.FORBIDDEN)
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
 
     # make sure the address belongs to the user
     domain = await get_domain_by_id(domain_id)
