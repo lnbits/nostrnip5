@@ -7,6 +7,23 @@ context %} {% block page %}
     <!-- empty space -->
   </div>
 
+  <q-card class="col-md-6 col-sm-12 q-pa-lg">
+    <div class="row">
+      <q-btn unelevated color="primary" :disable="domainForm.data.wallet == null || domainForm.data.currency == null"
+        type="submit">Update Domain</q-btn>
+
+    </div>
+  </q-card>
+  <div class="col-md-2 col-sm-none">
+    <!-- empty space -->
+  </div>
+</div>
+
+<div class="row q-mt-md">
+  <div class="col-md-2 col-sm-none">
+    <!-- empty space -->
+  </div>
+
   {% raw %}
   <q-card class="col-md-6 col-sm-12 q-pa-lg">
 
@@ -49,10 +66,10 @@ context %} {% block page %}
                 </div>
               </div>
               <div class="row q-ml-md q-mb-sm q-mt-sm">
-                <div class="col float-right">
+                <div class="col float-right q-mt-lg">
                   <div>
-                    <q-btn icon="add" label="Add Character Count Cost" @click="addCharCountCost" size="sm" unelevated
-                      color="secondary" class="float-right"></q-btn>
+                    <q-btn icon="add" label="Add" @click="addCharCountCost" size="sm" unelevated color="secondary"
+                      class="float-right"></q-btn>
                   </div>
                 </div>
               </div>
@@ -73,9 +90,9 @@ context %} {% block page %}
                 </div>
               </div>
               <div class="row q-ml-md q-mb-sm q-mt-sm">
-                <div class="col float-right">
+                <div class="col float-right q-mt-lg">
                   <div>
-                    <q-btn icon="add" label="Add Rank Cost" @click="addRankCost" size="sm" unelevated color="secondary"
+                    <q-btn icon="add" label="Add" @click="addRankCost" size="sm" unelevated color="secondary"
                       class="float-right"></q-btn>
                   </div>
                 </div>
@@ -84,12 +101,7 @@ context %} {% block page %}
           </q-tab-panels>
         </q-card>
       </div>
-      <div class="row q-mt-lg">
-        <q-btn unelevated color="primary" :disable="domainForm.data.wallet == null || domainForm.data.currency == null"
-          type="submit">Update
-          Domain</q-btn>
 
-      </div>
     </q-form>
 
     {% endraw %}
