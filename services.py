@@ -89,10 +89,8 @@ async def get_identifier_status(
     if address:
         return AddressStatus(identifier=identifier, available=False)
 
-    rank = None
-    if domain.cost_config.enable_custom_cost:
-        identifier_ranking = await get_identifier_ranking(identifier)
-        rank = identifier_ranking.rank if identifier_ranking else None
+    identifier_ranking = await get_identifier_ranking(identifier)
+    rank = identifier_ranking.rank if identifier_ranking else None
 
     if rank == 0:
         return AddressStatus(identifier=identifier, available=False)

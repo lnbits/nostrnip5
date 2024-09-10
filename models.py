@@ -56,7 +56,6 @@ class CreateAddressData(BaseModel):
 
 class DomainCostConfig(BaseModel):
     max_years: int = 1
-    enable_custom_cost: bool = False
     char_count_cost: List[CustomCost] = []
     rank_cost: List[CustomCost] = []
     promotions: List[Promotion] = []
@@ -116,8 +115,6 @@ class Domain(PublicDomain):
         identifier = normalize_identifier(identifier)
         max_amount = self.cost
         reason = ""
-        if not self.cost_config.enable_custom_cost:
-            return max_amount * years, reason
 
         for char_cost in self.cost_config.char_count_cost:
             if len(identifier) <= char_cost.bracket and max_amount < char_cost.amount:

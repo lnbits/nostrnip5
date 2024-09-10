@@ -78,12 +78,7 @@ context %} {% block page %}
         hint="Maximum number of years a user can have an address before renewing."
       ></q-input>
 
-      <q-toggle
-        v-model="domainForm.data.cost_config.enable_custom_cost"
-        label="Advanced cost configurations"
-        color="secondary"
-      ></q-toggle>
-      <div v-if="domainForm.data.cost_config.enable_custom_cost">
+      <div>
         <q-card>
           <q-tabs v-model="domainTab" active-color="primary" align="justify">
             <q-tab name="charCount" label="Char Count"></q-tab>
