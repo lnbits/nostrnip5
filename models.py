@@ -14,6 +14,12 @@ class CustomCost(BaseModel):
     amount: float
 
 
+class Promotion(BaseModel):
+    code: str = ""
+    discount_percent: int
+    referer_percent: int
+
+
 class RotateAddressData(BaseModel):
     secret: str
     pubkey: str
@@ -53,6 +59,7 @@ class DomainCostConfig(BaseModel):
     enable_custom_cost: bool = False
     char_count_cost: List[CustomCost] = []
     rank_cost: List[CustomCost] = []
+    promotions: List[Promotion] = []
 
 
 class CreateDomainData(BaseModel):
@@ -124,6 +131,8 @@ class Domain(PublicDomain):
             if rank <= rank_cost.bracket and max_amount < rank_cost.amount:
                 max_amount = rank_cost.amount
                 reason = f"Top {rank_cost.bracket} identifier"
+
+        # todo validate promo
 
         return max_amount * years, reason
 
