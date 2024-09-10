@@ -1,0 +1,362 @@
+{% extends "public.html" %} {% block toolbar_title %} Verify NIP-5 For {{
+domain.domain }} {% endblock %} {% from "macros.jinja" import window_vars with
+context %} {% block page %}
+<link rel="stylesheet" href="/nostrnip5/static/css/signup.css" />
+<div class="row">
+  <div class="col-md-2 col-sm-none">
+    <!-- empty space -->
+  </div>
+
+  {% raw %}
+  <q-card class="col-md-6 col-sm-12 q-pa-lg">
+
+
+    <q-form @submit="saveDomain" class="q-gutter-md">
+      <q-select v-if="!domainForm.data.id" filled dense emit-value v-model="domainForm.data.wallet"
+        :options="g.user.walletOptions" label="Wallet *"></q-select>
+      <q-select filled dense emit-value v-model="domainForm.data.currency" :options="currencyOptions"
+        label="Currency *"></q-select>
+      <q-input v-if="!domainForm.data.id" filled dense v-model.trim="domainForm.data.domain" label="Domain"
+        placeholder="nostr.com"></q-input>
+      <q-input filled dense v-model="domainForm.data.cost" type="number" min="0" step="any" label="Price per Year"
+        placeholder="How much do you want to charge per address?"></q-input>
+      <q-input filled dense v-model="domainForm.data.cost_config.max_years" type="number" min="1" step="1"
+        label="Max Years" hint="Maximum number of years a user can have an address before renewing."></q-input>
+
+      <q-toggle v-model="domainForm.data.cost_config.enable_custom_cost" label="Advanced cost configurations"
+        color="secondary"></q-toggle>
+      <div v-if="domainForm.data.cost_config.enable_custom_cost">
+        <q-card>
+          <q-tabs v-model="domainTab" active-color="primary" align="justify">
+            <q-tab name="charCount" label="Char Count"></q-tab>
+            <q-tab name="ranking" label="Ranking"></q-tab>
+          </q-tabs>
+
+          <q-tab-panels class="bg-transparent" v-model="domainTab">
+            <q-tab-panel name="charCount">
+              <div v-for="(item, index) in domainForm.data.cost_config.char_count_cost" class="row q-mb-sm q-ml-md">
+                <div class="col-5">
+                  <q-input filled dense v-model.trim="item.bracket" type="number" min="0" step="1"
+                    label="Character Count"></q-input>
+                </div>
+                <div class="col-5">
+                  <q-input filled dense v-model.trim="item.amount" label="Amount" type="number"
+                    class="q-pl-sm"></q-input>
+                </div>
+                <div class="col-2">
+                  <q-btn @click="removeCharCountCost(index)" icon="clear" size="sm" unelevated color="primary"
+                    class="float-right q-mt-sm"></q-btn>
+                </div>
+              </div>
+              <div class="row q-ml-md q-mb-sm q-mt-sm">
+                <div class="col float-right">
+                  <div>
+                    <q-btn icon="add" label="Add Character Count Cost" @click="addCharCountCost" size="sm" unelevated
+                      color="secondary" class="float-right"></q-btn>
+                  </div>
+                </div>
+              </div>
+            </q-tab-panel>
+            <q-tab-panel name="ranking">
+              <div v-for="(item, index) in domainForm.data.cost_config.rank_cost" class="row q-mb-sm q-ml-md">
+                <div class="col-5">
+                  <q-select filled dense emit-value v-model="item.bracket" :options="domainRankingBraketOptions"
+                    label="Up to Rank"></q-select>
+                </div>
+                <div class="col-5">
+                  <q-input filled dense v-model.trim="item.amount" label="Amount" type="number"
+                    class="q-pl-sm"></q-input>
+                </div>
+                <div class="col-2">
+                  <q-btn @click="removeRankCost(index)" icon="clear" size="sm" unelevated color="primary"
+                    class="float-right q-mt-sm"></q-btn>
+                </div>
+              </div>
+              <div class="row q-ml-md q-mb-sm q-mt-sm">
+                <div class="col float-right">
+                  <div>
+                    <q-btn icon="add" label="Add Rank Cost" @click="addRankCost" size="sm" unelevated color="secondary"
+                      class="float-right"></q-btn>
+                  </div>
+                </div>
+              </div>
+            </q-tab-panel>
+          </q-tab-panels>
+        </q-card>
+      </div>
+      <div class="row q-mt-lg">
+        <q-btn unelevated color="primary" :disable="domainForm.data.wallet == null || domainForm.data.currency == null"
+          type="submit">Update
+          Domain</q-btn>
+
+      </div>
+    </q-form>
+
+    {% endraw %}
+  </q-card>
+  <div class="col-md-4 col-sm-none">
+    <!-- empty space -->
+  </div>
+
+</div>
+{% endblock %} {% block scripts %} {{ window_vars(user) }}
+<script>
+  Vue.component(VueQrcode.name, VueQrcode)
+
+  new Vue({
+    el: '#vue',
+    mixins: [windowMixin],
+    data: function () {
+      return {
+        domainRankingBraketOptions: [
+          200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000,
+          500000, 1000000
+        ],
+        currencyOptions: [
+          'sats',
+          'USD',
+          'EUR',
+          'GBP',
+          'AED',
+          'AFN',
+          'ALL',
+          'AMD',
+          'ANG',
+          'AOA',
+          'ARS',
+          'AUD',
+          'AWG',
+          'AZN',
+          'BAM',
+          'BBD',
+          'BDT',
+          'BGN',
+          'BHD',
+          'BIF',
+          'BMD',
+          'BND',
+          'BOB',
+          'BRL',
+          'BSD',
+          'BTN',
+          'BWP',
+          'BYN',
+          'BZD',
+          'CAD',
+          'CDF',
+          'CHF',
+          'CLF',
+          'CLP',
+          'CNH',
+          'CNY',
+          'COP',
+          'CRC',
+          'CUC',
+          'CUP',
+          'CVE',
+          'CZK',
+          'DJF',
+          'DKK',
+          'DOP',
+          'DZD',
+          'EGP',
+          'ERN',
+          'ETB',
+          'EUR',
+          'FJD',
+          'FKP',
+          'GBP',
+          'GEL',
+          'GGP',
+          'GHS',
+          'GIP',
+          'GMD',
+          'GNF',
+          'GTQ',
+          'GYD',
+          'HKD',
+          'HNL',
+          'HRK',
+          'HTG',
+          'HUF',
+          'IDR',
+          'ILS',
+          'IMP',
+          'INR',
+          'IQD',
+          'IRR',
+          'IRT',
+          'ISK',
+          'JEP',
+          'JMD',
+          'JOD',
+          'JPY',
+          'KES',
+          'KGS',
+          'KHR',
+          'KMF',
+          'KPW',
+          'KRW',
+          'KWD',
+          'KYD',
+          'KZT',
+          'LAK',
+          'LBP',
+          'LKR',
+          'LRD',
+          'LSL',
+          'LYD',
+          'MAD',
+          'MDL',
+          'MGA',
+          'MKD',
+          'MMK',
+          'MNT',
+          'MOP',
+          'MRO',
+          'MUR',
+          'MVR',
+          'MWK',
+          'MXN',
+          'MYR',
+          'MZN',
+          'NAD',
+          'NGN',
+          'NIO',
+          'NOK',
+          'NPR',
+          'NZD',
+          'OMR',
+          'PAB',
+          'PEN',
+          'PGK',
+          'PHP',
+          'PKR',
+          'PLN',
+          'PYG',
+          'QAR',
+          'RON',
+          'RSD',
+          'RUB',
+          'RWF',
+          'SAR',
+          'SBD',
+          'SCR',
+          'SDG',
+          'SEK',
+          'SGD',
+          'SHP',
+          'SLL',
+          'SOS',
+          'SRD',
+          'SSP',
+          'STD',
+          'SVC',
+          'SYP',
+          'SZL',
+          'THB',
+          'TJS',
+          'TMT',
+          'TND',
+          'TOP',
+          'TRY',
+          'TTD',
+          'TWD',
+          'TZS',
+          'UAH',
+          'UGX',
+          'USD',
+          'UYU',
+          'UZS',
+          'VEF',
+          'VES',
+          'VND',
+          'VUV',
+          'WST',
+          'XAF',
+          'XAG',
+          'XAU',
+          'XCD',
+          'XDR',
+          'XOF',
+          'XPD',
+          'XPF',
+          'XPT',
+          'YER',
+          'ZAR',
+          'ZMW',
+          'ZWL'
+        ],
+        domainForm: {
+          show: false,
+          data: JSON.parse('{{domain | tojson | safe}}'),
+        },
+        domainTab: 'charCount',
+      }
+    },
+    methods: {
+      resetFormDialog: function () {
+        this.domainForm.show = false
+        this.domainTab = 'charCount'
+        // this.domainForm.data = {
+        //   cost_config: {
+        //     max_years: 1,
+        //     enable_custom_cost: false,
+        //     char_count_cost: [],
+        //     rank_cost: []
+        //   }
+        // }
+        console.log("### domainForm", this.domainForm)
+
+      },
+      saveDomain: function () {
+        var data = this.domainForm.data
+        var self = this
+        const method = this.domainForm.data.id ? 'PUT' : 'POST'
+
+        LNbits.api
+          .request(
+            method,
+            '/nostrnip5/api/v1/domain',
+            _.findWhere(this.g.user.wallets, { id: this.domainForm.data.wallet })
+              .adminkey,
+            data
+          )
+          .then(function (response) {
+            self.domains = self.domains.filter(d => d.id !== response.data.id)
+            self.domains.push(mapDomain(response.data))
+            self.resetFormDialog()
+          })
+          .catch(function (error) {
+            LNbits.utils.notifyApiError(error)
+          })
+      },
+      addCharCountCost: function () {
+        this.domainForm.data.cost_config.char_count_cost.push({
+          bracket: 0,
+          amount: 1
+        })
+      },
+      removeCharCountCost: function (index) {
+        if (index < this.domainForm.data.cost_config.char_count_cost.length) {
+          this.domainForm.data.cost_config.char_count_cost.splice(index, 1)
+        }
+      },
+      addRankCost: function () {
+        this.domainForm.data.cost_config.rank_cost.push({
+          bracket: 0,
+          amount: 1
+        })
+      },
+      removeRankCost: function (index) {
+        if (index < this.domainForm.data.cost_config.rank_cost.length) {
+          this.domainForm.data.cost_config.rank_cost.splice(index, 1)
+        }
+      },
+    },
+    created() {
+      this.resetFormDialog()
+    }
+  })
+</script>
+{% endblock %}

@@ -33,6 +33,19 @@ async def index(request: Request, user: User = Depends(check_user_exists)):
     )
 
 
+@nostrnip5_generic_router.get("/domain/{domain_id}", response_class=HTMLResponse)
+async def domain_details(
+    request: Request, domain_id: str, user: User = Depends(check_user_exists)
+):
+    domain = await get_domain_by_id(domain_id)
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain does not exist.")
+    return nostrnip5_renderer().TemplateResponse(
+        "nostrnip5/domain.html",
+        {"request": request, "domain": domain.dict(), "user": user.dict()},
+    )
+
+
 @nostrnip5_generic_router.get("/signup/{domain_id}", response_class=HTMLResponse)
 async def signup(
     request: Request,
