@@ -106,7 +106,7 @@ async def api_get_domains(domain_id: str, w: WalletTypeInfo = Depends(get_key_ty
 async def api_create_domain(
     data: CreateDomainData, wallet: WalletTypeInfo = Depends(require_admin_key)
 ):
-
+    data.validate_data()
     return await create_domain_internal(wallet_id=wallet.wallet.id, data=data)
 
 
@@ -115,7 +115,7 @@ async def api_create_domain(
 async def api_update_domain(
     data: EditDomainData, wallet: WalletTypeInfo = Depends(require_admin_key)
 ):
-
+    data.validate_data()
     return await update_domain_internal(wallet_id=wallet.wallet.id, data=data)
 
 

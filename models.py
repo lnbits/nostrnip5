@@ -2,7 +2,6 @@ import json
 from sqlite3 import Row
 from typing import List, Optional, Tuple
 
-from fastapi.param_functions import Query
 from lnbits.db import FilterModel, FromRowModel
 from pydantic import BaseModel
 
@@ -13,11 +12,26 @@ class CustomCost(BaseModel):
     bracket: int
     amount: float
 
+    def validate_data(self):
+        assert self.amount >= 0, "Custom cost must be positive."
+
 
 class Promotion(BaseModel):
     code: str = ""
-    discount_percent: int
-    referer_percent: int
+    buyer_discount_percent: int
+    referer_bonus_percent: int
+    selected_referer: Optional[str] = None
+
+    def validate_data(self):
+        assert (
+            0 <= self.buyer_discount_percent <= 100
+        ), f"Discount percent for '{self.code}' must be between 0 and 100."
+        assert (
+            0 <= self.referer_bonus_percent <= 100
+        ), f"Referer percent for '{self.code}' must be between 0 and 100."
+        assert self.buyer_discount_percent + self.referer_bonus_percent <= 100, (
+            f"Discount and Referer for '{self.code}'" " must be less than 100%."
+        )
 
 
 class RotateAddressData(BaseModel):
@@ -60,20 +74,48 @@ class DomainCostConfig(BaseModel):
     rank_cost: List[CustomCost] = []
     promotions: List[Promotion] = []
 
+    def validate_data(self):
+        for cost in self.char_count_cost:
+            cost.validate_data()
+
+        for cost in self.rank_cost:
+            cost.validate_data()
+
+        assert (
+            1 < self.max_years < 100
+        ), "Maximum allowed years must be between 1 and 100."
+        promo_codes = []
+        for promo in self.promotions:
+            promo.validate_data()
+            assert (
+                promo.code not in promo_codes
+            ), f"Duplicate promo code: '{promo.code}'."
+            promo_codes.append(promo.code)
+
 
 class CreateDomainData(BaseModel):
     wallet: str
     currency: str
-    cost: float = Query(..., ge=0.01)
+    cost: float
     domain: str
     cost_config: Optional[DomainCostConfig] = None
+
+    def validate_data(self):
+        assert self.cost >= 0, "Domain cost must be positive."
+        if self.cost_config:
+            self.cost_config.validate_data()
 
 
 class EditDomainData(BaseModel):
     id: str
     currency: str
-    cost: float = Query(..., ge=0.01)
+    cost: float
     cost_config: Optional[DomainCostConfig] = None
+
+    def validate_data(self):
+        assert self.cost >= 0, "Domain cost must be positive."
+        if self.cost_config:
+            self.cost_config.validate_data()
 
     @classmethod
     def from_row(cls, row: Row) -> "EditDomainData":
@@ -128,8 +170,6 @@ class Domain(PublicDomain):
             if rank <= rank_cost.bracket and max_amount < rank_cost.amount:
                 max_amount = rank_cost.amount
                 reason = f"Top {rank_cost.bracket} identifier"
-
-        # todo validate promo
 
         return max_amount * years, reason
 
