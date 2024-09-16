@@ -144,16 +144,12 @@ async def request_user_address(
     else:
         payment_hash, payment_request = None, None
 
+    address.promo_code_status = domain.cost_config.promo_code_status(
+        address_data.promo_code
+    )
     resp = {
         "payment_hash": payment_hash,
         "payment_request": payment_request,
-        "promo_buyer_discount": domain.cost_config.promo_code_buyer_discount(
-            address_data.promo_code
-        ),
-        "promo_allow_referer": domain.cost_config.promo_code_allows_referer(
-            address_data.promo_code
-        ),
-        "promo_referer": domain.cost_config.promo_code_referer(address_data.promo_code),
         **dict(address),
     }
 
@@ -255,6 +251,9 @@ async def get_valid_addresses_for_owner(
             continue
 
         address.config.currency = domain.currency
+        address.promo_code_status = domain.cost_config.promo_code_status(
+            address.config.promo_code
+        )
         valid_addresses.append(address)
 
     return valid_addresses

@@ -34,6 +34,12 @@ class Promotion(BaseModel):
         )
 
 
+class PromoCodeStatus(BaseModel):
+    buyer_discount: Optional[float] = None
+    allow_referer: bool = False
+    referer: Optional[str] = None
+
+
 class RotateAddressData(BaseModel):
     secret: str
     pubkey: str
@@ -111,6 +117,13 @@ class DomainCostConfig(BaseModel):
             return False
 
         return promotion.referer_bonus_percent > 0 and not promotion.selected_referer
+
+    def promo_code_status(self, promo_code: Optional[str] = None) -> PromoCodeStatus:
+        return PromoCodeStatus(
+            buyer_discount=self.promo_code_buyer_discount(promo_code),
+            allow_referer=self.promo_code_allows_referer(promo_code),
+            referer=self.promo_code_referer(promo_code),
+        )
 
     def validate_data(self):
         for cost in self.char_count_cost:
@@ -264,6 +277,8 @@ class Address(FromRowModel):
     expires_at: Optional[float]
 
     config: AddressConfig = AddressConfig()
+
+    promo_code_status: PromoCodeStatus = PromoCodeStatus()
 
     @property
     def has_pubkey(self):
