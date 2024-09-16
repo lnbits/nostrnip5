@@ -132,7 +132,7 @@ async def request_user_address(
             wallet_id=domain.wallet,
             amount=int(address.config.price_in_sats),
             memo=f"Payment of {address.config.price} {address.config.currency} "
-            f"for NIP-05 for {address_data.local_part}@{domain.domain}",
+            f"for NIP-05 {address_data.local_part}@{domain.domain}",
             extra={
                 "tag": "nostrnip5",
                 "domain_id": domain.id,
