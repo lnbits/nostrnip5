@@ -3,6 +3,7 @@ from sqlite3 import Row
 from typing import List, Optional, Tuple
 
 from lnbits.db import FilterModel, FromRowModel
+from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from pydantic import BaseModel
 
 from .helpers import format_amount, is_ws_url, normalize_identifier, validate_pub_key
@@ -204,13 +205,13 @@ class Domain(PublicDomain):
     cost_config: DomainCostConfig = DomainCostConfig()
     time: int
 
-    def price_for_identifier(
+    async def price_for_identifier(
         self,
         identifier: str,
         years: int,
         rank: Optional[int] = None,
         promo_code: Optional[str] = None,
-    ) -> Tuple[float, str]:
+    ) -> Tuple[float, float, str]:
         assert (
             1 <= years <= self.cost_config.max_years
         ), f"Number of years must be between '1' and '{self.cost_config.max_years}'."
@@ -232,7 +233,12 @@ class Domain(PublicDomain):
         price_with_discount = self.cost_config.apply_promo_code(
             max_amount * years, promo_code
         )
-        return price_with_discount, reason
+        price_in_sats = (
+            price_with_discount
+            if self.currency == "sats"
+            else await fiat_amount_as_satoshis(price_with_discount, self.currency)
+        )
+        return price_with_discount, price_in_sats, reason
 
     def public_data(self):
         data = dict(PublicDomain(**dict(self)))

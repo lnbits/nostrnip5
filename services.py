@@ -4,7 +4,6 @@ import httpx
 from lnbits.core.crud import get_standalone_payment, get_user
 from lnbits.core.services import create_invoice
 from lnbits.db import Filters, Page
-from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
 
 from .crud import (
@@ -95,12 +94,8 @@ async def get_identifier_status(
     if rank == 0:
         return AddressStatus(identifier=identifier, available=False)
 
-    price, reason = domain.price_for_identifier(identifier, years, rank, promo_code)
-
-    price_in_sats = (
-        price
-        if domain.currency == "sats"
-        else await fiat_amount_as_satoshis(price, domain.currency)
+    price, price_in_sats, reason = await domain.price_for_identifier(
+        identifier, years, rank, promo_code
     )
 
     return AddressStatus(
@@ -127,7 +122,7 @@ async def request_user_address(
     ), f"Cannot compute price for '{address_data.local_part}'."
 
     if address_data.create_invoice:
-        # in case the user pays, but the identifier is no longer available
+
         payment_hash, payment_request = await create_invoice(
             wallet_id=domain.wallet,
             amount=int(address.config.price_in_sats),
@@ -180,16 +175,9 @@ async def create_address(
     assert identifier_status.available, f"Identifier '{identifier}' not available."
     assert identifier_status.price, f"Cannot compute price for '{identifier}'."
 
-    price_in_sats = (
-        identifier_status.price
-        if domain.currency == "sats"
-        else await fiat_amount_as_satoshis(identifier_status.price, domain.currency)
-    )
-    assert price_in_sats, f"Cannot compute price for '{identifier}'."
-
     config = addresss.config if addresss else AddressConfig()
     config.price = identifier_status.price
-    config.price_in_sats = price_in_sats
+    config.price_in_sats = identifier_status.price_in_sats
     config.currency = domain.currency
     config.years = data.years
     config.promo_code = data.promo_code
