@@ -337,6 +337,8 @@ async def api_request_address(
     domain_id: str,
     w: WalletTypeInfo = Depends(require_admin_key),
 ):
+    address_data.normalize()
+
     # make sure the domain belongs to the user
     domain = await get_domain(domain_id, w.wallet.id)
     assert domain, "Domain does not exist."
@@ -465,6 +467,8 @@ async def api_request_user_address(
     if not user_id:
         raise HTTPException(HTTPStatus.UNAUTHORIZED)
 
+    address_data.normalize()
+
     # make sure the address belongs to the user
     domain = await get_domain_by_id(address_data.domain_id)
     assert domain, "Domain does not exist."
@@ -486,6 +490,7 @@ async def api_request_public_user_address(
     user_id: Optional[str] = Depends(optional_user_id),
 ):
 
+    address_data.normalize()
     # make sure the address belongs to the user
     domain = await get_domain_by_id(address_data.domain_id)
     assert domain, "Domain does not exist."

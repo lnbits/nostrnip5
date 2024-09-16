@@ -75,6 +75,12 @@ class CreateAddressData(BaseModel):
     referer: Optional[str] = None
     create_invoice: bool = False
 
+    def normalize(self):
+        if self.promo_code and "@" in self.promo_code:
+            elements = self.promo_code.rsplit("@")
+            self.promo_code = elements[0]
+            self.referer = elements[1]
+
 
 class DomainCostConfig(BaseModel):
     max_years: int = 1
