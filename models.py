@@ -18,8 +18,8 @@ class CustomCost(BaseModel):
 
 class Promotion(BaseModel):
     code: str = ""
-    buyer_discount_percent: int
-    referer_bonus_percent: int
+    buyer_discount_percent: float
+    referer_bonus_percent: float
     selected_referer: Optional[str] = None
 
     def validate_data(self):
@@ -65,6 +65,8 @@ class CreateAddressData(BaseModel):
     pubkey: str = ""
     years: int = 1
     relays: Optional[List[str]] = None
+    promo_code: Optional[str] = None
+    referer: Optional[str] = None
     create_invoice: bool = False
 
 
@@ -73,6 +75,42 @@ class DomainCostConfig(BaseModel):
     char_count_cost: List[CustomCost] = []
     rank_cost: List[CustomCost] = []
     promotions: List[Promotion] = []
+
+    def apply_promo_code(
+        self, amount: float, promo_code: Optional[str] = None
+    ) -> float:
+        if promo_code is None:
+            return amount
+        promotion = next((p for p in self.promotions if p.code == promo_code), None)
+        if not promotion:
+            return amount
+
+        discount = amount * (promotion.buyer_discount_percent / 100)
+        return round(amount - discount, 2)
+
+    def get_promotion(self, promo_code: Optional[str] = None) -> Optional[Promotion]:
+        if promo_code is None:
+            return None
+        return next((p for p in self.promotions if p.code == promo_code), None)
+
+    def promo_code_buyer_discount(self, promo_code: Optional[str] = None) -> float:
+        promotion = self.get_promotion(promo_code)
+        if not promotion:
+            return 0
+        return promotion.buyer_discount_percent
+
+    def promo_code_referer(self, promo_code: Optional[str] = None) -> Optional[str]:
+        promotion = self.get_promotion(promo_code)
+        if not promotion:
+            return None
+        return promotion.selected_referer
+
+    def promo_code_allows_referer(self, promo_code: Optional[str] = None) -> bool:
+        promotion = self.get_promotion(promo_code)
+        if not promotion:
+            return False
+
+        return promotion.referer_bonus_percent > 0 and not promotion.selected_referer
 
     def validate_data(self):
         for cost in self.char_count_cost:
@@ -148,30 +186,34 @@ class Domain(PublicDomain):
     time: int
 
     def price_for_identifier(
-        self, identifier: str, years: int, rank: Optional[int] = None
+        self,
+        identifier: str,
+        years: int,
+        rank: Optional[int] = None,
+        promo_code: Optional[str] = None,
     ) -> Tuple[float, str]:
         assert (
             1 <= years <= self.cost_config.max_years
         ), f"Number of years must be between '1' and '{self.cost_config.max_years}'."
 
         identifier = normalize_identifier(identifier)
-        max_amount = self.cost
-        reason = ""
+        max_amount, reason = self.cost, ""
 
         for char_cost in self.cost_config.char_count_cost:
             if len(identifier) <= char_cost.bracket and max_amount < char_cost.amount:
                 max_amount = char_cost.amount
                 reason = f"{len(identifier)} characters"
 
-        if not rank:
-            return max_amount * years, reason
+        if rank:
+            for rank_cost in self.cost_config.rank_cost:
+                if rank <= rank_cost.bracket and max_amount < rank_cost.amount:
+                    max_amount = rank_cost.amount
+                    reason = f"Top {rank_cost.bracket} identifier"
 
-        for rank_cost in self.cost_config.rank_cost:
-            if rank <= rank_cost.bracket and max_amount < rank_cost.amount:
-                max_amount = rank_cost.amount
-                reason = f"Top {rank_cost.bracket} identifier"
-
-        return max_amount * years, reason
+        price_with_discount = self.cost_config.apply_promo_code(
+            max_amount * years, promo_code
+        )
+        return price_with_discount, reason
 
     def public_data(self):
         data = dict(PublicDomain(**dict(self)))
@@ -202,6 +244,8 @@ class AddressConfig(BaseModel):
     reimburse_payment_hash: Optional[str] = None
     activated_by_owner: bool = False
     years: int = 1
+    promo_code: Optional[str] = None
+    referer: Optional[str] = None
     max_years: int = 1
     relays: List[str] = []
 

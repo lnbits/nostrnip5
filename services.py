@@ -82,7 +82,7 @@ async def get_user_addresses_paginated(
 
 
 async def get_identifier_status(
-    domain: Domain, identifier: str, years: int
+    domain: Domain, identifier: str, years: int, promo_code: Optional[str] = None
 ) -> AddressStatus:
     identifier = normalize_identifier(identifier)
     address = await get_active_address_by_local_part(domain.id, identifier)
@@ -95,7 +95,7 @@ async def get_identifier_status(
     if rank == 0:
         return AddressStatus(identifier=identifier, available=False)
 
-    price, reason = domain.price_for_identifier(identifier, years, rank)
+    price, reason = domain.price_for_identifier(identifier, years, rank, promo_code)
 
     price_in_sats = (
         price
@@ -119,7 +119,9 @@ async def request_user_address(
     wallet_id: str,
     user_id: str,
 ):
-    address = await create_address(domain, address_data, wallet_id, user_id)
+    address = await create_address(
+        domain, address_data, wallet_id, user_id, address_data.promo_code
+    )
     assert (
         address.config.price_in_sats
     ), f"Cannot compute price for '{address_data.local_part}'."
@@ -145,6 +147,13 @@ async def request_user_address(
     resp = {
         "payment_hash": payment_hash,
         "payment_request": payment_request,
+        "promo_buyer_discount": domain.cost_config.promo_code_buyer_discount(
+            address_data.promo_code
+        ),
+        "promo_allow_referer": domain.cost_config.promo_code_allows_referer(
+            address_data.promo_code
+        ),
+        "promo_referer": domain.cost_config.promo_code_referer(address_data.promo_code),
         **dict(address),
     }
 
@@ -156,6 +165,7 @@ async def create_address(
     data: CreateAddressData,
     wallet_id: Optional[str] = None,
     user_id: Optional[str] = None,
+    promo_code: Optional[str] = None,
 ) -> Address:
 
     identifier = normalize_identifier(data.local_part)
@@ -163,7 +173,9 @@ async def create_address(
     if data.pubkey != "":
         data.pubkey = validate_pub_key(data.pubkey)
 
-    identifier_status = await get_identifier_status(domain, identifier, data.years)
+    identifier_status = await get_identifier_status(
+        domain, identifier, data.years, promo_code
+    )
 
     assert identifier_status.available, f"Identifier '{identifier}' not available."
     assert identifier_status.price, f"Cannot compute price for '{identifier}'."
@@ -183,6 +195,8 @@ async def create_address(
     config.price_in_sats = price_in_sats
     config.currency = domain.currency
     config.years = data.years
+    config.promo_code = data.promo_code
+    config.referer = data.referer
     config.max_years = domain.cost_config.max_years
     config.ln_address.wallet = wallet_id or ""
 
