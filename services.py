@@ -169,6 +169,10 @@ async def create_address(
     if data.pubkey != "":
         data.pubkey = validate_pub_key(data.pubkey)
 
+    owner_id = owner_id_from_user_id(user_id)
+    addresss = await get_address_for_owner(owner_id, domain.id, identifier)
+
+    promo_code = promo_code or (addresss.config.promo_code if addresss else None)
     identifier_status = await get_identifier_status(
         domain, identifier, data.years, promo_code
     )
@@ -182,9 +186,6 @@ async def create_address(
         else await fiat_amount_as_satoshis(identifier_status.price, domain.currency)
     )
     assert price_in_sats, f"Cannot compute price for '{identifier}'."
-
-    owner_id = owner_id_from_user_id(user_id)
-    addresss = await get_address_for_owner(owner_id, domain.id, identifier)
 
     config = addresss.config if addresss else AddressConfig()
     config.price = identifier_status.price
@@ -239,7 +240,7 @@ async def get_valid_addresses_for_owner(
         if not domain:
             continue
         status = await get_identifier_status(
-            domain, address.local_part, address.config.years
+            domain, address.local_part, address.config.years, address.config.promo_code
         )
 
         if status.available:
