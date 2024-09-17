@@ -14,6 +14,7 @@ class CustomCost(BaseModel):
     amount: float
 
     def validate_data(self):
+        assert self.bracket >= 0, "Bracket must be positive."
         assert self.amount >= 0, "Custom cost must be positive."
 
 
@@ -153,11 +154,18 @@ class DomainCostConfig(BaseModel):
             return 0
         return promotion.buyer_discount_percent
 
-    def promo_code_referer(self, promo_code: Optional[str] = None) -> Optional[str]:
+    def promo_code_referer(
+        self, promo_code: Optional[str] = None, default_referer: Optional[str] = None
+    ) -> Optional[str]:
         promotion = self.get_promotion(promo_code)
         if not promotion:
             return None
-        return promotion.selected_referer
+        if promotion.referer_bonus_percent == 0:
+            return None
+        if promotion.selected_referer:
+            return promotion.selected_referer
+
+        return default_referer
 
     def promo_code_allows_referer(self, promo_code: Optional[str] = None) -> bool:
         promotion = self.get_promotion(promo_code)

@@ -209,7 +209,7 @@ async def create_address(
     config.currency = domain.currency
     config.years = data.years
     config.promo_code = data.promo_code
-    config.referer = data.referer
+    config.referer = domain.cost_config.promo_code_referer(promo_code, data.referer)
     config.max_years = domain.cost_config.max_years
     config.ln_address.wallet = wallet_id or ""
 
@@ -293,8 +293,8 @@ async def pay_referer_for_promo_code(address: Address, referer: str, bonus_sats:
         _, payment_request = await create_invoice(
             wallet_id=referer_wallet,
             amount=bonus_sats,
-            memo=f"Referer bonus of {bonus_sats} {address.config.currency} "
-            f"for NIP-05 {address.local_part}@{domain.domain}",
+            memo=f"Referer bonus of {bonus_sats} sats to '{referer}' "
+            f"from NIP-05 {address.local_part}@{domain.domain}",
             extra={
                 "tag": "nostrnip5",
                 "domain_id": domain.id,
