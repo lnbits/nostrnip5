@@ -101,7 +101,9 @@
                   size="xs"
                   icon="edit"
                   :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
-                  @click="editDomain(props.row.id)"
+                  type="a"
+                  :href="'domain/' + props.row.id"
+                  target="_blank"
                 ></q-btn>
               </q-td>
               <q-td v-for="col in props.cols" :key="col.name" :props="props">
@@ -281,148 +283,16 @@
           hint="Maximum number of years a user can have an address before renewing."
         ></q-input>
 
-        <q-toggle
-          v-model="formDialog.data.cost_config.enable_custom_cost"
-          label="Advanced cost configurations"
-          color="secondary"
-        ></q-toggle>
-        <div v-if="formDialog.data.cost_config.enable_custom_cost" class="row">
-          <q-card class="lnbits__dialog-card">
-            <q-tabs v-model="domainTab" active-color="primary" align="justify">
-              <q-tab name="charCount" label="Char Count"></q-tab>
-              <q-tab name="ranking" label="Ranking"></q-tab>
-            </q-tabs>
-
-            <q-tab-panels class="bg-transparent" v-model="domainTab">
-              <q-tab-panel name="charCount">
-                <div
-                  v-for="(item, index) in formDialog.data.cost_config.char_count_cost"
-                  class="row q-mb-sm q-ml-md"
-                >
-                  <div class="col-5">
-                    <q-input
-                      filled
-                      dense
-                      v-model.trim="item.bracket"
-                      type="number"
-                      min="0"
-                      step="1"
-                      label="Character Count"
-                    ></q-input>
-                  </div>
-                  <div class="col-5">
-                    <q-input
-                      filled
-                      dense
-                      v-model.trim="item.amount"
-                      label="Amount"
-                      type="number"
-                      class="q-pl-sm"
-                    ></q-input>
-                  </div>
-                  <div class="col-2">
-                    <q-btn
-                      @click="removeCharCountCost(index)"
-                      icon="clear"
-                      size="sm"
-                      unelevated
-                      color="primary"
-                      class="float-right q-mt-sm"
-                    ></q-btn>
-                  </div>
-                </div>
-                <div class="row q-ml-md q-mb-sm q-mt-sm">
-                  <div class="col float-right">
-                    <div>
-                      <q-btn
-                        icon="add"
-                        label="Add Character Count Cost"
-                        @click="addCharCountCost"
-                        size="sm"
-                        unelevated
-                        color="secondary"
-                        class="float-right"
-                      ></q-btn>
-                    </div>
-                  </div>
-                </div>
-              </q-tab-panel>
-              <q-tab-panel name="ranking">
-                <div
-                  v-for="(item, index) in formDialog.data.cost_config.rank_cost"
-                  class="row q-mb-sm q-ml-md"
-                >
-                  <div class="col-5">
-                    <q-select
-                      filled
-                      dense
-                      emit-value
-                      v-model="item.bracket"
-                      :options="domainRankingBraketOptions"
-                      label="Up to Rank"
-                    ></q-select>
-                  </div>
-                  <div class="col-5">
-                    <q-input
-                      filled
-                      dense
-                      v-model.trim="item.amount"
-                      label="Amount"
-                      type="number"
-                      class="q-pl-sm"
-                    ></q-input>
-                  </div>
-                  <div class="col-2">
-                    <q-btn
-                      @click="removeRankCost(index)"
-                      icon="clear"
-                      size="sm"
-                      unelevated
-                      color="primary"
-                      class="float-right q-mt-sm"
-                    ></q-btn>
-                  </div>
-                </div>
-                <div class="row q-ml-md q-mb-sm q-mt-sm">
-                  <div class="col float-right">
-                    <div>
-                      <q-btn
-                        icon="add"
-                        label="Add Rank Cost"
-                        @click="addRankCost"
-                        size="sm"
-                        unelevated
-                        color="secondary"
-                        class="float-right"
-                      ></q-btn>
-                    </div>
-                  </div>
-                </div>
-              </q-tab-panel>
-            </q-tab-panels>
-          </q-card>
-        </div>
-        <div class="row q-mt-lg">
-          <q-btn
-            v-if="formDialog.data.id"
-            unelevated
-            color="primary"
-            :disable="formDialog.data.wallet == null || formDialog.data.currency == null"
-            type="submit"
-            >Update Domain</q-btn
-          >
-          <q-btn
-            v-else
-            unelevated
-            color="primary"
-            :disable="formDialog.data.wallet == null || formDialog.data.currency == null"
-            type="submit"
-            >Create Domain</q-btn
-          >
-          <q-btn v-close-popup flat color="grey" class="q-ml-auto"
-            >Cancel</q-btn
-          >
-        </div>
+        <q-btn
+          unelevated
+          color="primary"
+          :disable="formDialog.data.wallet == null || formDialog.data.currency == null"
+          type="submit"
+          >Create Domain</q-btn
+        >
+        <q-btn v-close-popup flat color="grey" class="q-ml-auto float-right"
+          >Cancel</q-btn
+        >
       </q-form>
     </q-card>
   </q-dialog>
@@ -994,7 +864,6 @@
         this.formDialog.data = {
           cost_config: {
             max_years: 1,
-            enable_custom_cost: false,
             char_count_cost: [],
             rank_cost: []
           }
@@ -1117,10 +986,7 @@
             LNbits.utils.notifyApiError(error)
           })
       },
-      editDomain: function (domain_id) {
-        this.formDialog.show = true
-        this.formDialog.data = _.findWhere(this.domains, {id: domain_id})
-      },
+
       deleteDomain: function (domain_id) {
         var self = this
         var domain = _.findWhere(this.domains, {id: domain_id})
@@ -1395,28 +1261,7 @@
             LNbits.utils.notifyApiError(error)
           })
       },
-      addCharCountCost: function () {
-        this.formDialog.data.cost_config.char_count_cost.push({
-          bracket: 0,
-          amount: 1
-        })
-      },
-      removeCharCountCost: function (index) {
-        if (index < this.formDialog.data.cost_config.char_count_cost.length) {
-          this.formDialog.data.cost_config.char_count_cost.splice(index, 1)
-        }
-      },
-      addRankCost: function () {
-        this.formDialog.data.cost_config.rank_cost.push({
-          bracket: 0,
-          amount: 1
-        })
-      },
-      removeRankCost: function (index) {
-        if (index < this.formDialog.data.cost_config.rank_cost.length) {
-          this.formDialog.data.cost_config.rank_cost.splice(index, 1)
-        }
-      },
+
       domainNameFromId: function (domainId) {
         const domain = this.domains.find(d => d.id === domainId) || {}
         return domain.domain || ''

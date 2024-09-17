@@ -1,0 +1,537 @@
+{% extends "public.html" %} {% block toolbar_title %} Edit domain "{{
+domain.domain }}" {% endblock %} {% from "macros.jinja" import window_vars with
+context %} {% block page %}
+<link rel="stylesheet" href="/nostrnip5/static/css/signup.css" />
+<div class="row">
+  <div class="col-md-2 col-sm-none">
+    <!-- empty space -->
+  </div>
+
+  <q-card class="col-md-6 col-sm-12 q-pa-md">
+    <div class="row">
+      <q-btn
+        unelevated
+        color="primary"
+        @click="saveDomain"
+        class="float-right"
+        :disable="domainForm.data.wallet == null || domainForm.data.currency == null"
+        >Update Domain</q-btn
+      >
+    </div>
+  </q-card>
+  <div class="col-md-2 col-sm-none">
+    <!-- empty space -->
+  </div>
+</div>
+
+<div class="row q-mt-md">
+  <div class="col-md-2 col-sm-none">
+    <!-- empty space -->
+  </div>
+
+  {% raw %}
+  <div class="col-md-6 col-sm-12">
+    <q-card class="q-pa-lg">
+      <div class="q-gutter-md">
+        <q-select
+          v-if="!domainForm.data.id"
+          filled
+          dense
+          emit-value
+          v-model="domainForm.data.wallet"
+          :options="g.user.walletOptions"
+          label="Wallet *"
+        ></q-select>
+        <q-select
+          filled
+          dense
+          emit-value
+          v-model="domainForm.data.currency"
+          :options="currencyOptions"
+          label="Currency *"
+        ></q-select>
+        <q-input
+          v-if="!domainForm.data.id"
+          filled
+          dense
+          v-model.trim="domainForm.data.domain"
+          label="Domain"
+          placeholder="nostr.com"
+        ></q-input>
+        <q-input
+          filled
+          dense
+          v-model="domainForm.data.cost"
+          type="number"
+          min="0"
+          step="any"
+          label="Price per Year"
+          placeholder="How much do you want to charge per address?"
+        ></q-input>
+        <q-input
+          filled
+          dense
+          v-model="domainForm.data.cost_config.max_years"
+          type="number"
+          min="1"
+          step="1"
+          label="Max Years"
+          hint="Maximum number of years a user can have an address before renewing."
+        ></q-input>
+      </div>
+    </q-card>
+    <q-card class="q-pa-lg q-mt-md">
+      <q-tabs v-model="domainTab" active-color="primary" align="justify">
+        <q-tab name="charCount" label="Char Count"></q-tab>
+        <q-tab name="ranking" label="Ranking"></q-tab>
+        <q-tab name="promotions" label="Promotions"></q-tab>
+      </q-tabs>
+
+      <q-tab-panels class="bg-transparent" v-model="domainTab">
+        <q-tab-panel name="charCount">
+          <div
+            v-for="(item, index) in domainForm.data.cost_config.char_count_cost"
+            class="row q-mb-sm q-ml-md"
+          >
+            <div class="col-5">
+              <q-input
+                filled
+                dense
+                v-model.trim="item.bracket"
+                type="number"
+                min="0"
+                step="1"
+                label="Character Count"
+              ></q-input>
+            </div>
+            <div class="col-5">
+              <q-input
+                filled
+                dense
+                v-model.trim="item.amount"
+                label="Amount"
+                type="number"
+                class="q-pl-sm"
+              ></q-input>
+            </div>
+            <div class="col-2">
+              <q-btn
+                @click="removeCharCountCost(index)"
+                icon="clear"
+                size="sm"
+                unelevated
+                color="primary"
+                class="float-right q-mt-sm"
+              ></q-btn>
+            </div>
+          </div>
+          <div class="row q-ml-md q-mb-sm q-mt-sm">
+            <div class="col float-right q-mt-lg">
+              <div>
+                <q-btn
+                  icon="add"
+                  label="Add"
+                  @click="addCharCountCost"
+                  size="sm"
+                  unelevated
+                  color="secondary"
+                  class="float-right"
+                ></q-btn>
+              </div>
+            </div>
+          </div>
+        </q-tab-panel>
+        <q-tab-panel name="ranking">
+          <div
+            v-for="(item, index) in domainForm.data.cost_config.rank_cost"
+            class="row q-mb-sm q-ml-md"
+          >
+            <div class="col-5">
+              <q-select
+                filled
+                dense
+                emit-value
+                v-model="item.bracket"
+                :options="domainRankingBraketOptions"
+                label="Up to Rank"
+              ></q-select>
+            </div>
+            <div class="col-5">
+              <q-input
+                filled
+                dense
+                v-model.trim="item.amount"
+                label="Amount"
+                type="number"
+                class="q-pl-sm"
+              ></q-input>
+            </div>
+            <div class="col-2">
+              <q-btn
+                @click="removeRankCost(index)"
+                icon="clear"
+                size="sm"
+                unelevated
+                color="primary"
+                class="float-right q-mt-sm"
+              ></q-btn>
+            </div>
+          </div>
+          <div class="row q-ml-md q-mb-sm q-mt-sm">
+            <div class="col float-right q-mt-lg">
+              <div>
+                <q-btn
+                  icon="add"
+                  label="Add"
+                  @click="addRankCost"
+                  size="sm"
+                  unelevated
+                  color="secondary"
+                  class="float-right"
+                ></q-btn>
+              </div>
+            </div>
+          </div>
+        </q-tab-panel>
+        <q-tab-panel name="promotions">
+          <div
+            v-for="(item, index) in domainForm.data.cost_config.promotions"
+            class="row q-mb-sm q-ml-md"
+          >
+            <div class="col-2">
+              <q-input
+                filled
+                dense
+                v-model.trim="item.code"
+                label="Promo Code"
+                class="q-pl-sm"
+              ></q-input>
+            </div>
+            <div class="col-2">
+              <q-input
+                filled
+                dense
+                v-model.trim="item.buyer_discount_percent"
+                label="Discount for buyer (%)"
+                type="number"
+                class="q-pl-sm"
+              ></q-input>
+            </div>
+            <div class="col-2">
+              <q-input
+                filled
+                dense
+                v-model.trim="item.referer_bonus_percent"
+                label="Bonus for referer (%)"
+                type="number"
+                class="q-pl-sm"
+              ></q-input>
+            </div>
+            <div class="col-4">
+              <q-input
+                filled
+                dense
+                v-model.trim="item.selected_referer"
+                label="Only for this identifier."
+                class="q-pl-sm"
+              >
+              </q-input>
+            </div>
+            <div class="col-2">
+              <q-btn
+                @click="removePromotion(index)"
+                icon="clear"
+                size="sm"
+                unelevated
+                color="primary"
+                class="float-right q-mt-sm"
+              ></q-btn>
+            </div>
+          </div>
+          <div class="row q-ml-md q-mb-sm q-mt-sm">
+            <div class="col float-right q-mt-lg">
+              <div>
+                <q-btn
+                  icon="add"
+                  label="Add"
+                  @click="addPromotion"
+                  size="sm"
+                  unelevated
+                  color="secondary"
+                  class="float-right"
+                ></q-btn>
+              </div>
+            </div>
+          </div>
+        </q-tab-panel>
+      </q-tab-panels>
+    </q-card>
+  </div>
+
+  {% endraw %}
+  <div class="col-md-4 col-sm-none">
+    <!-- empty space -->
+  </div>
+</div>
+{% endblock %} {% block scripts %} {{ window_vars(user) }}
+<script>
+  Vue.component(VueQrcode.name, VueQrcode)
+
+  new Vue({
+    el: '#vue',
+    mixins: [windowMixin],
+    data: function () {
+      return {
+        domainRankingBraketOptions: [
+          200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000,
+          500000, 1000000
+        ],
+        currencyOptions: [
+          'sats',
+          'USD',
+          'EUR',
+          'GBP',
+          'AED',
+          'AFN',
+          'ALL',
+          'AMD',
+          'ANG',
+          'AOA',
+          'ARS',
+          'AUD',
+          'AWG',
+          'AZN',
+          'BAM',
+          'BBD',
+          'BDT',
+          'BGN',
+          'BHD',
+          'BIF',
+          'BMD',
+          'BND',
+          'BOB',
+          'BRL',
+          'BSD',
+          'BTN',
+          'BWP',
+          'BYN',
+          'BZD',
+          'CAD',
+          'CDF',
+          'CHF',
+          'CLF',
+          'CLP',
+          'CNH',
+          'CNY',
+          'COP',
+          'CRC',
+          'CUC',
+          'CUP',
+          'CVE',
+          'CZK',
+          'DJF',
+          'DKK',
+          'DOP',
+          'DZD',
+          'EGP',
+          'ERN',
+          'ETB',
+          'EUR',
+          'FJD',
+          'FKP',
+          'GBP',
+          'GEL',
+          'GGP',
+          'GHS',
+          'GIP',
+          'GMD',
+          'GNF',
+          'GTQ',
+          'GYD',
+          'HKD',
+          'HNL',
+          'HRK',
+          'HTG',
+          'HUF',
+          'IDR',
+          'ILS',
+          'IMP',
+          'INR',
+          'IQD',
+          'IRR',
+          'IRT',
+          'ISK',
+          'JEP',
+          'JMD',
+          'JOD',
+          'JPY',
+          'KES',
+          'KGS',
+          'KHR',
+          'KMF',
+          'KPW',
+          'KRW',
+          'KWD',
+          'KYD',
+          'KZT',
+          'LAK',
+          'LBP',
+          'LKR',
+          'LRD',
+          'LSL',
+          'LYD',
+          'MAD',
+          'MDL',
+          'MGA',
+          'MKD',
+          'MMK',
+          'MNT',
+          'MOP',
+          'MRO',
+          'MUR',
+          'MVR',
+          'MWK',
+          'MXN',
+          'MYR',
+          'MZN',
+          'NAD',
+          'NGN',
+          'NIO',
+          'NOK',
+          'NPR',
+          'NZD',
+          'OMR',
+          'PAB',
+          'PEN',
+          'PGK',
+          'PHP',
+          'PKR',
+          'PLN',
+          'PYG',
+          'QAR',
+          'RON',
+          'RSD',
+          'RUB',
+          'RWF',
+          'SAR',
+          'SBD',
+          'SCR',
+          'SDG',
+          'SEK',
+          'SGD',
+          'SHP',
+          'SLL',
+          'SOS',
+          'SRD',
+          'SSP',
+          'STD',
+          'SVC',
+          'SYP',
+          'SZL',
+          'THB',
+          'TJS',
+          'TMT',
+          'TND',
+          'TOP',
+          'TRY',
+          'TTD',
+          'TWD',
+          'TZS',
+          'UAH',
+          'UGX',
+          'USD',
+          'UYU',
+          'UZS',
+          'VEF',
+          'VES',
+          'VND',
+          'VUV',
+          'WST',
+          'XAF',
+          'XAG',
+          'XAU',
+          'XCD',
+          'XDR',
+          'XOF',
+          'XPD',
+          'XPF',
+          'XPT',
+          'YER',
+          'ZAR',
+          'ZMW',
+          'ZWL'
+        ],
+        domainForm: {
+          show: false,
+          data: JSON.parse('{{domain | tojson | safe}}')
+        },
+        domainTab: 'charCount'
+      }
+    },
+    methods: {
+      resetFormDialog: function () {
+        this.domainForm.show = false
+        this.domainTab = 'charCount'
+      },
+      saveDomain: async function () {
+        try {
+          await LNbits.api.request(
+            'PUT',
+            '/nostrnip5/api/v1/domain',
+            _.findWhere(this.g.user.wallets, {id: this.domainForm.data.wallet})
+              .adminkey,
+            this.domainForm.data
+          )
+          this.$q.notify({
+            type: 'positive',
+            message: 'Domain updated!'
+          })
+        } catch (error) {
+          this.$q.notify({
+            type: 'negative',
+            message: 'Failed to update!'
+          })
+          LNbits.utils.notifyApiError(error)
+        }
+      },
+      addCharCountCost: function () {
+        this.domainForm.data.cost_config.char_count_cost.push({
+          bracket: 0,
+          amount: 1
+        })
+      },
+      removeCharCountCost: function (index) {
+        if (index < this.domainForm.data.cost_config.char_count_cost.length) {
+          this.domainForm.data.cost_config.char_count_cost.splice(index, 1)
+        }
+      },
+      addRankCost: function () {
+        this.domainForm.data.cost_config.rank_cost.push({
+          bracket: 0,
+          amount: 1
+        })
+      },
+      removeRankCost: function (index) {
+        if (index < this.domainForm.data.cost_config.rank_cost.length) {
+          this.domainForm.data.cost_config.rank_cost.splice(index, 1)
+        }
+      },
+      addPromotion: function () {
+        this.domainForm.data.cost_config.promotions.push({
+          code: '',
+          buyer_discount_percent: 0,
+          referer_bonus_percent: 0
+        })
+      },
+      removePromotion: function (index) {
+        if (index < this.domainForm.data.cost_config.promotions.length) {
+          this.domainForm.data.cost_config.promotions.splice(index, 1)
+        }
+      }
+    },
+    created() {
+      this.resetFormDialog()
+    }
+  })
+</script>
+{% endblock %}

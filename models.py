@@ -2,8 +2,8 @@ import json
 from sqlite3 import Row
 from typing import List, Optional, Tuple
 
-from fastapi.param_functions import Query
 from lnbits.db import FilterModel, FromRowModel
+from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from pydantic import BaseModel
 
 from .helpers import format_amount, is_ws_url, normalize_identifier, validate_pub_key
@@ -12,6 +12,64 @@ from .helpers import format_amount, is_ws_url, normalize_identifier, validate_pu
 class CustomCost(BaseModel):
     bracket: int
     amount: float
+
+    def validate_data(self):
+        assert self.bracket >= 0, "Bracket must be positive."
+        assert self.amount >= 0, "Custom cost must be positive."
+
+
+class PriceData(BaseModel):
+    currency: str
+    price: float
+    discount: float = 0
+    referer_bonus: float = 0
+
+    reason: str
+
+    async def price_sats(self) -> float:
+        if self.price == 0:
+            return 0
+        if self.currency == "sats":
+            return self.price
+        return await fiat_amount_as_satoshis(self.price, self.currency)
+
+    async def discount_sats(self) -> float:
+        if self.discount == 0:
+            return 0
+        if self.currency == "sats":
+            return self.discount
+        return await fiat_amount_as_satoshis(self.discount, self.currency)
+
+    async def referer_bonus_sats(self) -> float:
+        if self.referer_bonus == 0:
+            return 0
+        if self.currency == "sats":
+            return self.referer_bonus
+        return await fiat_amount_as_satoshis(self.referer_bonus, self.currency)
+
+
+class Promotion(BaseModel):
+    code: str = ""
+    buyer_discount_percent: float
+    referer_bonus_percent: float
+    selected_referer: Optional[str] = None
+
+    def validate_data(self):
+        assert (
+            0 <= self.buyer_discount_percent <= 100
+        ), f"Discount percent for '{self.code}' must be between 0 and 100."
+        assert (
+            0 <= self.referer_bonus_percent <= 100
+        ), f"Referer percent for '{self.code}' must be between 0 and 100."
+        assert self.buyer_discount_percent + self.referer_bonus_percent <= 100, (
+            f"Discount and Referer for '{self.code}'" " must be less than 100%."
+        )
+
+
+class PromoCodeStatus(BaseModel):
+    buyer_discount: Optional[float] = None
+    allow_referer: bool = False
+    referer: Optional[str] = None
 
 
 class RotateAddressData(BaseModel):
@@ -45,29 +103,126 @@ class CreateAddressData(BaseModel):
     pubkey: str = ""
     years: int = 1
     relays: Optional[List[str]] = None
+    promo_code: Optional[str] = None
+    referer: Optional[str] = None
     create_invoice: bool = False
+
+    def normalize(self):
+        self.local_part = self.local_part.strip()
+        self.pubkey = self.pubkey.strip()
+        if self.relays:
+            self.relays = [r.strip() for r in self.relays]
+
+        if self.promo_code:
+            self.promo_code = self.promo_code.strip()
+            if "@" in self.promo_code:
+                elements = self.promo_code.rsplit("@")
+                self.promo_code = elements[0]
+                self.referer = elements[1]
+
+        if self.referer:
+            self.referer = self.referer.strip()
 
 
 class DomainCostConfig(BaseModel):
     max_years: int = 1
-    enable_custom_cost: bool = False
     char_count_cost: List[CustomCost] = []
     rank_cost: List[CustomCost] = []
+    promotions: List[Promotion] = []
+
+    def apply_promo_code(
+        self, amount: float, promo_code: Optional[str] = None
+    ) -> Tuple[float, float]:
+        if promo_code is None:
+            return 0, 0
+        promotion = next((p for p in self.promotions if p.code == promo_code), None)
+        if not promotion:
+            return 0, 0
+
+        discount = amount * (promotion.buyer_discount_percent / 100)
+        referer_bonus = amount * (promotion.referer_bonus_percent / 100)
+        return round(discount, 2), round(referer_bonus, 2)
+
+    def get_promotion(self, promo_code: Optional[str] = None) -> Optional[Promotion]:
+        if promo_code is None:
+            return None
+        return next((p for p in self.promotions if p.code == promo_code), None)
+
+    def promo_code_buyer_discount(self, promo_code: Optional[str] = None) -> float:
+        promotion = self.get_promotion(promo_code)
+        if not promotion:
+            return 0
+        return promotion.buyer_discount_percent
+
+    def promo_code_referer(
+        self, promo_code: Optional[str] = None, default_referer: Optional[str] = None
+    ) -> Optional[str]:
+        promotion = self.get_promotion(promo_code)
+        if not promotion:
+            return None
+        if promotion.referer_bonus_percent == 0:
+            return None
+        if promotion.selected_referer:
+            return promotion.selected_referer
+
+        return default_referer
+
+    def promo_code_allows_referer(self, promo_code: Optional[str] = None) -> bool:
+        promotion = self.get_promotion(promo_code)
+        if not promotion:
+            return False
+
+        return promotion.referer_bonus_percent > 0 and not promotion.selected_referer
+
+    def promo_code_status(self, promo_code: Optional[str] = None) -> PromoCodeStatus:
+        return PromoCodeStatus(
+            buyer_discount=self.promo_code_buyer_discount(promo_code),
+            allow_referer=self.promo_code_allows_referer(promo_code),
+            referer=self.promo_code_referer(promo_code),
+        )
+
+    def validate_data(self):
+        for cost in self.char_count_cost:
+            cost.validate_data()
+
+        for cost in self.rank_cost:
+            cost.validate_data()
+
+        assert (
+            1 < self.max_years < 100
+        ), "Maximum allowed years must be between 1 and 100."
+        promo_codes = []
+        for promo in self.promotions:
+            promo.validate_data()
+            assert (
+                promo.code not in promo_codes
+            ), f"Duplicate promo code: '{promo.code}'."
+            promo_codes.append(promo.code)
 
 
 class CreateDomainData(BaseModel):
     wallet: str
     currency: str
-    cost: float = Query(..., ge=0.01)
+    cost: float
     domain: str
     cost_config: Optional[DomainCostConfig] = None
+
+    def validate_data(self):
+        assert self.cost >= 0, "Domain cost must be positive."
+        if self.cost_config:
+            self.cost_config.validate_data()
 
 
 class EditDomainData(BaseModel):
     id: str
     currency: str
-    cost: float = Query(..., ge=0.01)
+    cost: float
     cost_config: Optional[DomainCostConfig] = None
+
+    def validate_data(self):
+        assert self.cost >= 0, "Domain cost must be positive."
+        if self.cost_config:
+            self.cost_config.validate_data()
 
     @classmethod
     def from_row(cls, row: Row) -> "EditDomainData":
@@ -99,33 +254,43 @@ class Domain(PublicDomain):
     cost_config: DomainCostConfig = DomainCostConfig()
     time: int
 
-    def price_for_identifier(
-        self, identifier: str, years: int, rank: Optional[int] = None
-    ) -> Tuple[float, str]:
+    async def price_for_identifier(
+        self,
+        identifier: str,
+        years: int,
+        rank: Optional[int] = None,
+        promo_code: Optional[str] = None,
+    ) -> PriceData:
         assert (
             1 <= years <= self.cost_config.max_years
         ), f"Number of years must be between '1' and '{self.cost_config.max_years}'."
 
         identifier = normalize_identifier(identifier)
-        max_amount = self.cost
-        reason = ""
-        if not self.cost_config.enable_custom_cost:
-            return max_amount * years, reason
+        max_amount, reason = self.cost, ""
 
         for char_cost in self.cost_config.char_count_cost:
             if len(identifier) <= char_cost.bracket and max_amount < char_cost.amount:
                 max_amount = char_cost.amount
                 reason = f"{len(identifier)} characters"
 
-        if not rank:
-            return max_amount * years, reason
+        if rank:
+            for rank_cost in self.cost_config.rank_cost:
+                if rank <= rank_cost.bracket and max_amount < rank_cost.amount:
+                    max_amount = rank_cost.amount
+                    reason = f"Top {rank_cost.bracket} identifier"
 
-        for rank_cost in self.cost_config.rank_cost:
-            if rank <= rank_cost.bracket and max_amount < rank_cost.amount:
-                max_amount = rank_cost.amount
-                reason = f"Top {rank_cost.bracket} identifier"
+        full_price = max_amount * years
+        discount, referer_bonus = self.cost_config.apply_promo_code(
+            full_price, promo_code
+        )
 
-        return max_amount * years, reason
+        return PriceData(
+            currency=self.currency,
+            price=full_price - discount,
+            discount=discount,
+            referer_bonus=referer_bonus,
+            reason=reason,
+        )
 
     def public_data(self):
         data = dict(PublicDomain(**dict(self)))
@@ -156,6 +321,8 @@ class AddressConfig(BaseModel):
     reimburse_payment_hash: Optional[str] = None
     activated_by_owner: bool = False
     years: int = 1
+    promo_code: Optional[str] = None
+    referer: Optional[str] = None
     max_years: int = 1
     relays: List[str] = []
 
@@ -174,6 +341,8 @@ class Address(FromRowModel):
     expires_at: Optional[float]
 
     config: AddressConfig = AddressConfig()
+
+    promo_code_status: PromoCodeStatus = PromoCodeStatus()
 
     @property
     def has_pubkey(self):

@@ -6,7 +6,7 @@ from loguru import logger
 
 from .crud import get_address, update_address
 from .models import Address
-from .services import activate_address, update_ln_address
+from .services import activate_address, pay_referer_for_promo_code, update_ln_address
 
 
 async def wait_for_paid_invoices():
@@ -61,6 +61,7 @@ async def _activate_address(payment: Payment, address: Address):
     )
     if activated:
         await _create_ln_address(payment, address)
+        await _pay_promo_code(payment, address)
     else:
         await _update_reimburse_data(payment, address)
 
@@ -83,8 +84,25 @@ async def _create_ln_address(payment: Payment, address: Address):
             f" '{address.local_part} ({address.id}')."
         )
         return
-    address.config.ln_address.wallet = wallet
-    await update_ln_address(address)
+    try:
+        address.config.ln_address.wallet = wallet
+        await update_ln_address(address)
+    except Exception as exc:
+        logger.warning(exc)
+
+
+async def _pay_promo_code(payment: Payment, address: Address):
+    referer = payment.extra.get("referer")
+    if not referer:
+        return
+    referer_bonus_sats = payment.extra.get("referer_bonus_sats")
+    if not referer_bonus_sats or not isinstance(referer_bonus_sats, int):
+        logger.warning(
+            f"Found referer but no bonus specified for '{address.local_part}'."
+        )
+        return
+
+    await pay_referer_for_promo_code(address, referer, int(referer_bonus_sats))
 
 
 async def _reimburse_payment(address: Address):
