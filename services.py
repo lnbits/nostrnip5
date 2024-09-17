@@ -94,16 +94,14 @@ async def get_identifier_status(
     if rank == 0:
         return AddressStatus(identifier=identifier, available=False)
 
-    price, price_in_sats, reason = await domain.price_for_identifier(
-        identifier, years, rank, promo_code
-    )
+    price_data = await domain.price_for_identifier(identifier, years, rank, promo_code)
 
     return AddressStatus(
         identifier=identifier,
         available=True,
-        price=price,
-        price_in_sats=price_in_sats,
-        price_reason=reason,
+        price=price_data.price,
+        price_in_sats=await price_data.price_sats(),
+        price_reason=price_data.reason,
         currency=domain.currency,
     )
 
@@ -246,6 +244,28 @@ async def get_valid_addresses_for_owner(
         valid_addresses.append(address)
 
     return valid_addresses
+
+
+async def pay_referer_for_promo_code(address: Address):
+    try:
+
+        identifier_ranking = await get_identifier_ranking(address.local_part)
+        rank = identifier_ranking.rank if identifier_ranking else None
+
+        assert rank != 0, "Rank should not be zero."
+
+        domain = await get_domain_by_id(address.domain_id)
+        assert domain, f"Missing domain for '{address.local_part}'."
+
+        price_data = await domain.price_for_identifier(
+            address.local_part, address.config.years, rank, address.config.promo_code
+        )
+
+        print("### price_data", price_data)
+
+    except Exception as exc:
+        logger.warning(f"Failed to pay referer for '{address.local_part}'.")
+        logger.warning(exc)
 
 
 async def check_address_payment(domain_id: str, payment_hash: str) -> bool:

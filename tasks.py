@@ -6,7 +6,7 @@ from loguru import logger
 
 from .crud import get_address, update_address
 from .models import Address
-from .services import activate_address, update_ln_address
+from .services import activate_address, pay_referer_for_promo_code, update_ln_address
 
 
 async def wait_for_paid_invoices():
@@ -61,6 +61,7 @@ async def _activate_address(payment: Payment, address: Address):
     )
     if activated:
         await _create_ln_address(payment, address)
+        await pay_referer_for_promo_code(address)
     else:
         await _update_reimburse_data(payment, address)
 
@@ -89,3 +90,4 @@ async def _create_ln_address(payment: Payment, address: Address):
 
 async def _reimburse_payment(address: Address):
     await update_address(address.domain_id, address.id, reimburse_amount=0)
+

@@ -17,6 +17,30 @@ class CustomCost(BaseModel):
         assert self.amount >= 0, "Custom cost must be positive."
 
 
+class PriceData(BaseModel):
+    currency: str
+    price: float
+    discount: float = 0
+    referer_bonus: float = 0
+
+    reason: str
+
+    async def price_sats(self) -> float:
+        if self.currency == "sats":
+            return self.price
+        return await fiat_amount_as_satoshis(self.price, self.currency)
+
+    async def discount_sats(self) -> float:
+        if self.currency == "sats":
+            return self.discount
+        return await fiat_amount_as_satoshis(self.discount, self.currency)
+
+    async def referer_bonus_sats(self) -> float:
+        if self.currency == "sats":
+            return self.referer_bonus
+        return await fiat_amount_as_satoshis(self.referer_bonus, self.currency)
+
+
 class Promotion(BaseModel):
     code: str = ""
     buyer_discount_percent: float
@@ -91,15 +115,16 @@ class DomainCostConfig(BaseModel):
 
     def apply_promo_code(
         self, amount: float, promo_code: Optional[str] = None
-    ) -> float:
+    ) -> Tuple[float, float]:
         if promo_code is None:
-            return amount
+            return 0, 0
         promotion = next((p for p in self.promotions if p.code == promo_code), None)
         if not promotion:
-            return amount
+            return 0, 0
 
         discount = amount * (promotion.buyer_discount_percent / 100)
-        return round(amount - discount, 2)
+        referer_bonus = amount * (promotion.referer_bonus_percent / 100)
+        return round(discount, 2), round(referer_bonus, 2)
 
     def get_promotion(self, promo_code: Optional[str] = None) -> Optional[Promotion]:
         if promo_code is None:
@@ -211,7 +236,7 @@ class Domain(PublicDomain):
         years: int,
         rank: Optional[int] = None,
         promo_code: Optional[str] = None,
-    ) -> Tuple[float, float, str]:
+    ) -> PriceData:
         assert (
             1 <= years <= self.cost_config.max_years
         ), f"Number of years must be between '1' and '{self.cost_config.max_years}'."
@@ -230,15 +255,18 @@ class Domain(PublicDomain):
                     max_amount = rank_cost.amount
                     reason = f"Top {rank_cost.bracket} identifier"
 
-        price_with_discount = self.cost_config.apply_promo_code(
-            max_amount * years, promo_code
+        full_price = max_amount * years
+        discount, referer_bonus = self.cost_config.apply_promo_code(
+            full_price, promo_code
         )
-        price_in_sats = (
-            price_with_discount
-            if self.currency == "sats"
-            else await fiat_amount_as_satoshis(price_with_discount, self.currency)
+
+        return PriceData(
+            currency=self.currency,
+            price=full_price - discount,
+            discount=discount,
+            referer_bonus=referer_bonus,
+            reason=reason,
         )
-        return price_with_discount, price_in_sats, reason
 
     def public_data(self):
         data = dict(PublicDomain(**dict(self)))
