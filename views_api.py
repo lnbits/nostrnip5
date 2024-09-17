@@ -17,6 +17,7 @@ from lnbits.decorators import (
     require_admin_key,
 )
 from lnbits.helpers import generate_filter_params_openapi
+from lnbits.utils.cache import cache
 from loguru import logger
 from starlette.exceptions import HTTPException
 
@@ -146,15 +147,23 @@ async def api_get_nostr_json(
     if not name:
         return {"names": {}, "relays": {}}
 
+    cached_nip5 = cache.get(f"{domain_id}/{name}")
+    if cached_nip5:
+        return cached_nip5
+
     address = await get_active_address_by_local_part(domain_id, name)
 
     if not address:
         return {"names": {}, "relays": {}}
 
-    return {
+    nip5 = {
         "names": {address.local_part: address.pubkey},
         "relays": {address.pubkey: address.config.relays},
     }
+
+    cache.set(f"{domain_id}/{name}", nip5, 60)
+
+    return nip5
 
 
 @http_try_except
@@ -254,6 +263,7 @@ async def api_activate_address(
     assert domain, "Domain does not exist."
 
     active_address = await activate_address(domain_id, address_id)
+    cache.pop(f"{domain_id}/{active_address.local_part}")
     return await update_ln_address(active_address)
 
 
@@ -324,6 +334,8 @@ async def api_update_address(
     if data.relays:
         address.config.relays = data.relays
     await update_address(domain_id, address.id, pubkey=pubkey, config=address.config)
+
+    cache.pop(f"{domain_id}/{address.local_part}")
 
     return address
 
@@ -419,6 +431,8 @@ async def api_rotate_user_address(
 
     await update_address(domain_id, address_id, pubkey=data.pubkey)
 
+    cache.pop(f"{domain_id}/{address.local_part}")
+
     return True
 
 
@@ -449,7 +463,10 @@ async def api_update_user_address(
     pubkey = data.pubkey if data.pubkey else address.pubkey
     if data.relays:
         address.config.relays = data.relays
-    await update_address(domain_id, address.id, pubkey=pubkey, config=address.config)
+    address = await update_address(
+        domain_id, address.id, pubkey=pubkey, config=address.config
+    )
+    cache.pop(f"{domain_id}/{address.local_part}")
 
     return address
 
