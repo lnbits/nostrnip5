@@ -84,8 +84,11 @@ async def _create_ln_address(payment: Payment, address: Address):
             f" '{address.local_part} ({address.id}')."
         )
         return
-    address.config.ln_address.wallet = wallet
-    await update_ln_address(address)
+    try:
+        address.config.ln_address.wallet = wallet
+        await update_ln_address(address)
+    except Exception as exc:
+        logger.warning(exc)
 
 
 async def _pay_promo_code(payment: Payment, address: Address):
