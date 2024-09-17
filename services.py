@@ -1,8 +1,8 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import httpx
 from lnbits.core.crud import get_standalone_payment, get_user
-from lnbits.core.services import create_invoice
+from lnbits.core.services import create_invoice, pay_invoice
 from lnbits.db import Filters, Page
 from loguru import logger
 
@@ -35,6 +35,7 @@ from .models import (
     AddressStatus,
     CreateAddressData,
     Domain,
+    PriceData,
 )
 
 
@@ -88,13 +89,10 @@ async def get_identifier_status(
     if address:
         return AddressStatus(identifier=identifier, available=False)
 
-    identifier_ranking = await get_identifier_ranking(identifier)
-    rank = identifier_ranking.rank if identifier_ranking else None
+    price_data = await get_identifier_price_data(domain, identifier, years, promo_code)
 
-    if rank == 0:
+    if not price_data:
         return AddressStatus(identifier=identifier, available=False)
-
-    price_data = await domain.price_for_identifier(identifier, years, rank, promo_code)
 
     return AddressStatus(
         identifier=identifier,
@@ -104,6 +102,18 @@ async def get_identifier_status(
         price_reason=price_data.reason,
         currency=domain.currency,
     )
+
+
+async def get_identifier_price_data(
+    domain: Domain, identifier: str, years: int, promo_code: Optional[str] = None
+) -> Optional[PriceData]:
+    identifier_ranking = await get_identifier_ranking(identifier)
+    rank = identifier_ranking.rank if identifier_ranking else None
+
+    if rank == 0:
+        return None
+
+    return await domain.price_for_identifier(identifier, years, rank, promo_code)
 
 
 async def request_user_address(
@@ -119,23 +129,11 @@ async def request_user_address(
         address.config.price_in_sats
     ), f"Cannot compute price for '{address_data.local_part}'."
 
+    payment_hash, payment_request = None, None
     if address_data.create_invoice:
-
-        payment_hash, payment_request = await create_invoice(
-            wallet_id=domain.wallet,
-            amount=int(address.config.price_in_sats),
-            memo=f"Payment of {address.config.price} {address.config.currency} "
-            f"for NIP-05 {address_data.local_part}@{domain.domain}",
-            extra={
-                "tag": "nostrnip5",
-                "domain_id": domain.id,
-                "address_id": address.id,
-                "action": "activate",
-                "reimburse_wallet_id": wallet_id,
-            },
+        payment_hash, payment_request = await create_invoice_for_identifier(
+            domain, address, wallet_id
         )
-    else:
-        payment_hash, payment_request = None, None
 
     address.promo_code_status = domain.cost_config.promo_code_status(
         address_data.promo_code
@@ -147,6 +145,38 @@ async def request_user_address(
     }
 
     return resp
+
+
+async def create_invoice_for_identifier(
+    domain: Domain,
+    address: Address,
+    reimburse_wallet_id: str,
+) -> Tuple[str, str]:
+    price_data = await get_identifier_price_data(
+        domain, address.local_part, address.config.years, address.config.promo_code
+    )
+    assert price_data, f"Cannot compute price for '{address.local_part}'."
+    price_in_sats = await price_data.price_sats()
+    discount_sats = await price_data.discount_sats()
+    referer_bonus_sats = await price_data.referer_bonus_sats()
+
+    payment_hash, payment_request = await create_invoice(
+        wallet_id=domain.wallet,
+        amount=int(price_in_sats),
+        memo=f"Payment of {address.config.price} {address.config.currency} "
+        f"for NIP-05 {address.local_part}@{domain.domain}",
+        extra={
+            "tag": "nostrnip5",
+            "domain_id": domain.id,
+            "address_id": address.id,
+            "action": "activate",
+            "reimburse_wallet_id": reimburse_wallet_id,
+            "discount_sats": int(discount_sats),
+            "referer": address.config.referer,
+            "referer_bonus_sats": int(referer_bonus_sats),
+        },
+    )
+    return payment_hash, payment_request
 
 
 async def create_address(
@@ -246,25 +276,37 @@ async def get_valid_addresses_for_owner(
     return valid_addresses
 
 
-async def pay_referer_for_promo_code(address: Address):
+async def pay_referer_for_promo_code(address: Address, referer: str, bonus_sats: int):
     try:
-
-        identifier_ranking = await get_identifier_ranking(address.local_part)
-        rank = identifier_ranking.rank if identifier_ranking else None
-
-        assert rank != 0, "Rank should not be zero."
+        assert bonus_sats > 0, f"Bonus amount negative: '{bonus_sats}'."
 
         domain = await get_domain_by_id(address.domain_id)
         assert domain, f"Missing domain for '{address.local_part}'."
 
-        price_data = await domain.price_for_identifier(
-            address.local_part, address.config.years, rank, address.config.promo_code
+        referer_address = await get_active_address_by_local_part(
+            address.domain_id, referer
+        )
+        assert referer_address, f"Missing address for referer '{referer}'."
+        referer_wallet = referer_address.config.ln_address.wallet
+        assert referer_wallet, f"Missing wallet for referer '{referer}'."
+
+        _, payment_request = await create_invoice(
+            wallet_id=referer_wallet,
+            amount=bonus_sats,
+            memo=f"Referer bonus of {bonus_sats} {address.config.currency} "
+            f"for NIP-05 {address.local_part}@{domain.domain}",
+            extra={
+                "tag": "nostrnip5",
+                "domain_id": domain.id,
+                "address_id": address.id,
+                "action": "referer_bonus",
+            },
         )
 
-        print("### price_data", price_data)
+        await pay_invoice(wallet_id=domain.wallet, payment_request=payment_request)
 
     except Exception as exc:
-        logger.warning(f"Failed to pay referer for '{address.local_part}'.")
+        logger.warning(f"Failed to pay referer for '{referer}'.")
         logger.warning(exc)
 
 

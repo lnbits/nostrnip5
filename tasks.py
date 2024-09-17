@@ -61,7 +61,7 @@ async def _activate_address(payment: Payment, address: Address):
     )
     if activated:
         await _create_ln_address(payment, address)
-        await pay_referer_for_promo_code(address)
+        await _pay_promo_code(payment, address)
     else:
         await _update_reimburse_data(payment, address)
 
@@ -88,6 +88,19 @@ async def _create_ln_address(payment: Payment, address: Address):
     await update_ln_address(address)
 
 
+async def _pay_promo_code(payment: Payment, address: Address):
+    referer = payment.extra.get("referer")
+    if not referer:
+        return
+    referer_bonus_sats = payment.extra.get("referer_bonus_sats")
+    if not referer_bonus_sats or not isinstance(referer_bonus_sats, int):
+        logger.warning(
+            f"Found referer but no bonus specified for '{address.local_part}'."
+        )
+        return
+
+    await pay_referer_for_promo_code(address, referer, int(referer_bonus_sats))
+
+
 async def _reimburse_payment(address: Address):
     await update_address(address.domain_id, address.id, reimburse_amount=0)
-

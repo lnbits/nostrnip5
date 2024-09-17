@@ -26,16 +26,22 @@ class PriceData(BaseModel):
     reason: str
 
     async def price_sats(self) -> float:
+        if self.price == 0:
+            return 0
         if self.currency == "sats":
             return self.price
         return await fiat_amount_as_satoshis(self.price, self.currency)
 
     async def discount_sats(self) -> float:
+        if self.discount == 0:
+            return 0
         if self.currency == "sats":
             return self.discount
         return await fiat_amount_as_satoshis(self.discount, self.currency)
 
     async def referer_bonus_sats(self) -> float:
+        if self.referer_bonus == 0:
+            return 0
         if self.currency == "sats":
             return self.referer_bonus
         return await fiat_amount_as_satoshis(self.referer_bonus, self.currency)
@@ -101,10 +107,20 @@ class CreateAddressData(BaseModel):
     create_invoice: bool = False
 
     def normalize(self):
-        if self.promo_code and "@" in self.promo_code:
-            elements = self.promo_code.rsplit("@")
-            self.promo_code = elements[0]
-            self.referer = elements[1]
+        self.local_part = self.local_part.strip()
+        self.pubkey = self.pubkey.strip()
+        if self.relays:
+            self.relays = [r.strip() for r in self.relays]
+
+        if self.promo_code:
+            self.promo_code = self.promo_code.strip()
+            if "@" in self.promo_code:
+                elements = self.promo_code.rsplit("@")
+                self.promo_code = elements[0]
+                self.referer = elements[1]
+
+        if self.referer:
+            self.referer = self.referer.strip()
 
 
 class DomainCostConfig(BaseModel):
