@@ -245,7 +245,13 @@ async def api_delete_address(
     domain = await get_domain(domain_id, w.wallet.id)
     assert domain, "Domain does not exist."
 
+    address = await get_address(domain_id, address_id)
+    if not address:
+        return
+    assert address.domain_id == domain_id, "Domain ID missmatch"
+
     await delete_address_by_id(domain_id, address_id)
+    cache.pop(f"{domain_id}/{address.local_part}")
 
 
 @http_try_except
