@@ -161,7 +161,7 @@ async def api_get_nostr_json(
         "relays": {address.pubkey: address.config.relays},
     }
 
-    cache.set(f"{domain_id}/{name}", nip5, 60)
+    cache.set(f"{domain_id}/{name}", nip5, 600)
 
     return nip5
 
