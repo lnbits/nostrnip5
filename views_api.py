@@ -567,6 +567,11 @@ async def api_lnurl_create_or_update(
     address.config.ln_address = data
     await update_ln_address(address)
 
+    return SimpleStatus(
+        success=True,
+        message=f"Lightning address '{address.local_part}@{domain.domain}' updated.",
+    )
+
 
 ##################################### RANKING #####################################
 

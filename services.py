@@ -227,7 +227,7 @@ async def create_address(
 async def activate_address(
     domain_id: str, address_id: str, payment_hash: Optional[str] = None
 ) -> Address:
-    logger.info(f"Activating NOSTR NIP-05 '{address_id}' for {domain_id}")
+    logger.info(f"Activating NIP-05 '{address_id}' for {domain_id}")
 
     address = await get_address(domain_id, address_id)
     assert address, f"Cannot find address '{address_id}' for {domain_id}."
@@ -238,7 +238,12 @@ async def activate_address(
 
     address.config.activated_by_owner = payment_hash is None
     address.config.payment_hash = payment_hash
-    return await activate_domain_address(domain_id, address_id, address.config)
+    activated_address = await activate_domain_address(
+        domain_id, address_id, address.config
+    )
+    logger.info(f"Activated NIP-05 '{activated_address.local_part}' ({address_id}).")
+
+    return activated_address
 
 
 async def get_valid_addresses_for_owner(
