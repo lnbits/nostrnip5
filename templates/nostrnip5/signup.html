@@ -144,11 +144,9 @@ context %} {% block page %}
         :href="'lightning:' + qrCodeDialog.data.payment_request"
       >
         <q-responsive :ratio="1" class="q-mx-xs">
-          <qrcode
+          <lnbits-qrcode
             :value="qrCodeDialog.data.payment_request"
-            :options="{width: 400}"
-            class="rounded-borders"
-          ></qrcode>
+          ></lnbits-qrcode>
         </q-responsive>
       </a>
       <br />
@@ -163,107 +161,15 @@ context %} {% block page %}
 </div>
 {% endblock %} {% block scripts %}
 <script>
-  Vue.component(VueQrcode.name, VueQrcode)
-
-  new Vue({
-    el: '#vue',
-    mixins: [windowMixin],
-    data: function () {
-      return {
-        base_url: '{{ request.base_url }}',
-        domain: '{{ domain.domain }}',
-        domain_id: '{{ domain_id }}',
-        wallet: '{{ domain.wallet }}',
-        currency: '{{ domain.currency }}',
-        maxYears: '{{ domain.max_years }}',
-        identifier: '{{ identifier }}',
-        identifierCost: '{{ identifier_cost }}',
-        identifierAvailable: '{{ identifier_available }}' === 'True',
-        success: false,
-        successData: {
-          local_part: null,
-          address_id: null
-        },
-        qrCodeDialog: {
-          data: {
-            payment_request: null
-          },
-          show: false
-        },
-        formDialog: {
-          data: {
-            local_part: '{{ identifier or "" }}',
-            years: 1,
-            pubkey: ''
-          }
-        },
-        urlDialog: {
-          show: false
-        }
-      }
-    },
-    methods: {
-      closeQrCodeDialog: function () {
-        this.qrCodeDialog.show = false
-      },
-      checkIdentifier: function () {
-        const urlParams = new URLSearchParams(window.location.search)
-
-        urlParams.set('identifier', this.formDialog.data.local_part || '')
-        window.location.search = urlParams
-      },
-      createAddress: function () {
-        var self = this
-        var qrCodeDialog = this.qrCodeDialog
-        var formDialog = this.formDialog
-        formDialog.data.domain_id = this.domain_id
-        formDialog.data.create_invoice = true
-        var localPart = formDialog.data.local_part
-
-        axios
-          .post(
-            '/nostrnip5/api/v1/public/domain/' + this.domain_id + '/address',
-            formDialog.data
-          )
-          .then(function (response) {
-            qrCodeDialog.data = response.data
-            qrCodeDialog.show = true
-
-            console.log(qrCodeDialog.data)
-
-            qrCodeDialog.dismissMsg = self.$q.notify({
-              timeout: 0,
-              message: 'Waiting for payment...'
-            })
-
-            qrCodeDialog.paymentChecker = setInterval(function () {
-              axios
-                .get(
-                  '/nostrnip5/api/v1/domain/' +
-                    self.domain_id +
-                    '/payments/' +
-                    response.data.payment_hash
-                )
-                .then(function (res) {
-                  if (res.data.paid) {
-                    clearInterval(qrCodeDialog.paymentChecker)
-                    qrCodeDialog.dismissMsg()
-                    qrCodeDialog.show = false
-
-                    self.successData.local_part = localPart
-                    self.successData.address_id = qrCodeDialog.data.id
-                    self.successData.rotation_secret =
-                      qrCodeDialog.data.rotation_secret
-                    self.success = true
-                  }
-                })
-            }, 3000)
-          })
-          .catch(function (error) {
-            LNbits.utils.notifyApiError(error)
-          })
-      }
-    }
-  })
+  const base_url = '{{ request.base_url }}'
+  const domain = '{{ domain.domain }}'
+  const domain_id = '{{ domain_id }}'
+  const wallet = '{{ domain.wallet }}'
+  const currency = '{{ domain.currency }}'
+  const maxYears = '{{ domain.max_years }}'
+  const identifier = '{{ identifier }}'
+  const identifierCost = '{{ identifier_cost }}'
+  const identifierAvailable = '{{ identifier_available }}' === 'True'
 </script>
+<script src="{{ static_url_for('static/nostrnip5', 'js/signup.js') }}"></script>
 {% endblock %}

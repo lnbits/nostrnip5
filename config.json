@@ -2,11 +2,16 @@
   "name": "Nostr NIP-5",
   "short_description": "Verify addresses for Nostr NIP-5",
   "tile": "/nostrnip5/static/image/nostrnip5.png",
-  "min_lnbits_version": "0.12.9",
+  "min_lnbits_version": "1.0.0",
   "contributors": [
     {
       "name": "leesalminen",
       "uri": "https://github.com/leesalminen",
+      "role": "Contributor"
+    },
+    {
+      "name": "dni",
+      "uri": "https://github.com/dni",
       "role": "Contributor"
     },
     {
