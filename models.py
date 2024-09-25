@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import json
-from sqlite3 import Row
-from typing import List, Optional, Tuple
+from datetime import datetime
+from typing import Optional
 
 from lnbits.db import FilterModel, FromRowModel
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
@@ -79,7 +81,7 @@ class RotateAddressData(BaseModel):
 
 class UpdateAddressData(BaseModel):
     pubkey: Optional[str] = None
-    relays: Optional[List[str]] = None
+    relays: Optional[list[str]] = None
 
     def validate_data(self):
         self.validate_relays_urls()
@@ -102,7 +104,7 @@ class CreateAddressData(BaseModel):
     local_part: str
     pubkey: str = ""
     years: int = 1
-    relays: Optional[List[str]] = None
+    relays: Optional[list[str]] = None
     promo_code: Optional[str] = None
     referer: Optional[str] = None
     create_invoice: bool = False
@@ -126,13 +128,13 @@ class CreateAddressData(BaseModel):
 
 class DomainCostConfig(BaseModel):
     max_years: int = 1
-    char_count_cost: List[CustomCost] = []
-    rank_cost: List[CustomCost] = []
-    promotions: List[Promotion] = []
+    char_count_cost: list[CustomCost] = []
+    rank_cost: list[CustomCost] = []
+    promotions: list[Promotion] = []
 
     def apply_promo_code(
         self, amount: float, promo_code: Optional[str] = None
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         if promo_code is None:
             return 0, 0
         promotion = next((p for p in self.promotions if p.code == promo_code), None)
@@ -224,18 +226,10 @@ class EditDomainData(BaseModel):
         if self.cost_config:
             self.cost_config.validate_data()
 
-    @classmethod
-    def from_row(cls, row: Row) -> "EditDomainData":
-        return cls(**dict(row))
-
 
 class IdentifierRanking(BaseModel):
     name: str
     rank: int
-
-    @classmethod
-    def from_row(cls, row: Row) -> "IdentifierRanking":
-        return cls(**dict(row))
 
 
 class PublicDomain(BaseModel):
@@ -244,15 +238,11 @@ class PublicDomain(BaseModel):
     cost: float
     domain: str
 
-    @classmethod
-    def from_row(cls, row: Row) -> "PublicDomain":
-        return cls(**dict(row))
-
 
 class Domain(PublicDomain):
     wallet: str
-    cost_config: DomainCostConfig = DomainCostConfig()
-    time: int
+    cost_extra: str
+    time: datetime
 
     async def price_for_identifier(
         self,
@@ -297,13 +287,9 @@ class Domain(PublicDomain):
         data["max_years"] = self.cost_config.max_years
         return data
 
-    @classmethod
-    def from_row(cls, row: Row) -> "Domain":
-        domain = cls(**dict(row))
-        if row["cost_extra"]:
-            domain.cost_config = DomainCostConfig(**json.loads(row["cost_extra"]))
-
-        return domain
+    @property
+    def cost_config(self) -> DomainCostConfig:
+        return DomainCostConfig(**json.loads(self.cost_extra))
 
 
 class LnAddressConfig(BaseModel):
@@ -324,8 +310,7 @@ class AddressConfig(BaseModel):
     promo_code: Optional[str] = None
     referer: Optional[str] = None
     max_years: int = 1
-    relays: List[str] = []
-
+    relays: list[str] = []
     ln_address: LnAddressConfig = LnAddressConfig(wallet="")
 
 
@@ -336,24 +321,22 @@ class Address(FromRowModel):
     local_part: str
     pubkey: str
     active: bool
-    time: int
+    time: datetime
+    expires_at: datetime
+    extra: str
     reimburse_amount: int = 0
-    expires_at: Optional[float]
-
-    config: AddressConfig = AddressConfig()
-
     promo_code_status: PromoCodeStatus = PromoCodeStatus()
+
+    def update_extra(self, config: AddressConfig) -> None:
+        self.extra = json.dumps(config.dict())
+
+    @property
+    def config(self) -> AddressConfig:
+        return AddressConfig(**json.loads(self.extra or ""))
 
     @property
     def has_pubkey(self):
         return self.pubkey != ""
-
-    @classmethod
-    def from_row(cls, row: Row) -> "Address":
-        address = cls(**dict(row))
-        if row["extra"]:
-            address.config = AddressConfig(**json.loads(row["extra"]))
-        return address
 
 
 class AddressStatus(BaseModel):
@@ -378,14 +361,11 @@ class AddressFilters(FilterModel):
     reimburse_amount: str
     pubkey: str
     active: bool
-    time: int
+    time: datetime
 
 
 class Nip5Settings(BaseModel):
+    owner_id: str
     cloudflare_access_token: Optional[str] = None
-    lnaddress_api_endpoint: Optional[str] = "https://nostr.com"
     lnaddress_api_admin_key: Optional[str] = ""
-
-    @classmethod
-    def from_row(cls, row: Row) -> "Nip5Settings":
-        return cls(**dict(json.loads(row["settings"])))
+    lnaddress_api_endpoint: Optional[str] = "https://nostr.com"

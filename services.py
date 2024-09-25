@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import httpx
 from lnbits.core.crud import get_standalone_payment, get_user
@@ -41,7 +41,7 @@ from .models import (
 
 async def get_user_domains(
     user_id: str, wallet_id: str, all_wallets: Optional[bool] = False
-) -> List[Domain]:
+) -> list[Domain]:
     wallet_ids = [wallet_id]
     if all_wallets:
         user = await get_user(user_id)
@@ -54,7 +54,7 @@ async def get_user_domains(
 
 async def get_user_addresses(
     user_id: str, wallet_id: str, all_wallets: Optional[bool] = False
-) -> List[Address]:
+) -> list[Address]:
     wallet_ids = [wallet_id]
     if all_wallets:
         user = await get_user(user_id)
@@ -151,7 +151,7 @@ async def create_invoice_for_identifier(
     domain: Domain,
     address: Address,
     reimburse_wallet_id: str,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     price_data = await get_identifier_price_data(
         domain, address.local_part, address.config.years, address.config.promo_code
     )
@@ -193,9 +193,9 @@ async def create_address(
         data.pubkey = validate_pub_key(data.pubkey)
 
     owner_id = owner_id_from_user_id(user_id)
-    addresss = await get_address_for_owner(owner_id, domain.id, identifier)
+    address = await get_address_for_owner(owner_id, domain.id, identifier)
 
-    promo_code = promo_code or (addresss.config.promo_code if addresss else None)
+    promo_code = promo_code or (address.config.promo_code if address else None)
     identifier_status = await get_identifier_status(
         domain, identifier, data.years, promo_code
     )
@@ -203,7 +203,7 @@ async def create_address(
     assert identifier_status.available, f"Identifier '{identifier}' not available."
     assert identifier_status.price, f"Cannot compute price for '{identifier}'."
 
-    config = addresss.config if addresss else AddressConfig()
+    config = address.config if address else AddressConfig()
     config.price = identifier_status.price
     config.price_in_sats = identifier_status.price_in_sats
     config.currency = domain.currency
@@ -213,11 +213,10 @@ async def create_address(
     config.max_years = domain.cost_config.max_years
     config.ln_address.wallet = wallet_id or ""
 
-    if addresss:
-        assert not addresss.active, f"Identifier '{data.local_part}' already activated."
-        address = await update_address(
-            domain.id, addresss.id, config=config, pubkey=data.pubkey
-        )
+    if address:
+        assert not address.active, f"Identifier '{data.local_part}' already activated."
+        address.update_extra(config=config)
+        address = await update_address(address)
     else:
         address = await create_address_internal(data, owner_id, config=config)
 
@@ -248,7 +247,7 @@ async def activate_address(
 
 async def get_valid_addresses_for_owner(
     owner_id: str, local_part: Optional[str] = None, active: Optional[bool] = None
-) -> List[Address]:
+) -> list[Address]:
 
     valid_addresses = []
     addresses = await get_addresses_for_owner(owner_id)
@@ -321,6 +320,7 @@ async def check_address_payment(domain_id: str, payment_hash: str) -> bool:
         logger.debug(f"No payment found for hash {payment_hash}")
         return False
 
+    assert payment.extra, "No extra data on payment."
     payment_address_id = payment.extra.get("address_id")
     assert payment_address_id, "Payment does not exist for this address."
 
@@ -342,12 +342,13 @@ async def get_reimburse_wallet_id(address: Address) -> str:
         checking_id_or_hash=payment_hash, incoming=True
     )
     assert payment, f"No payment found to reimburse '{payment_hash}'."
+    assert payment.extra, "No extra data on payment."
     wallet_id = payment.extra.get("reimburse_wallet_id")
     assert wallet_id, f"No wallet found to reimburse payment {payment_hash}."
     return wallet_id
 
 
-async def update_identifiers(identifiers: List[str], bucket: int):
+async def update_identifiers(identifiers: list[str], bucket: int):
     for identifier in identifiers:
         try:
             await update_identifier(identifier, bucket)
@@ -362,12 +363,8 @@ async def update_identifier(identifier, bucket):
 
 async def update_ln_address(address: Address) -> Address:
     nip5_settings = await get_settings(owner_id_from_user_id("admin"))
-
-    assert nip5_settings.lnaddress_api_endpoint, "No endpoint found for LN Address."
-    assert nip5_settings.lnaddress_api_admin_key, "No api key found for LN Address."
-
+    assert nip5_settings, "No NIP-05 settings found."
     ln_address = address.config.ln_address
-
     async with httpx.AsyncClient(verify=False) as client:
         method = "PUT" if ln_address.pay_link_id else "POST"
         url = f"{nip5_settings.lnaddress_api_endpoint}/lnurlp/api/v1/links"
@@ -402,9 +399,8 @@ async def update_ln_address(address: Address) -> Address:
             f"Updated Lightning Address for '{address.local_part}' ({address.id})."
         )
 
-        address = await update_address(
-            address.domain_id, address.id, config=address.config
-        )
+        # updates expires_at
+        address = await update_address(address)
         logger.info(f"Updated address for '{address.local_part}' ({address.id}).")
         return address
 

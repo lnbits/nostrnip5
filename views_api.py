@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import httpx
 from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi.exceptions import HTTPException
 from lnbits.core.crud import get_wallets
 from lnbits.core.models import SimpleStatus, User, WalletTypeInfo
 from lnbits.core.services import create_invoice
@@ -11,15 +12,14 @@ from lnbits.db import Filters, Page
 from lnbits.decorators import (
     check_admin,
     check_user_exists,
-    get_key_type,
     optional_user_id,
     parse_filters,
     require_admin_key,
+    require_invoice_key,
 )
 from lnbits.helpers import generate_filter_params_openapi
 from lnbits.utils.cache import cache
 from loguru import logger
-from starlette.exceptions import HTTPException
 
 from .crud import (
     create_domain_internal,
@@ -38,7 +38,6 @@ from .crud import (
     update_identifier_ranking,
 )
 from .helpers import (
-    http_try_except,
     owner_id_from_user_id,
     validate_pub_key,
 )
@@ -48,6 +47,7 @@ from .models import (
     AddressStatus,
     CreateAddressData,
     CreateDomainData,
+    Domain,
     EditDomainData,
     IdentifierRanking,
     LnAddressConfig,
@@ -72,47 +72,38 @@ from .services import (
 )
 
 nostrnip5_api_router: APIRouter = APIRouter()
-
 address_filters = parse_filters(AddressFilters)
-
 rotation_secret_prefix = "nostr_nip_5_rotation_secret_"
 
 
-##################################### DOMAINS #####################################
-
-
-@http_try_except
-@nostrnip5_api_router.get("/api/v1/domains", status_code=HTTPStatus.OK)
+@nostrnip5_api_router.get("/api/v1/domains")
 async def api_domains(
-    all_wallets: bool = Query(None), wallet: WalletTypeInfo = Depends(get_key_type)
+    all_wallets: bool = Query(None),
+    key_info: WalletTypeInfo = Depends(require_invoice_key),
+) -> list[Domain]:
+    wallet = key_info.wallet
+    return await get_user_domains(wallet.user, wallet.id, all_wallets)
+
+
+@nostrnip5_api_router.get("/api/v1/domain/{domain_id}")
+async def api_get_domain(
+    domain_id: str, key_info: WalletTypeInfo = Depends(require_invoice_key)
 ):
-    domains = await get_user_domains(wallet.wallet.user, wallet.wallet.id, all_wallets)
-
-    return [domain.dict() for domain in domains]
-
-
-@http_try_except
-@nostrnip5_api_router.get(
-    "/api/v1/domain/{domain_id}",
-    status_code=HTTPStatus.OK,
-)
-async def api_get_domains(domain_id: str, w: WalletTypeInfo = Depends(get_key_type)):
-    domain = await get_domain(domain_id, w.wallet.id)
-    assert domain, "Domain does not exist."
+    domain = await get_domain(domain_id, key_info.wallet.id)
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
     return domain
 
 
-@http_try_except
 @nostrnip5_api_router.post("/api/v1/domain", status_code=HTTPStatus.CREATED)
 async def api_create_domain(
-    data: CreateDomainData, wallet: WalletTypeInfo = Depends(require_admin_key)
+    data: CreateDomainData, key_info: WalletTypeInfo = Depends(require_admin_key)
 ):
     data.validate_data()
-    return await create_domain_internal(wallet_id=wallet.wallet.id, data=data)
+    return await create_domain_internal(wallet_id=key_info.wallet.id, data=data)
 
 
-@http_try_except
-@nostrnip5_api_router.put("/api/v1/domain", status_code=HTTPStatus.OK)
+@nostrnip5_api_router.put("/api/v1/domain")
 async def api_update_domain(
     data: EditDomainData, wallet: WalletTypeInfo = Depends(require_admin_key)
 ):
@@ -120,24 +111,19 @@ async def api_update_domain(
     return await update_domain_internal(wallet_id=wallet.wallet.id, data=data)
 
 
-@http_try_except
 @nostrnip5_api_router.delete(
     "/api/v1/domain/{domain_id}", status_code=HTTPStatus.CREATED
 )
 async def api_domain_delete(
     domain_id: str,
-    w: WalletTypeInfo = Depends(require_admin_key),
+    key_info: WalletTypeInfo = Depends(require_admin_key),
 ):
     # make sure the address belongs to the user
-    deleted = await delete_domain(domain_id, w.wallet.id)
-
+    deleted = await delete_domain(domain_id, key_info.wallet.id)
     return SimpleStatus(success=deleted, message="Deleted")
 
 
-@http_try_except
-@nostrnip5_api_router.get(
-    "/api/v1/domain/{domain_id}/nostr.json", status_code=HTTPStatus.OK
-)
+@nostrnip5_api_router.get("/api/v1/domain/{domain_id}/nostr.json")
 async def api_get_nostr_json(
     response: Response, domain_id: str, name: str = Query(None)
 ):
@@ -166,10 +152,7 @@ async def api_get_nostr_json(
     return nip5
 
 
-@http_try_except
-@nostrnip5_api_router.get(
-    "/api/v1/domain/{domain_id}/search", status_code=HTTPStatus.OK
-)
+@nostrnip5_api_router.get("/api/v1/domain/{domain_id}/search")
 async def api_search_identifier(
     domain_id: str, q: Optional[str] = None, years: Optional[int] = None
 ) -> AddressStatus:
@@ -178,37 +161,29 @@ async def api_search_identifier(
         return AddressStatus(identifier="")
 
     domain = await get_domain_by_id(domain_id)
-    assert domain, "Unknown domain id."
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
 
     return await get_identifier_status(domain, q, years or 1)
 
 
-@http_try_except
-@nostrnip5_api_router.get(
-    "/api/v1/domain/{domain_id}/payments/{payment_hash}", status_code=HTTPStatus.OK
-)
+@nostrnip5_api_router.get("/api/v1/domain/{domain_id}/payments/{payment_hash}")
 async def api_check_address_payment(domain_id: str, payment_hash: str):
     # todo: can it be replaced with websocket?
     paid = await check_address_payment(domain_id, payment_hash)
     return {"paid": paid}
 
 
-##################################### ADDRESSES #####################################
-
-
-@http_try_except
-@nostrnip5_api_router.get("/api/v1/addresses", status_code=HTTPStatus.OK)
+@nostrnip5_api_router.get("/api/v1/addresses")
 async def api_get_addresses(
-    all_wallets: bool = Query(None), wallet: WalletTypeInfo = Depends(get_key_type)
-):
-    addresses = await get_user_addresses(
-        wallet.wallet.user, wallet.wallet.id, all_wallets
+    all_wallets: bool = Query(None),
+    key_info: WalletTypeInfo = Depends(require_invoice_key),
+) -> list[Address]:
+    return await get_user_addresses(
+        key_info.wallet.user, key_info.wallet.id, all_wallets
     )
 
-    return [address.dict() for address in addresses]
 
-
-@http_try_except
 @nostrnip5_api_router.get(
     "/api/v1/addresses/paginated",
     name="Addresses List",
@@ -216,64 +191,53 @@ async def api_get_addresses(
     response_description="list of addresses",
     openapi_extra=generate_filter_params_openapi(AddressFilters),
     response_model=Page[Address],
-    status_code=HTTPStatus.OK,
 )
 async def api_get_addresses_paginated(
     all_wallets: bool = Query(None),
     filters: Filters = Depends(address_filters),
-    wallet: WalletTypeInfo = Depends(get_key_type),
-):
+    key_info: WalletTypeInfo = Depends(require_invoice_key),
+) -> Page[Address]:
     page = await get_user_addresses_paginated(
-        wallet.wallet.user, wallet.wallet.id, all_wallets, filters
+        key_info.wallet.user, key_info.wallet.id, all_wallets, filters
     )
-
     return page
 
 
-@http_try_except
-@nostrnip5_api_router.delete(
-    "/api/v1/domain/{domain_id}/address/{address_id}",
-    status_code=HTTPStatus.OK,
-)
+@nostrnip5_api_router.delete("/api/v1/domain/{domain_id}/address/{address_id}")
 async def api_delete_address(
     domain_id: str,
     address_id: str,
-    w: WalletTypeInfo = Depends(get_key_type),
+    key_info: WalletTypeInfo = Depends(require_invoice_key),
 ):
 
     # make sure the address belongs to the user
-    domain = await get_domain(domain_id, w.wallet.id)
-    assert domain, "Domain does not exist."
-
+    domain = await get_domain(domain_id, key_info.wallet.id)
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
     address = await get_address(domain_id, address_id)
     if not address:
-        return
-    assert address.domain_id == domain_id, "Domain ID missmatch"
-
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
+    if address.domain_id != domain_id:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain ID missmatch.")
     await delete_address_by_id(domain_id, address_id)
     cache.pop(f"{domain_id}/{address.local_part}")
 
 
-@http_try_except
-@nostrnip5_api_router.put(
-    "/api/v1/domain/{domain_id}/address/{address_id}/activate",
-    status_code=HTTPStatus.OK,
-)
+@nostrnip5_api_router.put("/api/v1/domain/{domain_id}/address/{address_id}/activate")
 async def api_activate_address(
     domain_id: str,
     address_id: str,
-    w: WalletTypeInfo = Depends(require_admin_key),
+    key_info: WalletTypeInfo = Depends(require_admin_key),
 ) -> Address:
     # make sure the address belongs to the user
-    domain = await get_domain(domain_id, w.wallet.id)
-    assert domain, "Domain does not exist."
-
+    domain = await get_domain(domain_id, key_info.wallet.id)
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
     active_address = await activate_address(domain_id, address_id)
     cache.pop(f"{domain_id}/{active_address.local_part}")
     return await update_ln_address(active_address)
 
 
-@http_try_except
 @nostrnip5_api_router.get(
     "/api/v1/domain/{domain_id}/address/{address_id}/reimburse",
     dependencies=[Depends(require_admin_key)],
@@ -286,11 +250,14 @@ async def api_address_reimburse(
 
     # make sure the address belongs to the user
     domain = await get_domain_by_id(domain_id)
-    assert domain, "Domain does not exist."
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
 
     address = await get_address(domain.id, address_id)
-    assert address, "Address not found"
-    assert address.domain_id == domain_id, "Domain ID missmatch"
+    if not address:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
+    if address.domain_id != domain_id:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain ID missmatch.")
 
     wallet_id = await get_reimburse_wallet_id(address)
 
@@ -314,11 +281,7 @@ async def api_address_reimburse(
     }
 
 
-@http_try_except
-@nostrnip5_api_router.put(
-    "/api/v1/domain/{domain_id}/address/{address_id}",
-    status_code=HTTPStatus.OK,
-)
+@nostrnip5_api_router.put("/api/v1/domain/{domain_id}/address/{address_id}")
 async def api_update_address(
     domain_id: str,
     address_id: str,
@@ -330,55 +293,62 @@ async def api_update_address(
 
     # make sure the domain belongs to the user
     domain = await get_domain(domain_id, w.wallet.id)
-    assert domain, "Domain does not exist."
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
 
     address = await get_address(domain_id, address_id)
-    assert address, "Address not found"
-    assert address.domain_id == domain_id, "Domain ID missmatch"
+    if not address:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
+    if address.domain_id != domain_id:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain ID missmatch")
 
     pubkey = validate_pub_key(data.pubkey if data.pubkey else address.pubkey)
+    address.pubkey = pubkey
+
     if data.relays:
-        address.config.relays = data.relays
-    await update_address(domain_id, address.id, pubkey=pubkey, config=address.config)
+        config = address.config
+        config.relays = data.relays
+        address.update_extra(config)
 
+    await update_address(address)
     cache.pop(f"{domain_id}/{address.local_part}")
-
     return address
 
 
-@http_try_except
 @nostrnip5_api_router.post(
     "/api/v1/domain/{domain_id}/address", status_code=HTTPStatus.CREATED
 )
 async def api_request_address(
     address_data: CreateAddressData,
     domain_id: str,
-    w: WalletTypeInfo = Depends(require_admin_key),
+    key_info: WalletTypeInfo = Depends(require_admin_key),
 ):
     address_data.normalize()
 
     # make sure the domain belongs to the user
-    domain = await get_domain(domain_id, w.wallet.id)
-    assert domain, "Domain does not exist."
+    domain = await get_domain(domain_id, key_info.wallet.id)
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
 
-    assert address_data.domain_id == domain_id, "Domain ID missmatch"
-    address = await create_address(domain, address_data, w.wallet.id, w.wallet.user)
-    assert (
-        address.config.price_in_sats
-    ), f"Cannot compute price for '{address_data.local_part}'."
+    if address_data.domain_id != domain_id:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain ID missmatch")
 
+    address = await create_address(
+        domain, address_data, key_info.wallet.id, key_info.wallet.user
+    )
+    if not address.config.price_in_sats:
+        raise HTTPException(
+            HTTPStatus.BAD_REQUEST,
+            f"Cannot compute price. for {address_data.local_part}",
+        )
     return {
         "payment_hash": None,
         "payment_request": None,
-        **dict(address),
+        **address.dict(),
     }
 
 
-##################################### USER ADDRESSES ###################################
-
-
-@http_try_except
-@nostrnip5_api_router.get("/api/v1/user/addresses", status_code=HTTPStatus.OK)
+@nostrnip5_api_router.get("/api/v1/user/addresses")
 async def api_get_user_addresses(
     user_id: Optional[str] = Depends(optional_user_id),
     local_part: Optional[str] = None,
@@ -388,15 +358,12 @@ async def api_get_user_addresses(
         raise HTTPException(HTTPStatus.UNAUTHORIZED)
 
     owner_id = owner_id_from_user_id(user_id)
-    assert owner_id
+    if not owner_id:
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
     return await get_valid_addresses_for_owner(owner_id, local_part, active)
 
 
-@http_try_except
-@nostrnip5_api_router.delete(
-    "/api/v1/user/domain/{domain_id}/address/{address_id}",
-    status_code=HTTPStatus.OK,
-)
+@nostrnip5_api_router.delete("/api/v1/user/domain/{domain_id}/address/{address_id}")
 async def api_delete_user_address(
     domain_id: str,
     address_id: str,
@@ -410,43 +377,39 @@ async def api_delete_user_address(
     return await delete_address(domain_id, address_id, owner_id)
 
 
-@http_try_except
-@nostrnip5_api_router.put(
-    "/api/v1/domain/{domain_id}/address/{address_id}/rotate",
-    status_code=HTTPStatus.OK,
-)
+@nostrnip5_api_router.put("/api/v1/domain/{domain_id}/address/{address_id}/rotate")
 async def api_rotate_user_address(
     domain_id: str,
     address_id: str,
     data: RotateAddressData,
 ):
-    data.pubkey = validate_pub_key(data.pubkey)
-    assert data.secret.startswith(
-        rotation_secret_prefix
-    ), f"Rotation secret must start with: '{rotation_secret_prefix}' "
+    pubkey = validate_pub_key(data.pubkey)
+    if not data.secret.startswith(rotation_secret_prefix):
+        raise HTTPException(
+            HTTPStatus.BAD_REQUEST,
+            f"Rotation secret must start with '{rotation_secret_prefix}'",
+        )
 
     # make sure the domain belongs to the user
     domain = await get_domain_by_id(domain_id)
-    assert domain, "Domain does not exist."
-
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
     address = await get_address(domain_id, address_id)
-    assert address, "Address not found"
-    assert address.domain_id == domain_id, "Domain ID missmatch"
+    if not address:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
+    if address.domain_id != domain_id:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain ID missmatch")
     owner_id = owner_id_from_user_id(data.secret)
-    assert address.owner_id == owner_id, "Address secret is incorrect."
+    if address.owner_id != owner_id:
+        raise HTTPException(HTTPStatus.UNAUTHORIZED, "Address secret is incorrect.")
 
-    await update_address(domain_id, address_id, pubkey=data.pubkey)
-
+    address.pubkey = pubkey
+    await update_address(address)
     cache.pop(f"{domain_id}/{address.local_part}")
-
     return True
 
 
-@http_try_except
-@nostrnip5_api_router.put(
-    "/api/v1/user/domain/{domain_id}/address/{address_id}",
-    status_code=HTTPStatus.OK,
-)
+@nostrnip5_api_router.put("/api/v1/user/domain/{domain_id}/address/{address_id}")
 async def api_update_user_address(
     domain_id: str,
     address_id: str,
@@ -460,24 +423,31 @@ async def api_update_user_address(
     data.validate_data()
 
     address = await get_address(domain_id, address_id)
-    assert address, "Address not found"
-    assert address.domain_id == domain_id, "Domain ID missmatch"
+    if not address:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
+    if address.domain_id != domain_id:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain ID missmatch")
 
     owner_id = owner_id_from_user_id(user_id)
-    assert address.owner_id == owner_id, "Address does not belong to this user"
+    if address.owner_id != owner_id:
+        raise HTTPException(
+            HTTPStatus.UNAUTHORIZED, "Address does not belong to this user."
+        )
 
-    pubkey = data.pubkey if data.pubkey else address.pubkey
     if data.relays:
-        address.config.relays = data.relays
-    address = await update_address(
-        domain_id, address.id, pubkey=pubkey, config=address.config
-    )
+        config = address.config
+        config.relays = data.relays
+        address.update_extra(config)
+
+    for k, v in data.dict().items():
+        setattr(address, k, v)
+
+    await update_address(address)
     cache.pop(f"{domain_id}/{address.local_part}")
 
     return address
 
 
-@http_try_except
 @nostrnip5_api_router.post(
     "/api/v1/user/domain/{domain_id}/address", status_code=HTTPStatus.CREATED
 )
@@ -503,7 +473,6 @@ async def api_request_user_address(
     return await request_user_address(domain, address_data, wallet_id, user_id)
 
 
-@http_try_except
 @nostrnip5_api_router.post(
     "/api/v1/public/domain/{domain_id}/address", status_code=HTTPStatus.CREATED
 )
@@ -516,9 +485,10 @@ async def api_request_public_user_address(
     address_data.normalize()
     # make sure the address belongs to the user
     domain = await get_domain_by_id(address_data.domain_id)
-    assert domain, "Domain does not exist."
-
-    assert address_data.domain_id == domain_id, "Domain ID missmatch"
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
+    if address_data.domain_id != domain_id:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain ID missmatch")
 
     wallet_id = (await get_wallets(user_id))[0].id if user_id else None
     # used when the user is not authenticated
@@ -533,15 +503,11 @@ async def api_request_public_user_address(
     return resp
 
 
-##################################### LNADDRESS #####################################
-@http_try_except
 @nostrnip5_api_router.post(
-    "/api/v1/user/domain/{domain_id}/address/{address_id}/lnaddress",
-    status_code=HTTPStatus.OK,
+    "/api/v1/user/domain/{domain_id}/address/{address_id}/lnaddress"
 )
 @nostrnip5_api_router.put(
-    "/api/v1/user/domain/{domain_id}/address/{address_id}/lnaddress",
-    status_code=HTTPStatus.OK,
+    "/api/v1/user/domain/{domain_id}/address/{address_id}/lnaddress"
 )
 async def api_lnurl_create_or_update(
     domain_id: str,
@@ -554,14 +520,21 @@ async def api_lnurl_create_or_update(
 
     # make sure the address belongs to the user
     domain = await get_domain_by_id(domain_id)
-    assert domain, "Domain does not exist."
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
 
     address = await get_address(domain.id, address_id)
-    assert address, "Address not found"
-    assert address.domain_id == domain_id, "Domain ID missmatch"
-    assert address.active, "Address not active."
+    if not address:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
+    if address.domain_id != domain_id:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain ID missmatch")
+    if not address.active:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address not active.")
     owner_id = owner_id_from_user_id(user_id)
-    assert address.owner_id == owner_id, "Address does not belong to this user"
+    if address.owner_id != owner_id:
+        raise HTTPException(
+            HTTPStatus.UNAUTHORIZED, "Address does not belong to this user."
+        )
 
     data.pay_link_id = address.config.ln_address.pay_link_id
     address.config.ln_address = data
@@ -573,13 +546,8 @@ async def api_lnurl_create_or_update(
     )
 
 
-##################################### RANKING #####################################
-
-
-@http_try_except
 @nostrnip5_api_router.put(
     "/api/v1/domain/ranking/{bucket}",
-    status_code=HTTPStatus.OK,
 )
 async def api_refresh_identifier_ranking(
     bucket: int,
@@ -587,8 +555,8 @@ async def api_refresh_identifier_ranking(
 ):
     owner_id = owner_id_from_user_id("admin" if user.admin else user.id)
     nip5_settings = await get_settings(owner_id)
-
-    assert nip5_settings.cloudflare_access_token, "Missing CloudFlare access token."
+    if not nip5_settings:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Settings for user not found.")
 
     headers = {"Authorization": f"Bearer {nip5_settings.cloudflare_access_token}"}
     ranking_url = "https://api.cloudflare.com/client/v4/radar/datasets?limit=12&datasetType=RANKING_BUCKET"
@@ -598,82 +566,59 @@ async def api_refresh_identifier_ranking(
         await refresh_buckets(client, ranking_url, dataset_url, bucket)
 
 
-@http_try_except
 @nostrnip5_api_router.patch(
     "/api/v1/domain/ranking/{bucket}",
     dependencies=[Depends(check_admin)],
-    status_code=HTTPStatus.OK,
 )
-async def api_add_identifier_ranking(
-    bucket: int,
-    request: Request,
-):
+async def api_add_identifier_ranking(bucket: int, request: Request):
     identifiers = (await request.body()).decode("utf-8").splitlines()
     logger.info(f"Updating {len(identifiers)} rankings.")
-
     await update_identifiers(identifiers, bucket)
-
     logger.info(f"Updated {len(identifiers)} rankings.")
-
     return {"count": len(identifiers)}
 
 
-@http_try_except
 @nostrnip5_api_router.get(
     "/api/v1/ranking/search",
     dependencies=[Depends(check_admin)],
-    status_code=HTTPStatus.OK,
 )
 async def api_domain_search_address(
     q: Optional[str] = None,
 ) -> Optional[IdentifierRanking]:
-
     if not q:
         return None
     return await get_identifier_ranking(q)
 
 
-@http_try_except
 @nostrnip5_api_router.put(
     "/api/v1/ranking",
     dependencies=[Depends(check_admin)],
-    status_code=HTTPStatus.OK,
 )
 async def api_domain_update_ranking(
     identifier_ranking: IdentifierRanking,
 ) -> Optional[IdentifierRanking]:
-
     return await update_identifier_ranking(
         identifier_ranking.name, identifier_ranking.rank
     )
 
 
-##################################### SETTINGS #####################################
-@http_try_except
-@nostrnip5_api_router.post(
-    "/api/v1/settings",
-    status_code=HTTPStatus.OK,
-)
-@nostrnip5_api_router.put(
-    "/api/v1/settings",
-    status_code=HTTPStatus.OK,
-)
+@nostrnip5_api_router.post("/api/v1/settings")
+@nostrnip5_api_router.put("/api/v1/settings")
 async def api_settings_create_or_update(
     settings: Nip5Settings,
     user: User = Depends(check_user_exists),
 ):
     owner_id = owner_id_from_user_id("admin" if user.admin else user.id)
-    await create_settings(owner_id, settings)
+    settings.owner_id = owner_id
+    await create_settings(settings)
 
 
-@http_try_except
-@nostrnip5_api_router.get(
-    "/api/v1/settings",
-    status_code=HTTPStatus.OK,
-)
+@nostrnip5_api_router.get("/api/v1/settings")
 async def api_get_settings(
     user: User = Depends(check_user_exists),
 ) -> Nip5Settings:
     owner_id = owner_id_from_user_id("admin" if user.admin else user.id)
     nip5_settings = await get_settings(owner_id)
+    if not nip5_settings:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Settings for user not found.")
     return nip5_settings
