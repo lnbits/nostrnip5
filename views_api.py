@@ -145,7 +145,7 @@ async def api_get_nostr_json(
     response.headers["Access-Control-Allow-Methods"] = "GET,OPTIONS"
 
     if not name:
-        return {"names": {}, "relays": {}}
+        return {"status": "error", "message": "Name not specified"}
 
     cached_nip5 = cache.get(f"{domain_id}/{name}")
     if cached_nip5:
@@ -154,12 +154,13 @@ async def api_get_nostr_json(
     address = await get_active_address_by_local_part(domain_id, name)
 
     if not address:
-        return {"names": {}, "relays": {}}
+        return {"status": "error", "message": f"{name} is not found"}
 
     nip5 = {
         "names": {address.local_part: address.pubkey},
-        "relays": {address.pubkey: address.config.relays},
     }
+    if len(address.config.relays) > 0:
+        nip5["relays"] = {address.pubkey: address.config.relays}
 
     cache.set(f"{domain_id}/{name}", nip5, 600)
 
