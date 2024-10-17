@@ -144,7 +144,7 @@ async def api_get_nostr_json(
 
     nip5 = {
         "names": {address.local_part: address.pubkey},
-        "relays": {address.pubkey: address.config.relays},
+        "relays": {address.pubkey: address.extra.relays},
     }
 
     cache.set(f"{domain_id}/{name}", nip5, 600)
@@ -302,13 +302,15 @@ async def api_update_address(
     if address.domain_id != domain_id:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain ID missmatch")
 
-    pubkey = validate_pub_key(data.pubkey if data.pubkey else address.pubkey)
+    _pubkey = data.pubkey or address.pubkey
+    if not _pubkey:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Pubkey is required.")
+
+    pubkey = validate_pub_key(_pubkey)
     address.pubkey = pubkey
 
     if data.relays:
-        config = address.config
-        config.relays = data.relays
-        address.update_extra(config)
+        address.extra.relays = data.relays
 
     await update_address(address)
     cache.pop(f"{domain_id}/{address.local_part}")
@@ -336,7 +338,7 @@ async def api_request_address(
     address = await create_address(
         domain, address_data, key_info.wallet.id, key_info.wallet.user
     )
-    if not address.config.price_in_sats:
+    if not address.extra.price_in_sats:
         raise HTTPException(
             HTTPStatus.BAD_REQUEST,
             f"Cannot compute price. for {address_data.local_part}",
@@ -435,9 +437,7 @@ async def api_update_user_address(
         )
 
     if data.relays:
-        config = address.config
-        config.relays = data.relays
-        address.update_extra(config)
+        address.extra.relays = data.relays
 
     for k, v in data.dict().items():
         setattr(address, k, v)
@@ -536,8 +536,8 @@ async def api_lnurl_create_or_update(
             HTTPStatus.UNAUTHORIZED, "Address does not belong to this user."
         )
 
-    data.pay_link_id = address.config.ln_address.pay_link_id
-    address.config.ln_address = data
+    data.pay_link_id = address.extra.ln_address.pay_link_id
+    address.extra.ln_address = data
     await update_ln_address(address)
 
     return SimpleStatus(

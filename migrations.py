@@ -88,15 +88,7 @@ async def m006_make_amount_type_real(db: Database):
         "ALTER TABLE nostrnip5.domains ADD COLUMN cost REAL NOT NULL DEFAULT 0"
     )
 
-    rows = await db.fetchall(
-        "SELECT id, amount FROM nostrnip5.domains",
-    )
-    for row in rows:
-        await db.execute(
-            "UPDATE nostrnip5.domains SET cost = :amount WHERE id = :id",
-            {"amount": row["amount"], "id": row["id"]},
-        )
-
+    await db.execute("UPDATE nostrnip5.domains SET cost = amount")
     await db.execute("ALTER TABLE nostrnip5.domains DROP COLUMN amount")
 
 
@@ -114,7 +106,8 @@ async def m007_add_cost_extra_column_to_addresses(db: Database):
 
 async def m007_migrate_settings(db: Database):
 
-    settings = await db.fetchall("SELECT * FROM nostrnip5.settings")
+    result = await db.execute("SELECT * FROM nostrnip5.settings")
+    settings = await result.mappings().all()
     await db.execute("ALTER TABLE nostrnip5.settings RENAME TO settings_old")
     await db.execute(
         """

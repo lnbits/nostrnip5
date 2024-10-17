@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from typing import Optional
 
-from lnbits.db import FilterModel, FromRowModel
+from lnbits.db import FilterModel
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from pydantic import BaseModel
 
@@ -299,44 +299,33 @@ class LnAddressConfig(BaseModel):
     pay_link_id: Optional[str] = ""
 
 
-class AddressConfig(BaseModel):
+class AddressExtra(BaseModel):
     currency: Optional[str] = None
     price: Optional[float] = None
     price_in_sats: Optional[float] = None
     payment_hash: Optional[str] = None
     reimburse_payment_hash: Optional[str] = None
-    activated_by_owner: bool = False
-    years: int = 1
     promo_code: Optional[str] = None
     referer: Optional[str] = None
+    activated_by_owner: bool = False
+    years: int = 1
     max_years: int = 1
     relays: list[str] = []
     ln_address: LnAddressConfig = LnAddressConfig(wallet="")
 
 
-class Address(FromRowModel):
+class Address(BaseModel):
     id: str
     owner_id: Optional[str] = None
     domain_id: str
     local_part: str
-    pubkey: str
     active: bool
     time: datetime
     expires_at: datetime
-    extra: str
+    pubkey: Optional[str] = None
     reimburse_amount: int = 0
     promo_code_status: PromoCodeStatus = PromoCodeStatus()
-
-    def update_extra(self, config: AddressConfig) -> None:
-        self.extra = json.dumps(config.dict())
-
-    @property
-    def config(self) -> AddressConfig:
-        return AddressConfig(**json.loads(self.extra or ""))
-
-    @property
-    def has_pubkey(self):
-        return self.pubkey != ""
+    extra: AddressExtra = AddressExtra()
 
 
 class AddressStatus(BaseModel):

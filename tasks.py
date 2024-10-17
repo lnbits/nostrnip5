@@ -11,7 +11,7 @@ from .services import activate_address, pay_referer_for_promo_code, update_ln_ad
 
 async def wait_for_paid_invoices():
     invoice_queue = asyncio.Queue()
-    register_invoice_listener(invoice_queue)
+    register_invoice_listener(invoice_queue, "ext_nostrnip5")
 
     while True:
         payment = await invoice_queue.get()
@@ -64,9 +64,7 @@ async def _activate_address(payment: Payment, address: Address):
         await _create_ln_address(payment, address)
         await _pay_promo_code(payment, address)
     else:
-        config = address.config
-        config.reimburse_payment_hash = payment.payment_hash
-        address.update_extra(config)
+        address.extra.reimburse_payment_hash = payment.payment_hash
         address.reimburse_amount = payment.amount
         await update_address(address)
 
@@ -80,11 +78,8 @@ async def _create_ln_address(payment: Payment, address: Address):
             f" '{address.local_part} ({address.id}')."
         )
         return
-    try:
-        address.config.ln_address.wallet = wallet
-        await update_ln_address(address)
-    except Exception as exc:
-        logger.warning(exc)
+    address.extra.ln_address.wallet = wallet
+    await update_ln_address(address)
 
 
 async def _pay_promo_code(payment: Payment, address: Address):

@@ -48,10 +48,10 @@
         <q-table
           dense
           flat
-          :data="domains"
+          :rows="domains"
           row-key="id"
           :columns="domainsTable.columns"
-          :pagination.sync="domainsTable.pagination"
+          v-model:pagination="domainsTable.pagination"
         >
           {% raw %}
           <template v-slot:header="props">
@@ -131,10 +131,10 @@
         <q-table
           dense
           flat
-          :data="addresses"
+          :rows="addresses"
           row-key="id"
           :columns="addressesTable.columns"
-          :pagination.sync="addressesTable.pagination"
+          v-model:pagination="addressesTable.pagination"
           @request="getAddresses"
         >
           {% raw %}
@@ -569,5 +569,5 @@
   </q-dialog>
 </div>
 {% endblock %} {% block scripts %} {{ window_vars(user) }}
-<script src="{{ static_url_for('static/nostrnip5', 'js/index.js') }}"></script>
+<script src="{{ static_url_for('nostrnip5/static', 'js/index.js') }}"></script>
 {% endblock %}
