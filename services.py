@@ -2,6 +2,7 @@ from typing import Optional
 
 import httpx
 from lnbits.core.crud import get_standalone_payment, get_user
+from lnbits.core.models import Payment
 from lnbits.core.services import create_invoice, pay_invoice
 from lnbits.db import Filters, Page
 from loguru import logger
@@ -128,20 +129,18 @@ async def request_user_address(
         address.extra.price_in_sats
     ), f"Cannot compute price for '{address_data.local_part}'."
 
-    payment_hash, payment_request = None, None
-    if address_data.create_invoice:
-        payment_hash, payment_request = await create_invoice_for_identifier(
-            domain, address, wallet_id
-        )
-
     address.promo_code_status = domain.cost_config.promo_code_status(
         address_data.promo_code
     )
-    resp = {
-        "payment_hash": payment_hash,
-        "payment_request": payment_request,
-        **dict(address),
-    }
+
+    resp = dict(address)
+
+    if address_data.create_invoice:
+        payment = await create_invoice_for_identifier(
+            domain, address, wallet_id
+        )
+        resp["payment_hash"] = payment.payment_hash
+        resp["payment_request"] = payment.bolt11
 
     return resp
 
@@ -150,7 +149,7 @@ async def create_invoice_for_identifier(
     domain: Domain,
     address: Address,
     reimburse_wallet_id: str,
-) -> tuple[str, str]:
+) -> Payment:
     price_data = await get_identifier_price_data(
         domain, address.local_part, address.extra.years, address.extra.promo_code
     )
@@ -159,7 +158,7 @@ async def create_invoice_for_identifier(
     discount_sats = await price_data.discount_sats()
     referer_bonus_sats = await price_data.referer_bonus_sats()
 
-    payment_hash, payment_request = await create_invoice(
+    payment = await create_invoice(
         wallet_id=domain.wallet,
         amount=int(price_in_sats),
         memo=f"Payment of {address.extra.price} {address.extra.currency} "
@@ -175,7 +174,7 @@ async def create_invoice_for_identifier(
             "referer_bonus_sats": int(referer_bonus_sats),
         },
     )
-    return payment_hash, payment_request
+    return payment
 
 
 async def create_address(
@@ -291,7 +290,7 @@ async def pay_referer_for_promo_code(address: Address, referer: str, bonus_sats:
         referer_wallet = referer_address.extra.ln_address.wallet
         assert referer_wallet, f"Missing wallet for referer '{referer}'."
 
-        _, payment_request = await create_invoice(
+        payment = await create_invoice(
             wallet_id=referer_wallet,
             amount=bonus_sats,
             memo=f"Referer bonus of {bonus_sats} sats to '{referer}' "
@@ -304,7 +303,7 @@ async def pay_referer_for_promo_code(address: Address, referer: str, bonus_sats:
             },
         )
 
-        await pay_invoice(wallet_id=domain.wallet, payment_request=payment_request)
+        await pay_invoice(wallet_id=domain.wallet, payment_request=payment.bolt11)
 
     except Exception as exc:
         logger.warning(f"Failed to pay referer for '{referer}'.")
