@@ -1,5 +1,5 @@
-{% extends "public.html" %} {% block toolbar_title %} Verify NIP-5 For {{
-domain.domain }} {% endblock %} {% from "macros.jinja" import window_vars with
+{% extends "public.html" %} {% block toolbar_title %} Verify NIP-5 For
+{{domain.domain }} {% endblock %} {% from "macros.jinja" import window_vars with
 context %} {% block page %}
 <link rel="stylesheet" href="/nostrnip5/static/css/signup.css" />
 <div>
@@ -171,5 +171,5 @@ context %} {% block page %}
   const identifierCost = '{{ identifier_cost }}'
   const identifierAvailable = '{{ identifier_available }}' === 'True'
 </script>
-<script src="{{ static_url_for('static/nostrnip5', 'js/signup.js') }}"></script>
+<script src="{{ static_url_for('nostrnip5/static', 'js/signup.js') }}"></script>
 {% endblock %}
