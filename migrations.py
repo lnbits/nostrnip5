@@ -103,36 +103,3 @@ async def m007_add_cost_extra_column_to_addresses(db: Database):
         "reimburse_amount REAL NOT NULL DEFAULT 0"
     )
 
-
-async def m007_migrate_settings(db: Database):
-
-    result = await db.execute("SELECT * FROM nostrnip5.settings")
-    settings = await result.mappings().all()
-    await db.execute("ALTER TABLE nostrnip5.settings RENAME TO settings_old")
-    await db.execute(
-        """
-       CREATE TABLE nostrnip5.settings (
-           owner_id TEXT PRIMARY KEY,
-           cloudflare_api_key TEXT,
-           lnaddress_api_admin_key TEXT,
-           lnaddress_api_endpoint TEXT,
-       );
-    """
-    )
-    for raw_setting in settings:
-        owner_id = raw_setting["owner_id"]
-        setting = json.loads(raw_setting["settings"])
-        await db.execute(
-            """
-            INSERT INTO nostrnip5.settings ( owner_id, cloudflare_api_key,
-                lnaddress_api_admin_key, lnaddress_api_endpoint)
-            VALUES ( :owner_id, :cloudflare_api_key,
-                :lnaddress_api_admin_key, :lnaddress_api_endpoint)
-            """,
-            {
-                "owner_id": owner_id,
-                "cloudflare_api_key": setting.get("cloudflare_api_key"),
-                "lnaddress_api_admin_key": setting.get("lnaddress_api_admin_key"),
-                "lnaddress_api_endpoint": setting.get("lnaddress_api_endpoint"),
-            },
-        )

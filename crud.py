@@ -305,7 +305,7 @@ async def delete_inferior_ranking(name: str, rank: int):
 
 
 async def create_settings(settings: Nip5Settings):
-    assert settings.owner_id, 'Missing owner ID.'
+    assert settings.owner_id, "Missing owner ID."
     await db.insert("nostrnip5.settings", settings)
 
 
