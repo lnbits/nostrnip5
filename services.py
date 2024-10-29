@@ -136,9 +136,7 @@ async def request_user_address(
     resp = dict(address)
 
     if address_data.create_invoice:
-        payment = await create_invoice_for_identifier(
-            domain, address, wallet_id
-        )
+        payment = await create_invoice_for_identifier(domain, address, wallet_id)
         resp["payment_hash"] = payment.payment_hash
         resp["payment_request"] = payment.bolt11
 
