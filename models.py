@@ -354,7 +354,7 @@ class AddressFilters(FilterModel):
 
 
 class Nip5Settings(BaseModel):
-    owner_id: str
+    owner_id: Optional[str] = None
     cloudflare_access_token: Optional[str] = None
     lnaddress_api_admin_key: Optional[str] = ""
     lnaddress_api_endpoint: Optional[str] = "https://nostr.com"
