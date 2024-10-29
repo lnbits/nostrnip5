@@ -39,7 +39,7 @@ async def domain_details(
         raise HTTPException(HTTPStatus.NOT_FOUND, "Domain does not exist.")
     return nostrnip5_renderer().TemplateResponse(
         "nostrnip5/domain.html",
-        {"request": request, "domain": domain.dict(), "user": user.dict()},
+        {"request": request, "domain": domain.dict(), "user": user.json()},
     )
 
 
