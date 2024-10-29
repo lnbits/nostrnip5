@@ -54,6 +54,7 @@ from .models import (
     Nip5Settings,
     RotateAddressData,
     UpdateAddressData,
+    UserSetting,
 )
 from .services import (
     activate_address,
@@ -609,8 +610,8 @@ async def api_settings_create_or_update(
     user: User = Depends(check_user_exists),
 ):
     owner_id = owner_id_from_user_id("admin" if user.admin else user.id)
-    settings.owner_id = owner_id
-    await create_settings(settings)
+    user_settings = UserSetting(owner_id=owner_id, settings=settings)
+    await create_settings(user_settings)
 
 
 @nostrnip5_api_router.get("/api/v1/settings")
@@ -619,6 +620,5 @@ async def api_get_settings(
 ) -> Nip5Settings:
     owner_id = owner_id_from_user_id("admin" if user.admin else user.id)
     nip5_settings = await get_settings(owner_id)
-    if not nip5_settings:
-        raise HTTPException(HTTPStatus.NOT_FOUND, "Settings for user not found.")
-    return nip5_settings
+
+    return nip5_settings or Nip5Settings()

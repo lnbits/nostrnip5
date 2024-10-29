@@ -17,6 +17,7 @@ from .models import (
     IdentifierRanking,
     Nip5Settings,
     PublicDomain,
+    UserSetting,
 )
 
 db = Database("ext_nostrnip5")
@@ -304,14 +305,21 @@ async def delete_inferior_ranking(name: str, rank: int):
     )
 
 
-async def create_settings(settings: Nip5Settings):
-    assert settings.owner_id, "Missing owner ID."
-    await db.insert("nostrnip5.settings", settings)
+async def create_settings(settings: UserSetting) -> UserSetting:
+    user_settings = await get_settings(settings.owner_id)
+    if not user_settings:
+        await db.insert("nostrnip5.settings", settings)
+    else:
+        await db.update("nostrnip5.settings", settings, "WHERE owner_id = :owner_id")
+    return settings
 
 
 async def get_settings(owner_id: str) -> Optional[Nip5Settings]:
-    return await db.fetchone(
+    user_settings = await db.fetchone(
         "SELECT * FROM nostrnip5.settings WHERE owner_id = :owner_id",
         {"owner_id": owner_id},
-        Nip5Settings,
+        UserSetting,
     )
+    if user_settings:
+        return user_settings.settings
+    return None

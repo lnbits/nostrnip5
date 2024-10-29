@@ -1,5 +1,5 @@
 const mapDomain = function (obj) {
-  obj.time = Quasar.utils.date.formatDate(
+  obj.time = Quasar.date.formatDate(
     new Date(obj.time * 1000),
     'YYYY-MM-DD HH:mm'
   )

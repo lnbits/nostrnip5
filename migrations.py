@@ -1,5 +1,3 @@
-import json
-
 from lnbits.db import Database
 
 
@@ -102,4 +100,3 @@ async def m007_add_cost_extra_column_to_addresses(db: Database):
         "ALTER TABLE nostrnip5.addresses ADD COLUMN "
         "reimburse_amount REAL NOT NULL DEFAULT 0"
     )
-
