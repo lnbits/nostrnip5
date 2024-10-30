@@ -71,7 +71,7 @@ context %} {% block page %}
         <q-input
           filled
           dense
-          v-model="domainForm.data.cost_config.max_years"
+          v-model="domainForm.data.cost_extra.max_years"
           type="number"
           min="1"
           step="1"
@@ -90,7 +90,7 @@ context %} {% block page %}
       <q-tab-panels class="bg-transparent" v-model="domainTab">
         <q-tab-panel name="charCount">
           <div
-            v-for="(item, index) in domainForm.data.cost_config.char_count_cost"
+            v-for="(item, index) in domainForm.data.cost_extra.char_count_cost"
             class="row q-mb-sm q-ml-md"
           >
             <div class="col-5">
@@ -143,7 +143,7 @@ context %} {% block page %}
         </q-tab-panel>
         <q-tab-panel name="ranking">
           <div
-            v-for="(item, index) in domainForm.data.cost_config.rank_cost"
+            v-for="(item, index) in domainForm.data.cost_extra.rank_cost"
             class="row q-mb-sm q-ml-md"
           >
             <div class="col-5">
@@ -195,7 +195,7 @@ context %} {% block page %}
         </q-tab-panel>
         <q-tab-panel name="promotions">
           <div
-            v-for="(item, index) in domainForm.data.cost_config.promotions"
+            v-for="(item, index) in domainForm.data.cost_extra.promotions"
             class="row q-mb-sm q-ml-md"
           >
             <div class="col-2">
@@ -275,263 +275,7 @@ context %} {% block page %}
 </div>
 {% endblock %} {% block scripts %} {{ window_vars(user) }}
 <script>
-  Vue.component(VueQrcode.name, VueQrcode)
-
-  new Vue({
-    el: '#vue',
-    mixins: [windowMixin],
-    data: function () {
-      return {
-        domainRankingBraketOptions: [
-          200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000,
-          500000, 1000000
-        ],
-        currencyOptions: [
-          'sats',
-          'USD',
-          'EUR',
-          'GBP',
-          'AED',
-          'AFN',
-          'ALL',
-          'AMD',
-          'ANG',
-          'AOA',
-          'ARS',
-          'AUD',
-          'AWG',
-          'AZN',
-          'BAM',
-          'BBD',
-          'BDT',
-          'BGN',
-          'BHD',
-          'BIF',
-          'BMD',
-          'BND',
-          'BOB',
-          'BRL',
-          'BSD',
-          'BTN',
-          'BWP',
-          'BYN',
-          'BZD',
-          'CAD',
-          'CDF',
-          'CHF',
-          'CLF',
-          'CLP',
-          'CNH',
-          'CNY',
-          'COP',
-          'CRC',
-          'CUC',
-          'CUP',
-          'CVE',
-          'CZK',
-          'DJF',
-          'DKK',
-          'DOP',
-          'DZD',
-          'EGP',
-          'ERN',
-          'ETB',
-          'EUR',
-          'FJD',
-          'FKP',
-          'GBP',
-          'GEL',
-          'GGP',
-          'GHS',
-          'GIP',
-          'GMD',
-          'GNF',
-          'GTQ',
-          'GYD',
-          'HKD',
-          'HNL',
-          'HRK',
-          'HTG',
-          'HUF',
-          'IDR',
-          'ILS',
-          'IMP',
-          'INR',
-          'IQD',
-          'IRR',
-          'IRT',
-          'ISK',
-          'JEP',
-          'JMD',
-          'JOD',
-          'JPY',
-          'KES',
-          'KGS',
-          'KHR',
-          'KMF',
-          'KPW',
-          'KRW',
-          'KWD',
-          'KYD',
-          'KZT',
-          'LAK',
-          'LBP',
-          'LKR',
-          'LRD',
-          'LSL',
-          'LYD',
-          'MAD',
-          'MDL',
-          'MGA',
-          'MKD',
-          'MMK',
-          'MNT',
-          'MOP',
-          'MRO',
-          'MUR',
-          'MVR',
-          'MWK',
-          'MXN',
-          'MYR',
-          'MZN',
-          'NAD',
-          'NGN',
-          'NIO',
-          'NOK',
-          'NPR',
-          'NZD',
-          'OMR',
-          'PAB',
-          'PEN',
-          'PGK',
-          'PHP',
-          'PKR',
-          'PLN',
-          'PYG',
-          'QAR',
-          'RON',
-          'RSD',
-          'RUB',
-          'RWF',
-          'SAR',
-          'SBD',
-          'SCR',
-          'SDG',
-          'SEK',
-          'SGD',
-          'SHP',
-          'SLL',
-          'SOS',
-          'SRD',
-          'SSP',
-          'STD',
-          'SVC',
-          'SYP',
-          'SZL',
-          'THB',
-          'TJS',
-          'TMT',
-          'TND',
-          'TOP',
-          'TRY',
-          'TTD',
-          'TWD',
-          'TZS',
-          'UAH',
-          'UGX',
-          'USD',
-          'UYU',
-          'UZS',
-          'VEF',
-          'VES',
-          'VND',
-          'VUV',
-          'WST',
-          'XAF',
-          'XAG',
-          'XAU',
-          'XCD',
-          'XDR',
-          'XOF',
-          'XPD',
-          'XPF',
-          'XPT',
-          'YER',
-          'ZAR',
-          'ZMW',
-          'ZWL'
-        ],
-        domainForm: {
-          show: false,
-          data: JSON.parse('{{domain | tojson | safe}}')
-        },
-        domainTab: 'charCount'
-      }
-    },
-    methods: {
-      resetFormDialog: function () {
-        this.domainForm.show = false
-        this.domainTab = 'charCount'
-      },
-      saveDomain: async function () {
-        try {
-          await LNbits.api.request(
-            'PUT',
-            '/nostrnip5/api/v1/domain',
-            _.findWhere(this.g.user.wallets, {id: this.domainForm.data.wallet})
-              .adminkey,
-            this.domainForm.data
-          )
-          this.$q.notify({
-            type: 'positive',
-            message: 'Domain updated!'
-          })
-        } catch (error) {
-          this.$q.notify({
-            type: 'negative',
-            message: 'Failed to update!'
-          })
-          LNbits.utils.notifyApiError(error)
-        }
-      },
-      addCharCountCost: function () {
-        this.domainForm.data.cost_config.char_count_cost.push({
-          bracket: 0,
-          amount: 1
-        })
-      },
-      removeCharCountCost: function (index) {
-        if (index < this.domainForm.data.cost_config.char_count_cost.length) {
-          this.domainForm.data.cost_config.char_count_cost.splice(index, 1)
-        }
-      },
-      addRankCost: function () {
-        this.domainForm.data.cost_config.rank_cost.push({
-          bracket: 0,
-          amount: 1
-        })
-      },
-      removeRankCost: function (index) {
-        if (index < this.domainForm.data.cost_config.rank_cost.length) {
-          this.domainForm.data.cost_config.rank_cost.splice(index, 1)
-        }
-      },
-      addPromotion: function () {
-        this.domainForm.data.cost_config.promotions.push({
-          code: '',
-          buyer_discount_percent: 0,
-          referer_bonus_percent: 0
-        })
-      },
-      removePromotion: function (index) {
-        if (index < this.domainForm.data.cost_config.promotions.length) {
-          this.domainForm.data.cost_config.promotions.splice(index, 1)
-        }
-      }
-    },
-    created() {
-      this.resetFormDialog()
-    }
-  })
+  const domain = JSON.parse({{domain | tojson | safe}})
 </script>
+<script src="{{ static_url_for('nostrnip5/static', 'js/domain.js') }}"></script>
 {% endblock %}

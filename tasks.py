@@ -11,7 +11,7 @@ from .services import activate_address, pay_referer_for_promo_code, update_ln_ad
 
 async def wait_for_paid_invoices():
     invoice_queue = asyncio.Queue()
-    register_invoice_listener(invoice_queue)
+    register_invoice_listener(invoice_queue, "ext_nostrnip5")
 
     while True:
         payment = await invoice_queue.get()
@@ -19,7 +19,7 @@ async def wait_for_paid_invoices():
 
 
 async def on_invoice_paid(payment: Payment) -> None:
-    if payment.extra.get("tag") != "nostrnip5":
+    if not payment.extra or payment.extra.get("tag") != "nostrnip5":
         return
 
     domain_id = payment.extra.get("domain_id")
@@ -52,31 +52,25 @@ async def _handle_action(action: str, payment: Payment, address: Address):
     if action == "activate":
         await _activate_address(payment, address)
     if action == "reimburse":
-        await _reimburse_payment(address)
+        address.reimburse_amount = 0
+        await update_address(address)
 
 
 async def _activate_address(payment: Payment, address: Address):
-    activated = await activate_address(
+    activated_address = await activate_address(
         address.domain_id, address.id, payment.payment_hash
     )
-    if activated:
-        await _create_ln_address(payment, address)
-        await _pay_promo_code(payment, address)
+    if activated_address:
+        await _create_ln_address(payment, activated_address)
+        await _pay_promo_code(payment, activated_address)
     else:
-        await _update_reimburse_data(payment, address)
-
-
-async def _update_reimburse_data(payment: Payment, address: Address):
-    address.config.reimburse_payment_hash = payment.payment_hash
-    await update_address(
-        address.domain_id,
-        address.id,
-        reimburse_amount=payment.amount,
-        config=address.config,
-    )
+        address.extra.reimburse_payment_hash = payment.payment_hash
+        address.reimburse_amount = payment.amount
+        await update_address(address)
 
 
 async def _create_ln_address(payment: Payment, address: Address):
+    assert payment.extra, "No extra data on payment."
     wallet = payment.extra.get("reimburse_wallet_id")
     if not wallet:
         logger.warning(
@@ -84,14 +78,12 @@ async def _create_ln_address(payment: Payment, address: Address):
             f" '{address.local_part} ({address.id}')."
         )
         return
-    try:
-        address.config.ln_address.wallet = wallet
-        await update_ln_address(address)
-    except Exception as exc:
-        logger.warning(exc)
+    address.extra.ln_address.wallet = wallet
+    await update_ln_address(address)
 
 
 async def _pay_promo_code(payment: Payment, address: Address):
+    assert payment.extra, "No extra data on payment."
     referer = payment.extra.get("referer")
     if not referer:
         return
@@ -103,7 +95,3 @@ async def _pay_promo_code(payment: Payment, address: Address):
         return
 
     await pay_referer_for_promo_code(address, referer, int(referer_bonus_sats))
-
-
-async def _reimburse_payment(address: Address):
-    await update_address(address.domain_id, address.id, reimburse_amount=0)

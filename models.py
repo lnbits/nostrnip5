@@ -1,10 +1,11 @@
-import json
-from sqlite3 import Row
-from typing import List, Optional, Tuple
+from __future__ import annotations
 
-from lnbits.db import FilterModel, FromRowModel
+from datetime import datetime
+from typing import Optional
+
+from lnbits.db import FilterModel
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .helpers import format_amount, is_ws_url, normalize_identifier, validate_pub_key
 
@@ -79,7 +80,7 @@ class RotateAddressData(BaseModel):
 
 class UpdateAddressData(BaseModel):
     pubkey: Optional[str] = None
-    relays: Optional[List[str]] = None
+    relays: Optional[list[str]] = None
 
     def validate_data(self):
         self.validate_relays_urls()
@@ -102,7 +103,7 @@ class CreateAddressData(BaseModel):
     local_part: str
     pubkey: str = ""
     years: int = 1
-    relays: Optional[List[str]] = None
+    relays: Optional[list[str]] = None
     promo_code: Optional[str] = None
     referer: Optional[str] = None
     create_invoice: bool = False
@@ -126,13 +127,13 @@ class CreateAddressData(BaseModel):
 
 class DomainCostConfig(BaseModel):
     max_years: int = 1
-    char_count_cost: List[CustomCost] = []
-    rank_cost: List[CustomCost] = []
-    promotions: List[Promotion] = []
+    char_count_cost: list[CustomCost] = []
+    rank_cost: list[CustomCost] = []
+    promotions: list[Promotion] = []
 
     def apply_promo_code(
         self, amount: float, promo_code: Optional[str] = None
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         if promo_code is None:
             return 0, 0
         promotion = next((p for p in self.promotions if p.code == promo_code), None)
@@ -205,37 +206,29 @@ class CreateDomainData(BaseModel):
     currency: str
     cost: float
     domain: str
-    cost_config: Optional[DomainCostConfig] = None
+    cost_extra: Optional[DomainCostConfig] = None
 
     def validate_data(self):
         assert self.cost >= 0, "Domain cost must be positive."
-        if self.cost_config:
-            self.cost_config.validate_data()
+        if self.cost_extra:
+            self.cost_extra.validate_data()
 
 
 class EditDomainData(BaseModel):
     id: str
     currency: str
     cost: float
-    cost_config: Optional[DomainCostConfig] = None
+    cost_extra: Optional[DomainCostConfig] = None
 
     def validate_data(self):
         assert self.cost >= 0, "Domain cost must be positive."
-        if self.cost_config:
-            self.cost_config.validate_data()
-
-    @classmethod
-    def from_row(cls, row: Row) -> "EditDomainData":
-        return cls(**dict(row))
+        if self.cost_extra:
+            self.cost_extra.validate_data()
 
 
 class IdentifierRanking(BaseModel):
     name: str
     rank: int
-
-    @classmethod
-    def from_row(cls, row: Row) -> "IdentifierRanking":
-        return cls(**dict(row))
 
 
 class PublicDomain(BaseModel):
@@ -244,15 +237,11 @@ class PublicDomain(BaseModel):
     cost: float
     domain: str
 
-    @classmethod
-    def from_row(cls, row: Row) -> "PublicDomain":
-        return cls(**dict(row))
-
 
 class Domain(PublicDomain):
     wallet: str
-    cost_config: DomainCostConfig = DomainCostConfig()
-    time: int
+    cost_extra: DomainCostConfig
+    time: datetime
 
     async def price_for_identifier(
         self,
@@ -262,25 +251,25 @@ class Domain(PublicDomain):
         promo_code: Optional[str] = None,
     ) -> PriceData:
         assert (
-            1 <= years <= self.cost_config.max_years
-        ), f"Number of years must be between '1' and '{self.cost_config.max_years}'."
+            1 <= years <= self.cost_extra.max_years
+        ), f"Number of years must be between '1' and '{self.cost_extra.max_years}'."
 
         identifier = normalize_identifier(identifier)
         max_amount, reason = self.cost, ""
 
-        for char_cost in self.cost_config.char_count_cost:
+        for char_cost in self.cost_extra.char_count_cost:
             if len(identifier) <= char_cost.bracket and max_amount < char_cost.amount:
                 max_amount = char_cost.amount
                 reason = f"{len(identifier)} characters"
 
         if rank:
-            for rank_cost in self.cost_config.rank_cost:
+            for rank_cost in self.cost_extra.rank_cost:
                 if rank <= rank_cost.bracket and max_amount < rank_cost.amount:
                     max_amount = rank_cost.amount
                     reason = f"Top {rank_cost.bracket} identifier"
 
         full_price = max_amount * years
-        discount, referer_bonus = self.cost_config.apply_promo_code(
+        discount, referer_bonus = self.cost_extra.apply_promo_code(
             full_price, promo_code
         )
 
@@ -294,16 +283,8 @@ class Domain(PublicDomain):
 
     def public_data(self):
         data = dict(PublicDomain(**dict(self)))
-        data["max_years"] = self.cost_config.max_years
+        data["max_years"] = self.cost_extra.max_years
         return data
-
-    @classmethod
-    def from_row(cls, row: Row) -> "Domain":
-        domain = cls(**dict(row))
-        if row["cost_extra"]:
-            domain.cost_config = DomainCostConfig(**json.loads(row["cost_extra"]))
-
-        return domain
 
 
 class LnAddressConfig(BaseModel):
@@ -313,47 +294,35 @@ class LnAddressConfig(BaseModel):
     pay_link_id: Optional[str] = ""
 
 
-class AddressConfig(BaseModel):
+class AddressExtra(BaseModel):
     currency: Optional[str] = None
     price: Optional[float] = None
     price_in_sats: Optional[float] = None
     payment_hash: Optional[str] = None
     reimburse_payment_hash: Optional[str] = None
-    activated_by_owner: bool = False
-    years: int = 1
     promo_code: Optional[str] = None
     referer: Optional[str] = None
+    activated_by_owner: bool = False
+    years: int = 1
     max_years: int = 1
-    relays: List[str] = []
-
+    relays: list[str] = []
     ln_address: LnAddressConfig = LnAddressConfig(wallet="")
 
 
-class Address(FromRowModel):
+class Address(BaseModel):
     id: str
     owner_id: Optional[str] = None
     domain_id: str
     local_part: str
-    pubkey: str
     active: bool
-    time: int
+    time: datetime
+    expires_at: datetime
+    pubkey: Optional[str] = None
     reimburse_amount: int = 0
-    expires_at: Optional[float]
-
-    config: AddressConfig = AddressConfig()
-
-    promo_code_status: PromoCodeStatus = PromoCodeStatus()
-
-    @property
-    def has_pubkey(self):
-        return self.pubkey != ""
-
-    @classmethod
-    def from_row(cls, row: Row) -> "Address":
-        address = cls(**dict(row))
-        if row["extra"]:
-            address.config = AddressConfig(**json.loads(row["extra"]))
-        return address
+    promo_code_status: PromoCodeStatus = Field(
+        default=PromoCodeStatus(), no_database=True
+    )
+    extra: AddressExtra = AddressExtra()
 
 
 class AddressStatus(BaseModel):
@@ -378,14 +347,15 @@ class AddressFilters(FilterModel):
     reimburse_amount: str
     pubkey: str
     active: bool
-    time: int
+    time: datetime
 
 
 class Nip5Settings(BaseModel):
     cloudflare_access_token: Optional[str] = None
-    lnaddress_api_endpoint: Optional[str] = "https://nostr.com"
     lnaddress_api_admin_key: Optional[str] = ""
+    lnaddress_api_endpoint: Optional[str] = "https://nostr.com"
 
-    @classmethod
-    def from_row(cls, row: Row) -> "Nip5Settings":
-        return cls(**dict(json.loads(row["settings"])))
+
+class UserSetting(BaseModel):
+    owner_id: str
+    settings: Nip5Settings

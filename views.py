@@ -3,7 +3,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from lnbits.core.models import User
 from lnbits.decorators import check_user_exists
 from lnbits.helpers import template_renderer
@@ -17,8 +16,6 @@ from .helpers import normalize_identifier
 from .models import AddressStatus
 from .services import get_identifier_status
 
-templates = Jinja2Templates(directory="templates")
-
 nostrnip5_generic_router: APIRouter = APIRouter()
 
 
@@ -29,7 +26,7 @@ def nostrnip5_renderer():
 @nostrnip5_generic_router.get("/", response_class=HTMLResponse)
 async def index(request: Request, user: User = Depends(check_user_exists)):
     return nostrnip5_renderer().TemplateResponse(
-        "nostrnip5/index.html", {"request": request, "user": user.dict()}
+        "nostrnip5/index.html", {"request": request, "user": user.json()}
     )
 
 
@@ -42,7 +39,7 @@ async def domain_details(
         raise HTTPException(HTTPStatus.NOT_FOUND, "Domain does not exist.")
     return nostrnip5_renderer().TemplateResponse(
         "nostrnip5/domain.html",
-        {"request": request, "domain": domain.dict(), "user": user.dict()},
+        {"request": request, "domain": domain.json(), "user": user.json()},
     )
 
 
