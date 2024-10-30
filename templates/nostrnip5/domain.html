@@ -71,7 +71,7 @@ context %} {% block page %}
         <q-input
           filled
           dense
-          v-model="domainForm.data.cost_config.max_years"
+          v-model="domainForm.data.cost_extra.max_years"
           type="number"
           min="1"
           step="1"
@@ -90,7 +90,7 @@ context %} {% block page %}
       <q-tab-panels class="bg-transparent" v-model="domainTab">
         <q-tab-panel name="charCount">
           <div
-            v-for="(item, index) in domainForm.data.cost_config.char_count_cost"
+            v-for="(item, index) in domainForm.data.cost_extra.char_count_cost"
             class="row q-mb-sm q-ml-md"
           >
             <div class="col-5">
@@ -143,7 +143,7 @@ context %} {% block page %}
         </q-tab-panel>
         <q-tab-panel name="ranking">
           <div
-            v-for="(item, index) in domainForm.data.cost_config.rank_cost"
+            v-for="(item, index) in domainForm.data.cost_extra.rank_cost"
             class="row q-mb-sm q-ml-md"
           >
             <div class="col-5">
@@ -195,7 +195,7 @@ context %} {% block page %}
         </q-tab-panel>
         <q-tab-panel name="promotions">
           <div
-            v-for="(item, index) in domainForm.data.cost_config.promotions"
+            v-for="(item, index) in domainForm.data.cost_extra.promotions"
             class="row q-mb-sm q-ml-md"
           >
             <div class="col-2">
@@ -275,7 +275,7 @@ context %} {% block page %}
 </div>
 {% endblock %} {% block scripts %} {{ window_vars(user) }}
 <script>
-  const domain = JSON.parse('{{domain | tojson | safe}}')
+  const domain = JSON.parse({{domain | tojson | safe}})
 </script>
-<script src="{{ static_url_for('static/nostrnip5', 'js/domain.js') }}"></script>
+<script src="{{ static_url_for('nostrnip5/static', 'js/domain.js') }}"></script>
 {% endblock %}

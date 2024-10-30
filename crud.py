@@ -13,6 +13,7 @@ from .models import (
     CreateAddressData,
     CreateDomainData,
     Domain,
+    DomainCostConfig,
     EditDomainData,
     IdentifierRanking,
     Nip5Settings,
@@ -156,8 +157,6 @@ async def get_all_addresses_paginated(
 
 
 async def update_address(address: Address) -> Address:
-    years = address.extra.years
-    address.expires_at = datetime.now() + timedelta(days=365 * years)
     await db.update("nostrnip5.addresses", address)
     return address
 
@@ -222,42 +221,24 @@ async def create_address_internal(
     return address
 
 
-async def update_domain_internal(wallet_id: str, data: EditDomainData) -> Domain:
-    cost_extra = (
-        json.dumps(data.cost_config, default=lambda o: o.__dict__)
-        if data.cost_config
-        else None
-    )
-    await db.execute(
-        """
-        UPDATE nostrnip5.domains
-        SET cost = :cost, currency = :currency, cost_extra = :cost_extra
-        WHERE id = :id
-        """,
-        {
-            "cost": data.cost,
-            "currency": data.currency,
-            "cost_extra": cost_extra,
-            "id": data.id,
-        },
-    )
-
+async def update_domain(wallet_id: str, data: EditDomainData) -> Optional[Domain]:
     domain = await get_domain(data.id, wallet_id)
-    assert domain, "Domain couldn't be updated"
+    if not domain:
+        return None
+    domain.currency = data.currency
+    domain.cost = data.cost
+    domain.cost_extra = data.cost_extra or domain.cost_extra
+    await db.update("nostrnip5.domains", domain)
+
     return domain
 
 
 async def create_domain_internal(wallet_id: str, data: CreateDomainData) -> Domain:
-    cost_extra = (
-        json.dumps(data.cost_config, default=lambda o: o.__dict__)
-        if data.cost_config
-        else ""
-    )
     domain = Domain(
         id=urlsafe_short_hash(),
         wallet=wallet_id,
         time=datetime.now(),
-        cost_extra=cost_extra,
+        cost_extra=data.cost_extra or DomainCostConfig(),
         currency=data.currency,
         cost=data.cost,
         domain=data.domain.lower(),

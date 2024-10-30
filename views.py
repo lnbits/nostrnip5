@@ -1,4 +1,5 @@
 from http import HTTPStatus
+import json
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -39,7 +40,7 @@ async def domain_details(
         raise HTTPException(HTTPStatus.NOT_FOUND, "Domain does not exist.")
     return nostrnip5_renderer().TemplateResponse(
         "nostrnip5/domain.html",
-        {"request": request, "domain": domain.dict(), "user": user.json()},
+        {"request": request, "domain": domain.json(), "user": user.json()},
     )
 
 

@@ -113,7 +113,7 @@ window.app = Vue.createApp({
       this.formDialog.show = false
       this.domainTab = 'charCount'
       this.formDialog.data = {
-        cost_config: {
+        cost_extra: {
           max_years: 1,
           char_count_cost: [],
           rank_cost: []

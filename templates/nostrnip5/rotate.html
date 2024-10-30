@@ -50,8 +50,8 @@ context %} {% block page %}
 <script>
   const domain = '{{ domain.domain }}';
   const domain_id = '{{ domain_id }}';
-  const address_id = '{{ address_id }}
+  const address_id = '{{ address_id }}';
   const secret = '{{ secret }}';
 </script>
-<script src="{{ static_url_for('static/nostrnip5', 'js/rotate.js') }}"></script>
+<script src="{{ static_url_for('nostrnip5/static', 'js/rotate.js') }}"></script>
 {% endblock %}

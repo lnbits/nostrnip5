@@ -34,7 +34,7 @@ from .crud import (
     get_identifier_ranking,
     get_settings,
     update_address,
-    update_domain_internal,
+    update_domain,
     update_identifier_ranking,
 )
 from .helpers import (
@@ -83,7 +83,8 @@ async def api_domains(
     key_info: WalletTypeInfo = Depends(require_invoice_key),
 ) -> list[Domain]:
     wallet = key_info.wallet
-    return await get_user_domains(wallet.user, wallet.id, all_wallets)
+    domains = await get_user_domains(wallet.user, wallet.id, all_wallets)
+    return domains
 
 
 @nostrnip5_api_router.get("/api/v1/domain/{domain_id}")
@@ -109,7 +110,7 @@ async def api_update_domain(
     data: EditDomainData, wallet: WalletTypeInfo = Depends(require_admin_key)
 ):
     data.validate_data()
-    return await update_domain_internal(wallet_id=wallet.wallet.id, data=data)
+    return await update_domain(wallet_id=wallet.wallet.id, data=data)
 
 
 @nostrnip5_api_router.delete(

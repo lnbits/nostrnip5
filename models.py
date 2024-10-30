@@ -6,7 +6,7 @@ from typing import Optional
 
 from lnbits.db import FilterModel
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .helpers import format_amount, is_ws_url, normalize_identifier, validate_pub_key
 
@@ -207,24 +207,24 @@ class CreateDomainData(BaseModel):
     currency: str
     cost: float
     domain: str
-    cost_config: Optional[DomainCostConfig] = None
+    cost_extra: Optional[DomainCostConfig] = None
 
     def validate_data(self):
         assert self.cost >= 0, "Domain cost must be positive."
-        if self.cost_config:
-            self.cost_config.validate_data()
+        if self.cost_extra:
+            self.cost_extra.validate_data()
 
 
 class EditDomainData(BaseModel):
     id: str
     currency: str
     cost: float
-    cost_config: Optional[DomainCostConfig] = None
+    cost_extra: Optional[DomainCostConfig] = None
 
     def validate_data(self):
         assert self.cost >= 0, "Domain cost must be positive."
-        if self.cost_config:
-            self.cost_config.validate_data()
+        if self.cost_extra:
+            self.cost_extra.validate_data()
 
 
 class IdentifierRanking(BaseModel):
@@ -241,7 +241,7 @@ class PublicDomain(BaseModel):
 
 class Domain(PublicDomain):
     wallet: str
-    cost_extra: str
+    cost_extra: DomainCostConfig
     time: datetime
 
     async def price_for_identifier(
@@ -252,25 +252,25 @@ class Domain(PublicDomain):
         promo_code: Optional[str] = None,
     ) -> PriceData:
         assert (
-            1 <= years <= self.cost_config.max_years
-        ), f"Number of years must be between '1' and '{self.cost_config.max_years}'."
+            1 <= years <= self.cost_extra.max_years
+        ), f"Number of years must be between '1' and '{self.cost_extra.max_years}'."
 
         identifier = normalize_identifier(identifier)
         max_amount, reason = self.cost, ""
 
-        for char_cost in self.cost_config.char_count_cost:
+        for char_cost in self.cost_extra.char_count_cost:
             if len(identifier) <= char_cost.bracket and max_amount < char_cost.amount:
                 max_amount = char_cost.amount
                 reason = f"{len(identifier)} characters"
 
         if rank:
-            for rank_cost in self.cost_config.rank_cost:
+            for rank_cost in self.cost_extra.rank_cost:
                 if rank <= rank_cost.bracket and max_amount < rank_cost.amount:
                     max_amount = rank_cost.amount
                     reason = f"Top {rank_cost.bracket} identifier"
 
         full_price = max_amount * years
-        discount, referer_bonus = self.cost_config.apply_promo_code(
+        discount, referer_bonus = self.cost_extra.apply_promo_code(
             full_price, promo_code
         )
 
@@ -284,12 +284,9 @@ class Domain(PublicDomain):
 
     def public_data(self):
         data = dict(PublicDomain(**dict(self)))
-        data["max_years"] = self.cost_config.max_years
+        data["max_years"] = self.cost_extra.max_years
         return data
 
-    @property
-    def cost_config(self) -> DomainCostConfig:
-        return DomainCostConfig(**json.loads(self.cost_extra))
 
 
 class LnAddressConfig(BaseModel):
@@ -324,7 +321,9 @@ class Address(BaseModel):
     expires_at: datetime
     pubkey: Optional[str] = None
     reimburse_amount: int = 0
-    promo_code_status: PromoCodeStatus = PromoCodeStatus()
+    promo_code_status: PromoCodeStatus = Field(
+        default=PromoCodeStatus(), no_database=True
+    )
     extra: AddressExtra = AddressExtra()
 
 

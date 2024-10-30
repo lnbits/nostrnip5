@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import Optional
 
 import httpx
@@ -129,7 +130,7 @@ async def request_user_address(
         address.extra.price_in_sats
     ), f"Cannot compute price for '{address_data.local_part}'."
 
-    address.promo_code_status = domain.cost_config.promo_code_status(
+    address.promo_code_status = domain.cost_extra.promo_code_status(
         address_data.promo_code
     )
 
@@ -205,8 +206,8 @@ async def create_address(
     extra.currency = domain.currency
     extra.years = data.years
     extra.promo_code = data.promo_code
-    extra.referer = domain.cost_config.promo_code_referer(promo_code, data.referer)
-    extra.max_years = domain.cost_config.max_years
+    extra.referer = domain.cost_extra.promo_code_referer(promo_code, data.referer)
+    extra.max_years = domain.cost_extra.max_years
     extra.ln_address.wallet = wallet_id or ""
 
     if address:
@@ -233,6 +234,8 @@ async def activate_address(
 
     address.extra.activated_by_owner = payment_hash is None
     address.extra.payment_hash = payment_hash
+    address.active = True
+    address.expires_at = datetime.now() + timedelta(days=365 * address.extra.years)
     await update_address(address)
     logger.info(f"Activated NIP-05 '{address.local_part}' ({address_id}).")
 
@@ -266,7 +269,7 @@ async def get_valid_addresses_for_owner(
             continue
 
         address.extra.currency = domain.currency
-        address.promo_code_status = domain.cost_config.promo_code_status(
+        address.promo_code_status = domain.cost_extra.promo_code_status(
             address.extra.promo_code
         )
         valid_addresses.append(address)

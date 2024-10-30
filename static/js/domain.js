@@ -42,37 +42,37 @@ window.app = Vue.createApp({
       }
     },
     addCharCountCost: function () {
-      this.domainForm.data.cost_config.char_count_cost.push({
+      this.domainForm.data.cost_extra.char_count_cost.push({
         bracket: 0,
         amount: 1
       })
     },
     removeCharCountCost: function (index) {
-      if (index < this.domainForm.data.cost_config.char_count_cost.length) {
-        this.domainForm.data.cost_config.char_count_cost.splice(index, 1)
+      if (index < this.domainForm.data.cost_extra.char_count_cost.length) {
+        this.domainForm.data.cost_extra.char_count_cost.splice(index, 1)
       }
     },
     addRankCost: function () {
-      this.domainForm.data.cost_config.rank_cost.push({
+      this.domainForm.data.cost_extra.rank_cost.push({
         bracket: 0,
         amount: 1
       })
     },
     removeRankCost: function (index) {
-      if (index < this.domainForm.data.cost_config.rank_cost.length) {
-        this.domainForm.data.cost_config.rank_cost.splice(index, 1)
+      if (index < this.domainForm.data.cost_extra.rank_cost.length) {
+        this.domainForm.data.cost_extra.rank_cost.splice(index, 1)
       }
     },
     addPromotion: function () {
-      this.domainForm.data.cost_config.promotions.push({
+      this.domainForm.data.cost_extra.promotions.push({
         code: '',
         buyer_discount_percent: 0,
         referer_bonus_percent: 0
       })
     },
     removePromotion: function (index) {
-      if (index < this.domainForm.data.cost_config.promotions.length) {
-        this.domainForm.data.cost_config.promotions.splice(index, 1)
+      if (index < this.domainForm.data.cost_extra.promotions.length) {
+        this.domainForm.data.cost_extra.promotions.splice(index, 1)
       }
     }
   },
