@@ -1,5 +1,4 @@
 from http import HTTPStatus
-import json
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request

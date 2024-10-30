@@ -48,10 +48,10 @@ context %} {% block page %}
 </div>
 {% endblock %} {% block scripts %}
 <script>
-  const domain = '{{ domain.domain }}';
-  const domain_id = '{{ domain_id }}';
-  const address_id = '{{ address_id }}';
-  const secret = '{{ secret }}';
+  const domain = '{{ domain.domain }}'
+  const domain_id = '{{ domain_id }}'
+  const address_id = '{{ address_id }}'
+  const secret = '{{ secret }}'
 </script>
 <script src="{{ static_url_for('nostrnip5/static', 'js/rotate.js') }}"></script>
 {% endblock %}
