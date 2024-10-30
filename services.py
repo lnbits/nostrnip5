@@ -368,14 +368,18 @@ async def update_identifier(identifier, bucket):
 async def update_ln_address(address: Address) -> Address:
     nip5_settings = await get_settings(owner_id_from_user_id("admin"))
     assert nip5_settings, "No NIP-05 settings found."
+    assert nip5_settings.lnaddress_api_endpoint, "No endpoint found for LN Address."
+    assert nip5_settings.lnaddress_api_admin_key, "No api key found for LN Address."
+
     ln_address = address.extra.ln_address
+
     async with httpx.AsyncClient(verify=False) as client:
         method = "PUT" if ln_address.pay_link_id else "POST"
         url = f"{nip5_settings.lnaddress_api_endpoint}/lnurlp/api/v1/links"
         url = f"{url}/{ln_address.pay_link_id}" if ln_address.pay_link_id else url
         headers = {
             "Content-Type": "application/json; charset=utf-8",
-            "X-API-KEY": nip5_settings.lnaddress_api_admin_key or "",
+            "X-API-KEY": nip5_settings.lnaddress_api_admin_key,
         }
         payload = {
             "description": f"Lightning Address for NIP05 {address.local_part}",
@@ -403,7 +407,6 @@ async def update_ln_address(address: Address) -> Address:
             f"Updated Lightning Address for '{address.local_part}' ({address.id})."
         )
 
-        # updates expires_at
         address = await update_address(address)
         logger.info(f"Updated address for '{address.local_part}' ({address.id}).")
         return address
