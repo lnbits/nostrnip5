@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
@@ -235,7 +235,9 @@ async def activate_address(
     address.extra.activated_by_owner = payment_hash is None
     address.extra.payment_hash = payment_hash
     address.active = True
-    address.expires_at = datetime.now() + timedelta(days=365 * address.extra.years)
+    address.expires_at = datetime.now(timezone.utc) + timedelta(
+        days=365 * address.extra.years
+    )
     await update_address(address)
     logger.info(f"Activated NIP-05 '{address.local_part}' ({address_id}).")
 

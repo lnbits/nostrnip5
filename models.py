@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from typing import Optional
 
@@ -286,7 +285,6 @@ class Domain(PublicDomain):
         data = dict(PublicDomain(**dict(self)))
         data["max_years"] = self.cost_extra.max_years
         return data
-
 
 
 class LnAddressConfig(BaseModel):

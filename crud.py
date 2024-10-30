@@ -1,5 +1,4 @@
-import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Union
 
 from lnbits.db import Database, Filters, Page
@@ -205,7 +204,7 @@ async def create_address_internal(
     owner_id: Optional[str] = None,
     extra: Optional[AddressExtra] = None,
 ) -> Address:
-    expires_at = datetime.now() + timedelta(days=365 * data.years)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=365 * data.years)
     address = Address(
         id=urlsafe_short_hash(),
         domain_id=data.domain_id,
@@ -215,7 +214,7 @@ async def create_address_internal(
         active=False,
         extra=extra or AddressExtra(),
         expires_at=expires_at,
-        time=datetime.now(),
+        time=datetime.now(timezone.utc),
     )
     await db.insert("nostrnip5.addresses", address)
     return address
@@ -237,7 +236,7 @@ async def create_domain_internal(wallet_id: str, data: CreateDomainData) -> Doma
     domain = Domain(
         id=urlsafe_short_hash(),
         wallet=wallet_id,
-        time=datetime.now(),
+        time=datetime.now(timezone.utc),
         cost_extra=data.cost_extra or DomainCostConfig(),
         currency=data.currency,
         cost=data.cost,
