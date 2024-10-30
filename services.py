@@ -134,7 +134,11 @@ async def request_user_address(
         address_data.promo_code
     )
 
-    resp = dict(address)
+    resp = {
+        **dict(address),
+        "payment_hash": None,
+        "payment_request": None,
+    }
 
     if address_data.create_invoice:
         payment = await create_invoice_for_identifier(domain, address, wallet_id)
@@ -213,6 +217,7 @@ async def create_address(
     if address:
         assert not address.active, f"Identifier '{data.local_part}' already activated."
         address.extra = extra
+        address.pubkey = data.pubkey
         address = await update_address(address)
     else:
         address = await create_address_internal(data, owner_id, extra=extra)
