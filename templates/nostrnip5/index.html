@@ -168,6 +168,7 @@
                   type="a"
                   target="_blank"
                   :href="'rotate/' + props.row.domain_id + '/' + props.row.id"
+                  class="q-mr-sm"
                 ></q-btn>
                 <q-btn
                   unelevated
@@ -177,6 +178,7 @@
                   :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
                   :disable="props.row.active == true"
                   @click="activateAddress(props.row.domain_id, props.row.id)"
+                  class="q-mr-sm"
                 ></q-btn>
                 <q-btn
                   unelevated
@@ -185,6 +187,7 @@
                   icon="edit"
                   :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
                   @click="editAddress(props.row)"
+                  class="q-mr-sm"
                 ></q-btn>
                 <q-btn
                   unelevated
