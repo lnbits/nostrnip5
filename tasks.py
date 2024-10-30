@@ -57,12 +57,12 @@ async def _handle_action(action: str, payment: Payment, address: Address):
 
 
 async def _activate_address(payment: Payment, address: Address):
-    activated = await activate_address(
+    activated_address = await activate_address(
         address.domain_id, address.id, payment.payment_hash
     )
-    if activated:
-        await _create_ln_address(payment, address)
-        await _pay_promo_code(payment, address)
+    if activated_address:
+        await _create_ln_address(payment, activated_address)
+        await _pay_promo_code(payment, activated_address)
     else:
         address.extra.reimburse_payment_hash = payment.payment_hash
         address.reimburse_amount = payment.amount
