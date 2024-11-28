@@ -122,6 +122,17 @@ async def get_addresses_for_owner(owner_id: str) -> list[Address]:
     )
 
 
+
+async def get_free_addresses_for_owner(owner_id: str, domain_id: str) -> list[Address]:
+    rows = await db.fetchall(
+        "SELECT * FROM nostrnip5.addresses"
+        " WHERE owner_id = ? and domain_id = ? AND is_free = true",
+        (owner_id, domain_id),
+    )
+
+    return [Address.from_row(row) for row in rows]
+
+
 async def get_all_addresses(wallet_ids: Union[str, list[str]]) -> list[Address]:
     if isinstance(wallet_ids, str):
         wallet_ids = [wallet_ids]

@@ -20,6 +20,7 @@ from .crud import (
     get_all_addresses_paginated,
     get_domain_by_id,
     get_domains,
+    get_free_addresses_for_owner,
     get_identifier_ranking,
     get_settings,
     update_address,
@@ -117,6 +118,25 @@ async def get_identifier_price_data(
     return await domain.price_for_identifier(identifier, years, rank, promo_code)
 
 
+async def get_next_free_identifier(domain_id: str, identifier: str):
+    identifier_hash = owner_id_from_user_id(identifier)
+    identifier += "." + str(int(identifier_hash[:3], 16))
+    active_address = await get_active_address_by_local_part(domain_id, identifier)
+    if not active_address:
+        return identifier
+    return await get_next_free_identifier(domain_id, identifier)
+
+
+async def get_user_free_identifier(
+    user_id: str, domain_id: str, identifier: str
+) -> Optional[str]:
+    owner = owner_id_from_user_id(user_id)
+    free_addresses = await get_free_addresses_for_owner(domain_id, owner)
+    if free_addresses:
+        return None
+    return await get_next_free_identifier(domain_id, identifier)
+
+
 async def request_user_address(
     domain: Domain,
     address_data: CreateAddressData,
@@ -180,6 +200,20 @@ async def create_invoice_for_identifier(
     return payment
 
 
+async def is_free_identifier(user_id: str, domain_id: str, identifier: str) -> bool:
+    "Local Part without the suffix added for free addresses."
+    if identifier[-6] != ".":
+        return False
+    if not identifier[-5:].isdigit():
+        return False
+
+    identifier_orig = identifier[:-5]
+    free_identifier = await get_user_free_identifier(
+        user_id, domain_id, identifier_orig
+    )
+    return identifier == free_identifier
+
+
 async def create_address(
     domain: Domain,
     data: CreateAddressData,
@@ -200,7 +234,6 @@ async def create_address(
     identifier_status = await get_identifier_status(
         domain, identifier, data.years, promo_code
     )
-
     assert identifier_status.available, f"Identifier '{identifier}' not available."
     assert identifier_status.price, f"Cannot compute price for '{identifier}'."
 
