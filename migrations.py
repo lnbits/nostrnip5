@@ -105,3 +105,15 @@ async def m007_add_cost_extra_column_to_addresses(db):
         "ALTER TABLE nostrnip5.addresses ADD COLUMN "
         "reimburse_amount REAL NOT NULL DEFAULT 0"
     )
+
+
+async def m008_add_is_free_column(db):
+    """
+    Adds is_free flag for addresses.
+    """
+    await db.execute(
+        """
+            ALTER TABLE nostrnip5.addresses
+            ADD COLUMN is_free BOOLEAN NOT NULL DEFAULT false
+        """
+    )

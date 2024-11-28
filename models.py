@@ -336,6 +336,7 @@ class Address(FromRowModel):
     local_part: str
     pubkey: str
     active: bool
+    is_free: bool
     time: int
     reimburse_amount: int = 0
     expires_at: Optional[float]
@@ -358,6 +359,7 @@ class Address(FromRowModel):
 
 class AddressStatus(BaseModel):
     identifier: str
+    free_identifier: Optional[str] = None
     available: bool = False
     price: Optional[float] = None
     price_in_sats: Optional[float] = None
