@@ -119,11 +119,11 @@ async def get_identifier_price_data(
 
 
 async def get_next_free_identifier(domain_id: str, identifier: str):
-    identifier_hash = owner_id_from_user_id(identifier)
-    identifier += "." + str(int(identifier_hash[:3], 16))
-    active_address = await get_active_address_by_local_part(domain_id, identifier)
+    free_identifier_number = str(randint(0, 999999)).zfill(6)
+    free_identifier = identifier + "." + free_identifier_number
+    active_address = await get_active_address_by_local_part(domain_id, free_identifier)
     if not active_address:
-        return identifier
+        return free_identifier_number
     return await get_next_free_identifier(domain_id, identifier)
 
 
@@ -131,7 +131,7 @@ async def get_user_free_identifier(
     user_id: str, domain_id: str, identifier: str
 ) -> Optional[str]:
     owner = owner_id_from_user_id(user_id)
-    free_addresses = await get_free_addresses_for_owner(domain_id, owner)
+    free_addresses = await get_free_addresses_for_owner(owner, domain_id)
     if free_addresses:
         return None
     return await get_next_free_identifier(domain_id, identifier)
@@ -146,6 +146,11 @@ async def request_user_address(
     address = await create_address(
         domain, address_data, wallet_id, user_id, address_data.promo_code
     )
+    if is_free_identifier(address.local_part):
+        await activate_address(domain.id, address.id)
+        address = await update_address(domain.id, address.id, is_free=True)
+        return dict(address)
+
     assert (
         address.extra.price_in_sats
     ), f"Cannot compute price for '{address_data.local_part}'."
@@ -200,18 +205,16 @@ async def create_invoice_for_identifier(
     return payment
 
 
-async def is_free_identifier(user_id: str, domain_id: str, identifier: str) -> bool:
+def is_free_identifier(identifier: str) -> bool:
     "Local Part without the suffix added for free addresses."
-    if identifier[-6] != ".":
+    if len(identifier) < 7:
         return False
-    if not identifier[-5:].isdigit():
+    if identifier[-7] != ".":
+        return False
+    if not identifier[-6:].isdigit():
         return False
 
-    identifier_orig = identifier[:-5]
-    free_identifier = await get_user_free_identifier(
-        user_id, domain_id, identifier_orig
-    )
-    return identifier == free_identifier
+    return True
 
 
 async def create_address(
