@@ -60,10 +60,12 @@ from .services import (
     check_address_payment,
     create_address,
     get_identifier_status,
+    get_next_free_identifier,
     get_reimburse_wallet_id,
     get_user_addresses,
     get_user_addresses_paginated,
     get_user_domains,
+    get_user_free_identifier,
     get_valid_addresses_for_owner,
     refresh_buckets,
     request_user_address,
@@ -171,7 +173,10 @@ async def api_get_nostr_json(
     "/api/v1/domain/{domain_id}/search", status_code=HTTPStatus.OK
 )
 async def api_search_identifier(
-    domain_id: str, q: Optional[str] = None, years: Optional[int] = None
+    domain_id: str,
+    q: Optional[str] = None,
+    years: Optional[int] = None,
+    user_id: Optional[str] = Depends(optional_user_id),
 ) -> AddressStatus:
 
     if not q:
@@ -180,7 +185,14 @@ async def api_search_identifier(
     domain = await get_domain_by_id(domain_id)
     assert domain, "Unknown domain id."
 
-    return await get_identifier_status(domain, q, years or 1)
+    address_status = await get_identifier_status(domain, q, years or 1)
+    address_status.free_identifier_number = (
+        await get_user_free_identifier(user_id, domain.id, address_status.identifier)
+        if user_id
+        else await get_next_free_identifier(domain.id, address_status.identifier)
+    )
+
+    return address_status
 
 
 @http_try_except

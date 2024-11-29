@@ -1,3 +1,4 @@
+from random import randint
 from typing import List, Optional, Tuple
 
 import httpx
@@ -19,6 +20,7 @@ from .crud import (
     get_all_addresses_paginated,
     get_domain_by_id,
     get_domains,
+    get_free_addresses_for_owner,
     get_identifier_ranking,
     get_settings,
     update_address,
@@ -116,6 +118,25 @@ async def get_identifier_price_data(
     return await domain.price_for_identifier(identifier, years, rank, promo_code)
 
 
+async def get_next_free_identifier(domain_id: str, identifier: str):
+    free_identifier_number = str(randint(0, 999999)).zfill(6)
+    free_identifier = identifier + "." + free_identifier_number
+    active_address = await get_active_address_by_local_part(domain_id, free_identifier)
+    if not active_address:
+        return free_identifier_number
+    return await get_next_free_identifier(domain_id, identifier)
+
+
+async def get_user_free_identifier(
+    user_id: str, domain_id: str, identifier: str
+) -> Optional[str]:
+    owner = owner_id_from_user_id(user_id)
+    free_addresses = await get_free_addresses_for_owner(owner, domain_id)
+    if free_addresses:
+        return None
+    return await get_next_free_identifier(domain_id, identifier)
+
+
 async def request_user_address(
     domain: Domain,
     address_data: CreateAddressData,
@@ -125,6 +146,11 @@ async def request_user_address(
     address = await create_address(
         domain, address_data, wallet_id, user_id, address_data.promo_code
     )
+    if is_free_identifier(address.local_part):
+        await activate_address(domain.id, address.id)
+        address = await update_address(domain.id, address.id, is_free=True)
+        return dict(address)
+
     assert (
         address.config.price_in_sats
     ), f"Cannot compute price for '{address_data.local_part}'."
@@ -179,6 +205,18 @@ async def create_invoice_for_identifier(
     return payment_hash, payment_request
 
 
+def is_free_identifier(identifier: str) -> bool:
+    "Local Part without the suffix added for free addresses."
+    if len(identifier) < 7:
+        return False
+    if identifier[-7] != ".":
+        return False
+    if not identifier[-6:].isdigit():
+        return False
+
+    return True
+
+
 async def create_address(
     domain: Domain,
     data: CreateAddressData,
@@ -193,17 +231,16 @@ async def create_address(
         data.pubkey = validate_pub_key(data.pubkey)
 
     owner_id = owner_id_from_user_id(user_id)
-    addresss = await get_address_for_owner(owner_id, domain.id, identifier)
+    address = await get_address_for_owner(owner_id, domain.id, identifier)
 
-    promo_code = promo_code or (addresss.config.promo_code if addresss else None)
+    promo_code = promo_code or (address.config.promo_code if address else None)
     identifier_status = await get_identifier_status(
         domain, identifier, data.years, promo_code
     )
-
     assert identifier_status.available, f"Identifier '{identifier}' not available."
     assert identifier_status.price, f"Cannot compute price for '{identifier}'."
 
-    config = addresss.config if addresss else AddressConfig()
+    config = address.config if address else AddressConfig()
     config.price = identifier_status.price
     config.price_in_sats = identifier_status.price_in_sats
     config.currency = domain.currency
@@ -213,10 +250,10 @@ async def create_address(
     config.max_years = domain.cost_config.max_years
     config.ln_address.wallet = wallet_id or ""
 
-    if addresss:
-        assert not addresss.active, f"Identifier '{data.local_part}' already activated."
+    if address:
+        assert not address.active, f"Identifier '{data.local_part}' already activated."
         address = await update_address(
-            domain.id, addresss.id, config=config, pubkey=data.pubkey
+            domain.id, address.id, config=config, pubkey=data.pubkey
         )
     else:
         address = await create_address_internal(data, owner_id, config=config)
