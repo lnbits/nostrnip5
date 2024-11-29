@@ -186,7 +186,7 @@ async def api_search_identifier(
     assert domain, "Unknown domain id."
 
     address_status = await get_identifier_status(domain, q, years or 1)
-    address_status.free_identifier = (
+    address_status.free_identifier_number = (
         await get_user_free_identifier(user_id, domain.id, address_status.identifier)
         if user_id
         else await get_next_free_identifier(domain.id, address_status.identifier)

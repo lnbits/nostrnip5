@@ -359,7 +359,7 @@ class Address(FromRowModel):
 
 class AddressStatus(BaseModel):
     identifier: str
-    free_identifier: Optional[str] = None
+    free_identifier_number: Optional[str] = None
     available: bool = False
     price: Optional[float] = None
     price_in_sats: Optional[float] = None
