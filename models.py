@@ -190,7 +190,7 @@ class DomainCostConfig(BaseModel):
             cost.validate_data()
 
         assert (
-            1 < self.max_years < 100
+            1 <= self.max_years <= 100
         ), "Maximum allowed years must be between 1 and 100."
         promo_codes = []
         for promo in self.promotions:
