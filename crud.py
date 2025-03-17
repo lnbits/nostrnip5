@@ -122,7 +122,6 @@ async def get_addresses_for_owner(owner_id: str) -> list[Address]:
     )
 
 
-
 async def get_free_addresses_for_owner(owner_id: str, domain_id: str) -> list[Address]:
     rows = await db.fetchall(
         "SELECT * FROM nostrnip5.addresses"
