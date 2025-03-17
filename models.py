@@ -318,7 +318,7 @@ class Address(BaseModel):
     time: datetime
     expires_at: datetime
     pubkey: Optional[str] = None
-    is_free: bool
+    is_free: bool = False
     reimburse_amount: int = 0
     promo_code_status: PromoCodeStatus = Field(
         default=PromoCodeStatus(), no_database=True

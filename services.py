@@ -148,8 +148,9 @@ async def request_user_address(
         domain, address_data, wallet_id, user_id, address_data.promo_code
     )
     if is_free_identifier(address.local_part):
-        await activate_address(domain.id, address.id)
-        address = await update_address(domain.id, address.id, is_free=True)
+        address = await activate_address(domain.id, address.id, is_free=True)
+        address.is_free = True
+        address = await update_address(address)
         return dict(address)
 
     assert (
@@ -263,7 +264,10 @@ async def create_address(
 
 
 async def activate_address(
-    domain_id: str, address_id: str, payment_hash: Optional[str] = None
+    domain_id: str,
+    address_id: str,
+    is_free: bool = False,
+    payment_hash: Optional[str] = None,
 ) -> Address:
     logger.info(f"Activating NIP-05 '{address_id}' for {domain_id}")
 
@@ -277,6 +281,7 @@ async def activate_address(
     address.extra.activated_by_owner = payment_hash is None
     address.extra.payment_hash = payment_hash
     address.active = True
+    address.is_free = is_free
     address.expires_at = datetime.now(timezone.utc) + timedelta(
         days=365 * address.extra.years
     )
