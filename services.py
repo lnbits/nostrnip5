@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from random import randint
 from typing import Optional
 
 import httpx
@@ -20,6 +21,7 @@ from .crud import (
     get_all_addresses_paginated,
     get_domain_by_id,
     get_domains,
+    get_free_addresses_for_owner,
     get_identifier_ranking,
     get_settings,
     update_address,
@@ -117,6 +119,25 @@ async def get_identifier_price_data(
     return await domain.price_for_identifier(identifier, years, rank, promo_code)
 
 
+async def get_next_free_identifier(domain_id: str, identifier: str):
+    free_identifier_number = str(randint(0, 999999)).zfill(6)
+    free_identifier = identifier + "." + free_identifier_number
+    active_address = await get_active_address_by_local_part(domain_id, free_identifier)
+    if not active_address:
+        return free_identifier_number
+    return await get_next_free_identifier(domain_id, identifier)
+
+
+async def get_user_free_identifier(
+    user_id: str, domain_id: str, identifier: str
+) -> Optional[str]:
+    owner = owner_id_from_user_id(user_id)
+    free_addresses = await get_free_addresses_for_owner(owner, domain_id)
+    if free_addresses:
+        return None
+    return await get_next_free_identifier(domain_id, identifier)
+
+
 async def request_user_address(
     domain: Domain,
     address_data: CreateAddressData,
@@ -126,6 +147,12 @@ async def request_user_address(
     address = await create_address(
         domain, address_data, wallet_id, user_id, address_data.promo_code
     )
+    if is_free_identifier(address.local_part):
+        address = await activate_address(domain.id, address.id, is_free=True)
+        address.is_free = True
+        address = await update_address(address)
+        return dict(address)
+
     assert (
         address.extra.price_in_sats
     ), f"Cannot compute price for '{address_data.local_part}'."
@@ -180,6 +207,18 @@ async def create_invoice_for_identifier(
     return payment
 
 
+def is_free_identifier(identifier: str) -> bool:
+    "Local Part without the suffix added for free addresses."
+    if len(identifier) < 7:
+        return False
+    if identifier[-7] != ".":
+        return False
+    if not identifier[-6:].isdigit():
+        return False
+
+    return True
+
+
 async def create_address(
     domain: Domain,
     data: CreateAddressData,
@@ -200,7 +239,6 @@ async def create_address(
     identifier_status = await get_identifier_status(
         domain, identifier, data.years, promo_code
     )
-
     assert identifier_status.available, f"Identifier '{identifier}' not available."
     assert identifier_status.price, f"Cannot compute price for '{identifier}'."
 
@@ -226,7 +264,10 @@ async def create_address(
 
 
 async def activate_address(
-    domain_id: str, address_id: str, payment_hash: Optional[str] = None
+    domain_id: str,
+    address_id: str,
+    is_free: bool = False,
+    payment_hash: Optional[str] = None,
 ) -> Address:
     logger.info(f"Activating NIP-05 '{address_id}' for {domain_id}")
 
@@ -240,6 +281,7 @@ async def activate_address(
     address.extra.activated_by_owner = payment_hash is None
     address.extra.payment_hash = payment_hash
     address.active = True
+    address.is_free = is_free
     address.expires_at = datetime.now(timezone.utc) + timedelta(
         days=365 * address.extra.years
     )

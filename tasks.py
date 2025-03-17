@@ -58,7 +58,7 @@ async def _handle_action(action: str, payment: Payment, address: Address):
 
 async def _activate_address(payment: Payment, address: Address):
     activated_address = await activate_address(
-        address.domain_id, address.id, payment.payment_hash
+        address.domain_id, address.id, payment_hash=payment.payment_hash
     )
     if activated_address:
         await _create_ln_address(payment, activated_address)

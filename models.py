@@ -318,6 +318,7 @@ class Address(BaseModel):
     time: datetime
     expires_at: datetime
     pubkey: Optional[str] = None
+    is_free: bool = False
     reimburse_amount: int = 0
     promo_code_status: PromoCodeStatus = Field(
         default=PromoCodeStatus(), no_database=True
@@ -327,6 +328,7 @@ class Address(BaseModel):
 
 class AddressStatus(BaseModel):
     identifier: str
+    free_identifier_number: Optional[str] = None
     available: bool = False
     price: Optional[float] = None
     price_in_sats: Optional[float] = None
