@@ -311,6 +311,7 @@ class AddressExtra(BaseModel):
     ln_address: LnAddressConfig = LnAddressConfig(wallet="")
 
 
+
 class Address(BaseModel):
     id: str
     owner_id: Optional[str] = None
