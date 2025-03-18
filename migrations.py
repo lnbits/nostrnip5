@@ -112,3 +112,15 @@ async def m008_add_is_free_column(db):
             ADD COLUMN is_free BOOLEAN NOT NULL DEFAULT false
         """
     )
+
+
+async def m009_add_is_locked_column(db):
+    """
+    Adds is_locked flag for addresses.
+    """
+    await db.execute(
+        """
+            ALTER TABLE nostrnip5.addresses
+            ADD COLUMN is_locked BOOLEAN NOT NULL DEFAULT false
+        """
+    )

@@ -425,6 +425,63 @@ async def api_rotate_user_address(
     return True
 
 
+@nostrnip5_api_router.get("/api/v1/domain/{domain_id}/address/{address_id}/transfer")
+async def api_get_transfer_code_for_address(
+    domain_id: str,
+    address_id: str,
+    user_id: Optional[str] = Depends(optional_user_id),
+):
+    if not user_id:
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
+    
+    owner_id = owner_id_from_user_id(user_id)
+    if not owner_id:
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
+    address = await get_address(domain_id, address_id)
+    if address.owner_id != owner_id:
+        raise HTTPException(HTTPStatus.UNAUTHORIZED, "Address does not belong to this user.")
+    
+    if address.is_locked:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is locked.")
+    
+    if not address.extra.transfer_code:
+        address.extra.transfer_code = str(uuid4())
+        await update_address(address)
+
+    return {"transfer_code": address.extra.transfer_code}
+
+@nostrnip5_api_router.put("/api/v1/domain/{domain_id}/address/{address_id}/transfer")
+async def api_transfer_address_to_new_user(
+    domain_id: str,
+    address_id: str,
+    new_user_id: str, # body
+):
+    
+    return True
+
+@nostrnip5_api_router.put("/api/v1/domain/{domain_id}/address/{address_id}/lock")
+async def api_lock_address_for_transfer(
+    domain_id: str,
+    address_id: str,
+    new_user_id: str, # body
+):
+    
+    return True
+
+
+@nostrnip5_api_router.put("/api/v1/domain/{domain_id}/address/{address_id}/unlock")
+async def api_unlock_address(
+    domain_id: str,
+    address_id: str,
+    new_user_id: str, # body
+):
+    
+    return True
+
+
+
+
+
 @nostrnip5_api_router.put("/api/v1/user/domain/{domain_id}/address/{address_id}")
 async def api_update_user_address(
     domain_id: str,

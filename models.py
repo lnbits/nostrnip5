@@ -301,12 +301,14 @@ class AddressExtra(BaseModel):
     payment_hash: Optional[str] = None
     reimburse_payment_hash: Optional[str] = None
     promo_code: Optional[str] = None
+    transfer_code: Optional[str] = None
     referer: Optional[str] = None
     activated_by_owner: bool = False
     years: int = 1
     max_years: int = 1
     relays: list[str] = []
     ln_address: LnAddressConfig = LnAddressConfig(wallet="")
+
 
 
 class Address(BaseModel):
@@ -319,6 +321,7 @@ class Address(BaseModel):
     expires_at: datetime
     pubkey: Optional[str] = None
     is_free: bool = False
+    is_locked: bool = False
     reimburse_amount: int = 0
     promo_code_status: PromoCodeStatus = Field(
         default=PromoCodeStatus(), no_database=True
