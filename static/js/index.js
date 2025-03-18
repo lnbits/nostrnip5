@@ -19,6 +19,7 @@ window.app = Vue.createApp({
         1000000
       ],
       currencyOptions: [],
+      showOnlyActiveAddresses: true,
       domainsTable: {
         columns: [
           {name: 'id', align: 'left', label: 'ID', field: 'id'},
@@ -177,10 +178,15 @@ window.app = Vue.createApp({
       const query = {
         all_wallets: true,
         limit: pagination.rowsPerPage,
-        search: self.addressesTable.search,
         offset: (pagination.page - 1) * pagination.rowsPerPage ?? 0,
         sortby: pagination.sortBy || 'time',
         direction: pagination.descending ? 'desc' : 'asc'
+      }
+      if (self.addressesTable.search) {
+        query.search = self.addressesTable.search
+      }
+      if (this.showOnlyActiveAddresses) {
+        query.active = true
       }
       const params = new URLSearchParams(query)
 

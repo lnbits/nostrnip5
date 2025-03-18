@@ -127,13 +127,13 @@
     <q-card>
       <q-card-section>
         <div class="row items-center no-wrap q-mb-md">
-          <div class="col">
+          <div class="col-md-6 col-sm-12">
             <q-input
               filled
               dense
               v-model.trim="addressesTable.search"
-              label="Search"
-              placeholder="Search identifier"
+              label="Search identifier or pubkey"
+              placeholder="Search identifier or pubkey"
             >
               <template v-slot:before>
                 <q-icon name="search"> </q-icon>
@@ -149,8 +149,21 @@
               </template>
             </q-input>
           </div>
-          <div class="col-auto">
-            <q-btn flat color="grey" @click="exportAddressesCSV"
+          <div class="col-md-3 col-sm-12">
+            <q-toggle
+              @click="getAddresses()"
+              v-model="showOnlyActiveAddresses"
+              label="Only Active"
+              size="md"
+              class="float-left"
+            />
+          </div>
+          <div class="col-md-3 col-sm-12">
+            <q-btn
+              flat
+              color="grey"
+              @click="exportAddressesCSV"
+              class="float-right"
               >Export to CSV</q-btn
             >
           </div>
