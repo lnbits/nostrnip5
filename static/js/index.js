@@ -19,6 +19,7 @@ window.app = Vue.createApp({
         1000000
       ],
       currencyOptions: [],
+      showOnlyActiveAddresses: true,
       domainsTable: {
         columns: [
           {name: 'id', align: 'left', label: 'ID', field: 'id'},
@@ -79,7 +80,8 @@ window.app = Vue.createApp({
           rowsPerPage: 10,
           page: 1,
           rowsNumber: 10
-        }
+        },
+        serch: ''
       },
       formDialog: {
         show: false,
@@ -179,6 +181,12 @@ window.app = Vue.createApp({
         offset: (pagination.page - 1) * pagination.rowsPerPage ?? 0,
         sortby: pagination.sortBy || 'time',
         direction: pagination.descending ? 'desc' : 'asc'
+      }
+      if (self.addressesTable.search) {
+        query.search = self.addressesTable.search
+      }
+      if (this.showOnlyActiveAddresses) {
+        query.active = true
       }
       const params = new URLSearchParams(query)
 
@@ -524,6 +532,17 @@ window.app = Vue.createApp({
     },
     exportAddressesCSV: function () {
       LNbits.utils.exportCSV(this.addressesTable.columns, this.addresses)
+    }
+  },
+  watch: {
+    'addressesTable.search': {
+      handler() {
+        const props = {}
+        if (this.addressesTable.search) {
+          props['search'] = this.addressesTable.search
+        }
+        this.getAddresses()
+      }
     }
   },
   created() {

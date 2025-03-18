@@ -344,6 +344,7 @@ class AddressStatus(BaseModel):
 
 
 class AddressFilters(FilterModel):
+    __search_fields__ = ["local_part", "pubkey"]
     domain_id: str
     local_part: str
     reimburse_amount: str
