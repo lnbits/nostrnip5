@@ -79,7 +79,8 @@ window.app = Vue.createApp({
           rowsPerPage: 10,
           page: 1,
           rowsNumber: 10
-        }
+        },
+        serch: ''
       },
       formDialog: {
         show: false,
@@ -176,6 +177,7 @@ window.app = Vue.createApp({
       const query = {
         all_wallets: true,
         limit: pagination.rowsPerPage,
+        search: self.addressesTable.search,
         offset: (pagination.page - 1) * pagination.rowsPerPage ?? 0,
         sortby: pagination.sortBy || 'time',
         direction: pagination.descending ? 'desc' : 'asc'
@@ -524,6 +526,17 @@ window.app = Vue.createApp({
     },
     exportAddressesCSV: function () {
       LNbits.utils.exportCSV(this.addressesTable.columns, this.addresses)
+    }
+  },
+  watch: {
+    'addressesTable.search': {
+      handler() {
+        const props = {}
+        if (this.addressesTable.search) {
+          props['search'] = this.addressesTable.search
+        }
+        this.getAddresses()
+      }
     }
   },
   created() {

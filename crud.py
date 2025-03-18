@@ -155,13 +155,14 @@ async def get_all_addresses_paginated(
     if isinstance(wallet_ids, str):
         wallet_ids = [wallet_ids]
     q = ",".join([f"'{w}'" for w in wallet_ids])
+    where = [f"d.wallet IN ({q})"]
     return await db.fetch_page(
-        f"""
+        """
         SELECT a.* FROM nostrnip5.addresses a
         JOIN nostrnip5.domains d ON d.id = a.domain_id
-        WHERE d.wallet IN ({q})
         """,
         filters=filters,
+        where=where,
         model=Address,
     )
 
