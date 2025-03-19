@@ -310,7 +310,6 @@ class AddressExtra(BaseModel):
     ln_address: LnAddressConfig = LnAddressConfig(wallet="")
 
 
-
 class Address(BaseModel):
     id: str
     owner_id: Optional[str] = None
@@ -358,6 +357,7 @@ class AddressFilters(FilterModel):
 
 class Nip5Settings(BaseModel):
     cloudflare_access_token: Optional[str] = None
+    transfer_secret: Optional[str] = None
     lnaddress_api_admin_key: Optional[str] = ""
     lnaddress_api_endpoint: Optional[str] = "https://nostr.com"
 
@@ -365,3 +365,18 @@ class Nip5Settings(BaseModel):
 class UserSetting(BaseModel):
     owner_id: str
     settings: Nip5Settings
+
+
+class TransferData(BaseModel):
+    transfer_code: str
+
+
+class TransferRequest(BaseModel):
+    lock_code: str
+    new_owner_id: Optional[str] = None
+
+
+class LockResponse(BaseModel):
+    """Code used to transfer an address."""
+
+    lock_code: str

@@ -1,9 +1,18 @@
 import re
 from hashlib import sha256
-from typing import Optional
+from http import HTTPStatus
+from typing import Annotated, Optional
 from urllib.parse import urlparse
 
 from bech32 import bech32_decode, convertbits
+from fastapi import Depends, HTTPException
+from lnbits.decorators import optional_user_id
+
+
+async def check_user_id(user_id: Annotated[str, Depends(optional_user_id)]) -> str:
+    if not user_id:
+        raise HTTPException(HTTPStatus.UNAUTHORIZED)
+    return user_id
 
 
 def normalize_identifier(identifier: str):

@@ -234,7 +234,6 @@
               <q-td v-text="props.row.id"></q-td>
               <q-td v-text="props.row.is_locked"></q-td>
               <q-td v-text="props.row.active"></q-td>
-              
 
               <q-td>
                 <q-tooltip>
@@ -543,6 +542,19 @@
                 </q-item>
               </q-list>
             </q-btn-dropdown>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-12">
+            <q-input
+              filled
+              dense
+              v-model.trim="settingsFormDialog.data.transfer_secret"
+              type="password"
+              label="Transfer Secret"
+              hint="Transfer secret used to encrypt the transfer code."
+              placeholder="Transfer secret"
+            ></q-input>
           </div>
         </div>
 

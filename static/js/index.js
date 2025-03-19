@@ -313,7 +313,7 @@ window.app = Vue.createApp({
           _.findWhere(self.g.user.wallets, {id: domain.wallet}).adminkey,
           {
             pubkey: data.pubkey,
-            relays: data.config.relays
+            relays: data.extra.relays
           }
         )
         .then(function (response) {
