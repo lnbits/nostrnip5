@@ -232,6 +232,7 @@
               </q-td>
 
               <q-td v-text="props.row.id"></q-td>
+              <q-td v-text="props.row.is_locked"></q-td>
               <q-td v-text="props.row.active"></q-td>
 
               <q-td>
@@ -383,7 +384,7 @@
         </q-input>
         <div>
           <q-chip
-            v-for="relay in addressFormDialog.data.config.relays"
+            v-for="relay in addressFormDialog.data.extra.relays"
             :key="relay"
             removable
             @remove="removeRelayForAddress(relay)"

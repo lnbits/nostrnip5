@@ -41,12 +41,20 @@ window.app = Vue.createApp({
         columns: [
           {name: 'id', align: 'left', label: 'ID', field: 'id'},
           {
+            name: 'is_locked',
+            align: 'left',
+            label: 'Locked',
+            field: 'is_locked',
+            sortable: true
+          },
+          {
             name: 'active',
             align: 'left',
             label: 'Active',
             field: 'active',
             sortable: true
           },
+
           {
             name: 'local_part',
             align: 'left',
@@ -212,15 +220,15 @@ window.app = Vue.createApp({
       event.preventDefault()
       this.removeRelayForAddress(this.addressFormDialog.data.relay)
       if (this.addressFormDialog.data.relay) {
-        this.addressFormDialog.data.config.relays.push(
+        this.addressFormDialog.data.extra.relays.push(
           this.addressFormDialog.data.relay
         )
       }
       this.addressFormDialog.data.relay = ''
     },
     removeRelayForAddress: function (relay) {
-      this.addressFormDialog.data.config.relays = (
-        this.addressFormDialog.data.config.relays || []
+      this.addressFormDialog.data.extra.relays = (
+        this.addressFormDialog.data.extra.relays || []
       ).filter(r => r !== relay)
     },
     saveDomain: function () {
@@ -305,7 +313,7 @@ window.app = Vue.createApp({
           _.findWhere(self.g.user.wallets, {id: domain.wallet}).adminkey,
           {
             pubkey: data.pubkey,
-            relays: data.config.relays
+            relays: data.extra.relays
           }
         )
         .then(function (response) {

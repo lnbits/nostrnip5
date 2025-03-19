@@ -127,6 +127,7 @@ class CreateAddressData(BaseModel):
 
 class DomainCostConfig(BaseModel):
     max_years: int = 1
+    transfer_secret: Optional[str] = None
     char_count_cost: list[CustomCost] = []
     rank_cost: list[CustomCost] = []
     promotions: list[Promotion] = []
@@ -301,6 +302,7 @@ class AddressExtra(BaseModel):
     payment_hash: Optional[str] = None
     reimburse_payment_hash: Optional[str] = None
     promo_code: Optional[str] = None
+    transfer_code: Optional[str] = None
     referer: Optional[str] = None
     activated_by_owner: bool = False
     years: int = 1
@@ -319,6 +321,7 @@ class Address(BaseModel):
     expires_at: datetime
     pubkey: Optional[str] = None
     is_free: bool = False
+    is_locked: bool = False
     reimburse_amount: int = 0
     promo_code_status: PromoCodeStatus = Field(
         default=PromoCodeStatus(), no_database=True
@@ -362,3 +365,18 @@ class Nip5Settings(BaseModel):
 class UserSetting(BaseModel):
     owner_id: str
     settings: Nip5Settings
+
+
+class TransferData(BaseModel):
+    transfer_code: str
+
+
+class TransferRequest(BaseModel):
+    lock_code: str
+    new_owner_id: Optional[str] = None
+
+
+class LockResponse(BaseModel):
+    """Code used to transfer an address."""
+
+    lock_code: str
