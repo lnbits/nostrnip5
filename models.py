@@ -127,6 +127,7 @@ class CreateAddressData(BaseModel):
 
 class DomainCostConfig(BaseModel):
     max_years: int = 1
+    transfer_secret: Optional[str] = None
     char_count_cost: list[CustomCost] = []
     rank_cost: list[CustomCost] = []
     promotions: list[Promotion] = []
@@ -357,7 +358,6 @@ class AddressFilters(FilterModel):
 
 class Nip5Settings(BaseModel):
     cloudflare_access_token: Optional[str] = None
-    transfer_secret: Optional[str] = None
     lnaddress_api_admin_key: Optional[str] = ""
     lnaddress_api_endpoint: Optional[str] = "https://nostr.com"
 

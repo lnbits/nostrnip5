@@ -78,6 +78,15 @@ context %} {% block page %}
           label="Max Years"
           hint="Maximum number of years a user can have an address before renewing."
         ></q-input>
+        <q-input
+          filled
+          dense
+          v-model="domainForm.data.cost_extra.transfer_secret"
+          type="password"
+          label="Transfer Secret"
+          hint="Transfer secret used to encrypt the transfer code."
+          placeholder="Transfer secret"
+        ></q-input>
       </div>
     </q-card>
     <q-card class="q-pa-lg q-mt-md">

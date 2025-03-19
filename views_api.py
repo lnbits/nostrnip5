@@ -39,7 +39,6 @@ from .crud import (
     update_identifier_ranking,
 )
 from .helpers import (
-    check_user_id,
     owner_id_from_user_id,
     validate_pub_key,
 )
@@ -432,17 +431,19 @@ async def api_rotate_user_address(
 
 @nostrnip5_api_router.get("/api/v1/domain/{domain_id}/address/{address_id}/transfer")
 async def api_get_transfer_code_for_address(
-    domain_id: str, address_id: str, user_id: str = Depends(check_user_id)
+    domain_id: str,
+    address_id: str,
+    # user_id: str = Depends(check_user_id)
 ) -> TransferData:
     address = await get_address(domain_id, address_id)
     if not address:
         raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
 
-    owner_id = owner_id_from_user_id(user_id)
-    if address.owner_id != owner_id:
-        raise HTTPException(
-            HTTPStatus.UNAUTHORIZED, "Address does not belong to this user."
-        )
+    # owner_id = owner_id_from_user_id(user_id)
+    # if address.owner_id != owner_id:
+    #     raise HTTPException(
+    #         HTTPStatus.UNAUTHORIZED, "Address does not belong to this user."
+    #     )
 
     if address.is_locked:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is locked.")
@@ -459,6 +460,9 @@ async def api_lock_address_for_transfer(
     domain_id: str, address_id: str, data: TransferData
 ) -> LockResponse:
 
+    domain = await get_domain_by_id(domain_id)
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
     address = await get_address(domain_id, address_id)
     if not address:
         raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
@@ -472,15 +476,11 @@ async def api_lock_address_for_transfer(
     if address.extra.transfer_code != data.transfer_code:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Invalid transfer code.")
 
-    nip5_settings = await get_settings(owner_id_from_user_id("admin"))
-    if not nip5_settings:
-        raise HTTPException(HTTPStatus.NOT_FOUND, "Settings for user not found.")
-    if not nip5_settings.transfer_secret:
-        raise HTTPException(
-            HTTPStatus.BAD_REQUEST, "Identifier transfer not configired."
-        )
+    transfer_secret = domain.cost_extra.transfer_secret
+    if not transfer_secret:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain does not allow transfers.")
 
-    lock_code = AESCipher(key=nip5_settings.transfer_secret).encrypt(
+    lock_code = AESCipher(key=transfer_secret).encrypt(
         address.extra.transfer_code.encode()
     )
     return LockResponse(lock_code=lock_code)
@@ -492,6 +492,9 @@ async def api_unlock_address(
     address_id: str,
     data: TransferRequest,
 ) -> None:
+    domain = await get_domain_by_id(domain_id)
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
     address = await get_address(domain_id, address_id)
     if not address:
         raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
@@ -502,15 +505,11 @@ async def api_unlock_address(
     if not address.extra.transfer_code:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Address has no transfer code.")
 
-    nip5_settings = await get_settings(owner_id_from_user_id("admin"))
-    if not nip5_settings:
-        raise HTTPException(HTTPStatus.NOT_FOUND, "Settings for user not found.")
-    if not nip5_settings.transfer_secret:
-        raise HTTPException(
-            HTTPStatus.BAD_REQUEST, "Identifier transfer not configired."
-        )
+    transfer_secret = domain.cost_extra.transfer_secret
+    if not transfer_secret:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain does not allow transfers.")
 
-    transfer_code = AESCipher(key=nip5_settings.transfer_secret).decrypt(data.lock_code)
+    transfer_code = AESCipher(key=transfer_secret).decrypt(data.lock_code)
 
     if address.extra.transfer_code != transfer_code:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Invalid lock code.")
@@ -526,6 +525,10 @@ async def api_transfer_address_to_new_user(
     address_id: str,
     data: TransferRequest,
 ):
+    domain = await get_domain_by_id(domain_id)
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
+
     address = await get_address(domain_id, address_id)
     if not address:
         raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
@@ -539,15 +542,11 @@ async def api_transfer_address_to_new_user(
     if not address.extra.transfer_code:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Address has no transfer code.")
 
-    nip5_settings = await get_settings(owner_id_from_user_id("admin"))
-    if not nip5_settings:
-        raise HTTPException(HTTPStatus.NOT_FOUND, "Settings for user not found.")
-    if not nip5_settings.transfer_secret:
-        raise HTTPException(
-            HTTPStatus.BAD_REQUEST, "Identifier transfer not configired."
-        )
+    transfer_secret = domain.cost_extra.transfer_secret
+    if not transfer_secret:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain does not allow transfers.")
 
-    transfer_code = AESCipher(key=nip5_settings.transfer_secret).decrypt(data.lock_code)
+    transfer_code = AESCipher(key=transfer_secret).decrypt(data.lock_code)
 
     if address.extra.transfer_code != transfer_code:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Invalid lock code.")
