@@ -358,7 +358,6 @@ class AddressFilters(FilterModel):
 
 class Nip5Settings(BaseModel):
     cloudflare_access_token: Optional[str] = None
-    transfer_secret: Optional[str] = None
     lnaddress_api_admin_key: Optional[str] = ""
     lnaddress_api_endpoint: Optional[str] = "https://nostr.com"
 
