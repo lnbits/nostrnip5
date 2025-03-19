@@ -446,7 +446,7 @@ async def api_get_transfer_code_for_address(
 
     if address.is_locked:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is locked.")
-    
+
     if not address.active:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is not active")
 
@@ -471,7 +471,7 @@ async def api_lock_address_for_transfer(
 
     if address.is_locked:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is already locked.")
-    
+
     if not address.active:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is not active")
 
@@ -506,7 +506,7 @@ async def api_unlock_address(
     address = await get_address(domain_id, address_id)
     if not address:
         raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
-    
+
     if not address.active:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is not active")
 
@@ -554,7 +554,7 @@ async def api_transfer_address_to_new_user(
 
     if not data.new_owner_id:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "New owner ID is missing.")
-    
+
     if not address.active:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is not active")
 
