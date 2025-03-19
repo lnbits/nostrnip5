@@ -39,6 +39,7 @@ from .crud import (
     update_identifier_ranking,
 )
 from .helpers import (
+    check_user_id,
     owner_id_from_user_id,
     validate_pub_key,
 )
@@ -431,19 +432,17 @@ async def api_rotate_user_address(
 
 @nostrnip5_api_router.get("/api/v1/domain/{domain_id}/address/{address_id}/transfer")
 async def api_get_transfer_code_for_address(
-    domain_id: str,
-    address_id: str,
-    # user_id: str = Depends(check_user_id)
+    domain_id: str, address_id: str, user_id: str = Depends(check_user_id)
 ) -> TransferData:
     address = await get_address(domain_id, address_id)
     if not address:
         raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
 
-    # owner_id = owner_id_from_user_id(user_id)
-    # if address.owner_id != owner_id:
-    #     raise HTTPException(
-    #         HTTPStatus.UNAUTHORIZED, "Address does not belong to this user."
-    #     )
+    owner_id = owner_id_from_user_id(user_id)
+    if address.owner_id != owner_id:
+        raise HTTPException(
+            HTTPStatus.UNAUTHORIZED, "Address does not belong to this user."
+        )
 
     if address.is_locked:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is locked.")
@@ -483,6 +482,9 @@ async def api_lock_address_for_transfer(
     lock_code = AESCipher(key=transfer_secret).encrypt(
         address.extra.transfer_code.encode()
     )
+    address.is_locked = True
+    await update_address(address)
+
     return LockResponse(lock_code=lock_code)
 
 
@@ -491,7 +493,7 @@ async def api_unlock_address(
     domain_id: str,
     address_id: str,
     data: TransferRequest,
-) -> None:
+) -> SimpleStatus:
     domain = await get_domain_by_id(domain_id)
     if not domain:
         raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
@@ -509,7 +511,10 @@ async def api_unlock_address(
     if not transfer_secret:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain does not allow transfers.")
 
-    transfer_code = AESCipher(key=transfer_secret).decrypt(data.lock_code)
+    try:
+        transfer_code = AESCipher(key=transfer_secret).decrypt(data.lock_code)
+    except Exception as e:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Invalid lock code format.") from e
 
     if address.extra.transfer_code != transfer_code:
         raise HTTPException(HTTPStatus.BAD_REQUEST, "Invalid lock code.")
@@ -517,6 +522,11 @@ async def api_unlock_address(
     address.is_locked = False
     address.extra.transfer_code = str(uuid4())
     await update_address(address)
+
+    return SimpleStatus(
+        success=True,
+        message="Identifier unlocked.",
+    )
 
 
 @nostrnip5_api_router.put("/api/v1/domain/{domain_id}/address/{address_id}/transfer")
@@ -555,6 +565,11 @@ async def api_transfer_address_to_new_user(
     address.is_locked = False
     address.extra.transfer_code = str(uuid4())
     await update_address(address)
+
+    return SimpleStatus(
+        success=True,
+        message="Identifier trnsferred to new owner.",
+    )
 
 
 @nostrnip5_api_router.put("/api/v1/user/domain/{domain_id}/address/{address_id}")
