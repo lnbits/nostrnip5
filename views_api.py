@@ -345,7 +345,7 @@ async def api_transfer_address_to_new_user(domain_id: str, data: TransferRequest
 
     address = await get_address_for_transfer(domain, data)
 
-    address.owner_id = data.new_owner_id
+    address.owner_id = owner_id_from_user_id(data.new_owner_id)
     address.is_locked = False
     address.extra.transfer_code = str(uuid4())
     await update_address(address)
