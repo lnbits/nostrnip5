@@ -269,7 +269,7 @@ async def api_get_transfer_code_for_address(
         ["transfer", address_id, address.extra.transfer_code]
     )
     transfer_code = AESCipher(key=transfer_secret).encrypt(transfer_code_data.encode())
-    return TransferResponse(transfer_code=transfer_code, new_owner_id=owner_id)
+    return TransferResponse(transfer_code=transfer_code)
 
 
 @nostrnip5_api_router.put(
