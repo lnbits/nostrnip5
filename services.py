@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta, timezone
 from random import randint
 from typing import Optional
@@ -7,6 +8,7 @@ from lnbits.core.crud import get_standalone_payment, get_user
 from lnbits.core.models import Payment
 from lnbits.core.services import create_invoice, pay_invoice
 from lnbits.db import Filters, Page
+from lnbits.utils.crypto import AESCipher
 from loguru import logger
 
 from .crud import (
@@ -39,6 +41,8 @@ from .models import (
     CreateAddressData,
     Domain,
     PriceData,
+    TransferData,
+    TransferRequest,
 )
 
 
@@ -288,6 +292,77 @@ async def activate_address(
     await update_address(address)
     logger.info(f"Activated NIP-05 '{address.local_part}' ({address_id}).")
 
+    return address
+
+
+async def get_address_for_lock(domain: Domain, data: TransferData) -> Address:
+    transfer_secret = domain.cost_extra.transfer_secret
+    if not transfer_secret:
+        raise ValueError("Domain does not allow transfers.")
+
+    try:
+        transfer_data = AESCipher(key=transfer_secret).decrypt(data.transfer_code)
+    except Exception as e:
+        raise ValueError("Invalid transfer code format.") from e
+
+    code_type, address_id, transfer_code = json.loads(transfer_data)
+    if code_type != "transfer":
+        raise ValueError("Invalid transfer code type.")
+
+    address = await get_address(domain.id, address_id)
+
+    if not address:
+        raise ValueError("Address not found.")
+
+    if address.domain_id != domain.id:
+        raise ValueError("Address does not belong to this domain.")
+
+    if address.is_locked:
+        raise ValueError("Address is already locked.")
+
+    if not address.active:
+        raise ValueError("Address is not active")
+
+    if not address.extra.transfer_code:
+        raise ValueError("Address has no transfer code.")
+
+    if address.extra.transfer_code != transfer_code:
+        raise ValueError("Invalid transfer code.")
+    return address
+
+
+async def get_address_for_transfer(domain: Domain, data: TransferRequest) -> Address:
+    transfer_secret = domain.cost_extra.transfer_secret
+    if not transfer_secret:
+        raise ValueError("Domain does not allow transfers.")
+
+    try:
+        transfer_data = AESCipher(key=transfer_secret).decrypt(data.lock_code)
+    except Exception as e:
+        raise ValueError("Invalid lock code format.") from e
+
+    code_type, address_id, transfer_code = json.loads(transfer_data)
+    if code_type != "lock":
+        raise ValueError("Invalid transfer code type.")
+
+    address = await get_address(domain.id, address_id)
+    if not address:
+        raise ValueError("Address not found.")
+
+    if address.domain_id != domain.id:
+        raise ValueError("Address does not belong to this domain.")
+
+    if not address.active:
+        raise ValueError("Address is not active")
+
+    if not address.is_locked:
+        raise ValueError("Address is not locked.")
+
+    if not address.extra.transfer_code:
+        raise ValueError("Address has no transfer code.")
+
+    if address.extra.transfer_code != transfer_code:
+        raise ValueError("Invalid transfer code.")
     return address
 
 
