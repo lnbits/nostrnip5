@@ -369,7 +369,6 @@ class UserSetting(BaseModel):
 
 class TransferResponse(BaseModel):
     transfer_code: str
-    new_owner_id: str
 
 
 class TransferRequest(BaseModel):
@@ -379,7 +378,6 @@ class TransferRequest(BaseModel):
 
 class LockResponse(BaseModel):
     """Code used to transfer an address."""
-
     lock_code: str
 
 
