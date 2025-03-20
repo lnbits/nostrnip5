@@ -367,16 +367,21 @@ class UserSetting(BaseModel):
     settings: Nip5Settings
 
 
-class TransferData(BaseModel):
+class TransferResponse(BaseModel):
     transfer_code: str
+    new_owner_id: str
 
 
 class TransferRequest(BaseModel):
     lock_code: str
-    new_owner_id: Optional[str] = None
+    new_owner_id: str
 
 
 class LockResponse(BaseModel):
     """Code used to transfer an address."""
 
     lock_code: str
+
+
+class LockRequest(BaseModel):
+    transfer_code: str

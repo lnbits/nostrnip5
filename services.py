@@ -40,8 +40,8 @@ from .models import (
     AddressStatus,
     CreateAddressData,
     Domain,
+    LockRequest,
     PriceData,
-    TransferData,
     TransferRequest,
 )
 
@@ -295,7 +295,7 @@ async def activate_address(
     return address
 
 
-async def get_address_for_lock(domain: Domain, data: TransferData) -> Address:
+async def get_address_for_lock(domain: Domain, data: LockRequest) -> Address:
     transfer_secret = domain.cost_extra.transfer_secret
     if not transfer_secret:
         raise ValueError("Domain does not allow transfers.")
