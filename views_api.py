@@ -1,3 +1,4 @@
+import json
 from http import HTTPStatus
 from typing import Optional
 from uuid import uuid4
@@ -53,11 +54,12 @@ from .models import (
     EditDomainData,
     IdentifierRanking,
     LnAddressConfig,
+    LockRequest,
     LockResponse,
     Nip5Settings,
     RotateAddressData,
-    TransferData,
     TransferRequest,
+    TransferResponse,
     UpdateAddressData,
     UserSetting,
 )
@@ -65,6 +67,8 @@ from .services import (
     activate_address,
     check_address_payment,
     create_address,
+    get_address_for_lock,
+    get_address_for_transfer,
     get_identifier_status,
     get_next_free_identifier,
     get_reimburse_wallet_id,
@@ -220,6 +224,136 @@ async def api_get_addresses_paginated(
         key_info.wallet.user, key_info.wallet.id, all_wallets, filters
     )
     return page
+
+
+@nostrnip5_api_router.get(
+    "/api/v1/domain/{domain_id}/address/{address_id}/transfer",
+    name="Get Transfer Code",
+    summary="get transfer code for a particular identifier"
+    " owned by the authenticated user",
+    response_description="transfer code and new owner id",
+    response_model=TransferResponse,
+)
+async def api_get_transfer_code_for_address(
+    domain_id: str, address_id: str, user_id: str = Depends(check_user_id)
+) -> TransferResponse:
+    address = await get_address(domain_id, address_id)
+    if not address:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
+
+    domain = await get_domain_by_id(domain_id)
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
+
+    owner_id = owner_id_from_user_id(user_id)
+    if address.owner_id != owner_id:
+        raise HTTPException(
+            HTTPStatus.UNAUTHORIZED, "Address does not belong to this user."
+        )
+
+    if address.is_locked:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is locked.")
+
+    if not address.active:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is not active")
+
+    if not address.extra.transfer_code:
+        address.extra.transfer_code = str(uuid4())
+        await update_address(address)
+
+    transfer_secret = domain.cost_extra.transfer_secret
+    if not transfer_secret:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain does not allow transfers.")
+
+    transfer_code_data = json.dumps(
+        ["transfer", address_id, address.extra.transfer_code]
+    )
+    transfer_code = AESCipher(key=transfer_secret).encrypt(transfer_code_data.encode())
+    return TransferResponse(transfer_code=transfer_code)
+
+
+@nostrnip5_api_router.put(
+    "/api/v1/domain/{domain_id}/address/lock",
+    name="Lock identifier",
+    summary="lock an identifier for transfer. "
+    "The identifier can only be unlocked with the returned lock code.",
+    response_description="lock code",
+    response_model=LockResponse,
+)
+async def api_lock_address_for_transfer(
+    domain_id: str, data: LockRequest
+) -> LockResponse:
+
+    domain = await get_domain_by_id(domain_id)
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
+
+    address = await get_address_for_lock(domain, data)
+
+    transfer_code_data = json.dumps(["lock", address.id, address.extra.transfer_code])
+    lock_code = AESCipher(key=domain.cost_extra.transfer_secret).encrypt(
+        transfer_code_data.encode()
+    )
+    address.is_locked = True
+    await update_address(address)
+
+    return LockResponse(lock_code=lock_code)
+
+
+@nostrnip5_api_router.put(
+    "/api/v1/domain/{domain_id}/address/unlock",
+    name="Unlock identifier",
+    summary="unlock an identifier. "
+    "The identifier can only be unlocked by someone who has a valid lock code.",
+    response_description="unlock status",
+    response_model=SimpleStatus,
+)
+async def api_unlock_address(
+    domain_id: str,
+    data: TransferRequest,
+) -> SimpleStatus:
+    domain = await get_domain_by_id(domain_id)
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
+
+    address = await get_address_for_transfer(domain, data)
+
+    address.is_locked = False
+    address.extra.transfer_code = str(uuid4())
+    await update_address(address)
+
+    return SimpleStatus(
+        success=True,
+        message="Identifier unlocked.",
+    )
+
+
+@nostrnip5_api_router.put(
+    "/api/v1/domain/{domain_id}/address/transfer",
+    name="Transfer identifier",
+    summary="transfer identifier to a new owner.",
+    response_description="transfer status",
+    response_model=SimpleStatus,
+)
+async def api_transfer_address_to_new_user(domain_id: str, data: TransferRequest):
+    if not data.new_owner_id:
+        raise HTTPException(HTTPStatus.BAD_REQUEST, "New owner ID is missing.")
+
+    domain = await get_domain_by_id(domain_id)
+    if not domain:
+        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
+
+    address = await get_address_for_transfer(domain, data)
+
+    address.owner_id = owner_id_from_user_id(data.new_owner_id)
+    address.is_locked = False
+    address.extra.transfer_code = str(uuid4())
+    await update_address(address)
+
+    return SimpleStatus(
+        success=True,
+        message="Identifier trnsferred to new owner.",
+    )
 
 
 @nostrnip5_api_router.delete("/api/v1/domain/{domain_id}/address/{address_id}")
@@ -428,160 +562,6 @@ async def api_rotate_user_address(
     await update_address(address)
     cache.pop(f"{domain_id}/{address.local_part}")
     return True
-
-
-@nostrnip5_api_router.get("/api/v1/domain/{domain_id}/address/{address_id}/transfer")
-async def api_get_transfer_code_for_address(
-    domain_id: str, address_id: str, user_id: str = Depends(check_user_id)
-) -> TransferData:
-    address = await get_address(domain_id, address_id)
-    if not address:
-        raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
-
-    owner_id = owner_id_from_user_id(user_id)
-    if address.owner_id != owner_id:
-        raise HTTPException(
-            HTTPStatus.UNAUTHORIZED, "Address does not belong to this user."
-        )
-
-    if address.is_locked:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is locked.")
-
-    if not address.active:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is not active")
-
-    if not address.extra.transfer_code:
-        address.extra.transfer_code = str(uuid4())
-        await update_address(address)
-
-    return TransferData(transfer_code=address.extra.transfer_code)
-
-
-@nostrnip5_api_router.put("/api/v1/domain/{domain_id}/address/{address_id}/lock")
-async def api_lock_address_for_transfer(
-    domain_id: str, address_id: str, data: TransferData
-) -> LockResponse:
-
-    domain = await get_domain_by_id(domain_id)
-    if not domain:
-        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
-    address = await get_address(domain_id, address_id)
-    if not address:
-        raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
-
-    if address.is_locked:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is already locked.")
-
-    if not address.active:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is not active")
-
-    if not address.extra.transfer_code:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address has no transfer code.")
-
-    if address.extra.transfer_code != data.transfer_code:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Invalid transfer code.")
-
-    transfer_secret = domain.cost_extra.transfer_secret
-    if not transfer_secret:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain does not allow transfers.")
-
-    lock_code = AESCipher(key=transfer_secret).encrypt(
-        address.extra.transfer_code.encode()
-    )
-    address.is_locked = True
-    await update_address(address)
-
-    return LockResponse(lock_code=lock_code)
-
-
-@nostrnip5_api_router.put("/api/v1/domain/{domain_id}/address/{address_id}/unlock")
-async def api_unlock_address(
-    domain_id: str,
-    address_id: str,
-    data: TransferRequest,
-) -> SimpleStatus:
-    domain = await get_domain_by_id(domain_id)
-    if not domain:
-        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
-    address = await get_address(domain_id, address_id)
-    if not address:
-        raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
-
-    if not address.active:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is not active")
-
-    if not address.is_locked:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is not locked.")
-
-    if not address.extra.transfer_code:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address has no transfer code.")
-
-    transfer_secret = domain.cost_extra.transfer_secret
-    if not transfer_secret:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain does not allow transfers.")
-
-    try:
-        transfer_code = AESCipher(key=transfer_secret).decrypt(data.lock_code)
-    except Exception as e:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Invalid lock code format.") from e
-
-    if address.extra.transfer_code != transfer_code:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Invalid lock code.")
-
-    address.is_locked = False
-    address.extra.transfer_code = str(uuid4())
-    await update_address(address)
-
-    return SimpleStatus(
-        success=True,
-        message="Identifier unlocked.",
-    )
-
-
-@nostrnip5_api_router.put("/api/v1/domain/{domain_id}/address/{address_id}/transfer")
-async def api_transfer_address_to_new_user(
-    domain_id: str,
-    address_id: str,
-    data: TransferRequest,
-):
-    domain = await get_domain_by_id(domain_id)
-    if not domain:
-        raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
-
-    address = await get_address(domain_id, address_id)
-    if not address:
-        raise HTTPException(HTTPStatus.NOT_FOUND, "Address not found.")
-
-    if not data.new_owner_id:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "New owner ID is missing.")
-
-    if not address.active:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is not active")
-
-    if not address.is_locked:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address is not locked.")
-
-    if not address.extra.transfer_code:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Address has no transfer code.")
-
-    transfer_secret = domain.cost_extra.transfer_secret
-    if not transfer_secret:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Domain does not allow transfers.")
-
-    transfer_code = AESCipher(key=transfer_secret).decrypt(data.lock_code)
-
-    if address.extra.transfer_code != transfer_code:
-        raise HTTPException(HTTPStatus.BAD_REQUEST, "Invalid lock code.")
-
-    address.owner_id = data.new_owner_id
-    address.is_locked = False
-    address.extra.transfer_code = str(uuid4())
-    await update_address(address)
-
-    return SimpleStatus(
-        success=True,
-        message="Identifier trnsferred to new owner.",
-    )
 
 
 @nostrnip5_api_router.put("/api/v1/user/domain/{domain_id}/address/{address_id}")
