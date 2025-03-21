@@ -378,6 +378,7 @@ class TransferRequest(BaseModel):
 
 class LockResponse(BaseModel):
     """Code used to transfer an address."""
+
     lock_code: str
 
 
