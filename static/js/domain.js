@@ -9,6 +9,7 @@ window.app = Vue.createApp({
       ],
       currencyOptions: [],
       domainForm: {
+        unlockTransferSecret: false,
         show: false,
         data: domain
       },
