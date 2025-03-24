@@ -83,10 +83,19 @@ context %} {% block page %}
           dense
           v-model="domainForm.data.cost_extra.transfer_secret"
           type="password"
+          :disable="!domainForm.unlockTransferSecret"
           label="Transfer Secret"
           hint="Transfer secret used to encrypt the transfer code."
           placeholder="Transfer secret"
-        ></q-input>
+        >
+          <template v-slot:after>
+            <q-icon
+              :name="domainForm.unlockTransferSecret? 'lock': 'lock_open'"
+              class="cursor-pointer"
+              @click="domainForm.unlockTransferSecret = !domainForm.unlockTransferSecret"
+            />
+          </template>
+        </q-input>
       </div>
     </q-card>
     <q-card class="q-pa-lg q-mt-md">
