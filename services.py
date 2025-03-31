@@ -42,7 +42,6 @@ from .models import (
     Domain,
     LockRequest,
     PriceData,
-    TransferRequest,
 )
 
 
@@ -331,13 +330,13 @@ async def get_address_for_lock(domain: Domain, data: LockRequest) -> Address:
     return address
 
 
-async def get_address_for_transfer(domain: Domain, data: TransferRequest) -> Address:
+async def get_address_for_transfer(domain: Domain, lock_code: str) -> Address:
     transfer_secret = domain.cost_extra.transfer_secret
     if not transfer_secret:
         raise ValueError("Domain does not allow transfers.")
 
     try:
-        transfer_data = AESCipher(key=transfer_secret).decrypt(data.lock_code)
+        transfer_data = AESCipher(key=transfer_secret).decrypt(lock_code)
     except Exception as e:
         raise ValueError("Invalid lock code format.") from e
 

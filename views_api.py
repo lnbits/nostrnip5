@@ -60,6 +60,7 @@ from .models import (
     RotateAddressData,
     TransferRequest,
     TransferResponse,
+    UnlockRequest,
     UpdateAddressData,
     UserSetting,
 )
@@ -310,13 +311,13 @@ async def api_lock_address_for_transfer(
 )
 async def api_unlock_address(
     domain_id: str,
-    data: TransferRequest,
+    data: UnlockRequest,
 ) -> SimpleStatus:
     domain = await get_domain_by_id(domain_id)
     if not domain:
         raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
 
-    address = await get_address_for_transfer(domain, data)
+    address = await get_address_for_transfer(domain, data.lock_code)
 
     address.is_locked = False
     address.extra.transfer_code = str(uuid4())
@@ -343,7 +344,7 @@ async def api_transfer_address_to_new_user(domain_id: str, data: TransferRequest
     if not domain:
         raise HTTPException(HTTPStatus.NOT_FOUND, "Domain not found.")
 
-    address = await get_address_for_transfer(domain, data)
+    address = await get_address_for_transfer(domain, data.lock_code)
 
     address.owner_id = owner_id_from_user_id(data.new_owner_id)
     address.is_locked = False
