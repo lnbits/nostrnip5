@@ -384,3 +384,7 @@ class LockResponse(BaseModel):
 
 class LockRequest(BaseModel):
     transfer_code: str
+
+
+class UnlockRequest(BaseModel):
+    lock_code: str
