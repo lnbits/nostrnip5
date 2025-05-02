@@ -1,9 +1,5 @@
 const mapDomain = function (obj) {
-  obj.time = Quasar.date.formatDate(
-    new Date(obj.time * 1000),
-    'YYYY-MM-DD HH:mm'
-  )
-
+  obj.time = Quasar.date.formatDate(new Date(obj.time), 'YYYY-MM-DD HH:mm')
   return obj
 }
 
@@ -98,7 +94,11 @@ window.app = Vue.createApp({
       domainTab: null,
       addressFormDialog: {
         show: false,
-        data: {}
+        data: {
+          extra: {
+            relays: []
+          }
+        }
       },
       rankingFormDialog: {
         show: false,
@@ -132,7 +132,7 @@ window.app = Vue.createApp({
       this.addressFormDialog.show = false
       this.addressFormDialog.data = {
         relay: '',
-        config: {
+        extra: {
           relays: []
         },
         pubkey: '',
