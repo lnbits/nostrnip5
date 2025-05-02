@@ -32,6 +32,14 @@ context %} {% block page %}
   {% raw %}
   <div class="col-md-6 col-sm-12">
     <q-card class="q-pa-lg">
+      <q-input
+        :readonly="!!domainForm.data.id"
+        filled
+        dense
+        v-model.trim="domainForm.data.domain"
+        label="Domain"
+        placeholder="nostr.com"
+      ></q-input>
       <div class="q-gutter-md">
         <q-select
           v-if="!domainForm.data.id"
@@ -50,14 +58,7 @@ context %} {% block page %}
           :options="currencyOptions"
           label="Currency *"
         ></q-select>
-        <q-input
-          v-if="!domainForm.data.id"
-          filled
-          dense
-          v-model.trim="domainForm.data.domain"
-          label="Domain"
-          placeholder="nostr.com"
-        ></q-input>
+
         <q-input
           filled
           dense
