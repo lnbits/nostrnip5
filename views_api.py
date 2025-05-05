@@ -590,15 +590,9 @@ async def api_update_user_address(
             HTTPStatus.UNAUTHORIZED, "Address does not belong to this user."
         )
 
+    address.pubkey = data.pubkey
     if data.relays:
         address.extra.relays = data.relays
-
-    for k, v in data.dict().items():
-        try:
-            setattr(address, k, v)
-        except AttributeError:
-            logger.debug(f"Attribute {k} not found in address model.")
-            continue
 
     await update_address(address)
     cache.pop(f"{domain_id}/{address.local_part}")
