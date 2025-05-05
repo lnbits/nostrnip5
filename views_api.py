@@ -594,7 +594,11 @@ async def api_update_user_address(
         address.extra.relays = data.relays
 
     for k, v in data.dict().items():
-        setattr(address, k, v)
+        try:
+            setattr(address, k, v)
+        except AttributeError:
+            logger.debug(f"Attribute {k} not found in address model.")
+            continue
 
     await update_address(address)
     cache.pop(f"{domain_id}/{address.local_part}")
