@@ -1,6 +1,10 @@
 {
+  "id": "nostrnip5",
+  "version": "1.0.4",
   "name": "Nostr NIP-5",
+  "repo": "https://github.com/lnbits/nostrnip5",
   "short_description": "Verify addresses for Nostr NIP-5",
+  "description": "",
   "tile": "/nostrnip5/static/image/nostrnip5.png",
   "min_lnbits_version": "1.0.0",
   "contributors": [
@@ -15,7 +19,7 @@
       "role": "Contributor"
     },
     {
-      "name": "Vlad STAN",
+      "name": "Vlad Stan",
       "uri": "https://github.com/motorina0",
       "role": "Contributor"
     }
@@ -30,5 +34,9 @@
   ],
   "description_md": "https://raw.githubusercontent.com/lnbits/nostrnip5/main/description.md",
   "terms_and_conditions_md": "https://raw.githubusercontent.com/lnbits/nostrnip5/main/toc.md",
-  "license": "MIT"
+  "license": "MIT",
+  "paid_features": "",
+  "tags": ["Nostr"],
+  "donate": "",
+  "hidden": false
 }
