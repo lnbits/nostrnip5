@@ -20,14 +20,14 @@ with context %} {% block page %}
 
     <!-- Page header -->
     <q-card class="q-pa-md">
-      <div class="row items-center no-wrap">
-        <div class="col">
+      <div class="row items-center q-col-gutter-sm">
+        <div class="col-12 col-sm">
           <div class="text-h6" v-text="domainForm.data.domain"></div>
           <div class="text-caption text-grey-7">
             Configure pricing, limits, and promotions for this domain.
           </div>
         </div>
-        <div class="col-auto">
+        <div class="col-12 col-sm-auto">
           <q-btn
             flat
             color="grey-7"
@@ -586,7 +586,7 @@ with context %} {% block page %}
   <!-- Sidebar: live preview -->
   <div class="col-12 col-lg-4">
     {% raw %}
-    <q-card class="q-pa-md" style="position: sticky; top: 80px">
+    <q-card class="q-pa-md nip5-sticky-sidebar">
       <div class="text-subtitle1 q-mb-xs">Live price preview</div>
       <div class="text-caption text-grey-7 q-mb-md">
         Type any name to see what a buyer would pay. Updates as you edit

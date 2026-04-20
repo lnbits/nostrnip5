@@ -95,6 +95,21 @@ body.body--dark .nip5-formula__step {
   opacity: 0.6;
   padding: 0 2px;
 }
+/* On narrow screens stack the formula vertically with the operator
+   centered between rows — avoids ugly wrapping of horizontal steps. */
+@media (max-width: 480px) {
+  .nip5-formula {
+    flex-direction: column;
+  }
+  .nip5-formula__step {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+  .nip5-formula__op {
+    align-self: center;
+    padding: 2px 0;
+  }
+}
 
 /* Empty state block — centered icon + copy + CTA inside strategy cards. */
 .nip5-empty-state {
@@ -117,19 +132,28 @@ body.body--dark .nip5-promo-item {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
-/* Nostr brand avatar — wraps the ostrich icon with a soft primary tint
-   ring so the logo sits cleanly on light and dark backgrounds. */
-.nip5-brand-avatar {
-  background: rgba(var(--q-primary-rgb, 105, 27, 154), 0.08);
-  padding: 6px;
-  box-shadow: 0 0 0 1px rgba(var(--q-primary-rgb, 105, 27, 154), 0.18);
+/* Sticky sidebar (domain page live-preview) — sticky only when side-by-
+   side with the main column on large screens. On stacked mobile layouts
+   the sidebar renders in natural flow. */
+.nip5-sticky-sidebar {
+  position: static;
 }
-body.body--dark .nip5-brand-avatar {
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+@media (min-width: 1024px) {
+  .nip5-sticky-sidebar {
+    position: sticky;
+    top: 80px;
+  }
 }
-.nip5-brand-avatar img {
+
+/* Nostr brand logo — sits natively on the card, no frame. Sized to match
+   the hero typography; object-fit keeps proportions if source is not
+   perfectly square. */
+.nip5-brand-logo {
+  width: 56px;
+  height: 56px;
   object-fit: contain;
+  flex: 0 0 auto;
+  display: block;
 }
 
 /* Hero card accent — a thin primary underline so the signup landing card
