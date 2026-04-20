@@ -16,18 +16,18 @@ window.app = Vue.createApp({
       ],
       currencyOptions: [],
       showOnlyActiveAddresses: true,
+      domainFilter: null,
       domainsTable: {
         columns: [
-          {name: 'id', align: 'left', label: 'ID', field: 'id'},
           {name: 'domain', align: 'left', label: 'Domain', field: 'domain'},
+          {name: 'price', align: 'left', label: 'Price', field: 'cost'},
           {
             name: 'currency',
             align: 'left',
             label: 'Currency',
             field: 'currency'
           },
-          {name: 'cost', align: 'left', label: 'Amount', field: 'cost'},
-          {name: 'time', align: 'left', label: 'Created At', field: 'time'}
+          {name: 'time', align: 'left', label: 'Created', field: 'time'}
         ],
         pagination: {
           rowsPerPage: 10
@@ -35,47 +35,38 @@ window.app = Vue.createApp({
       },
       addressesTable: {
         columns: [
-          {name: 'id', align: 'left', label: 'ID', field: 'id'},
           {
-            name: 'is_locked',
+            name: 'handle',
             align: 'left',
-            label: 'Locked',
-            field: 'is_locked',
-            sortable: true
-          },
-          {
-            name: 'active',
-            align: 'left',
-            label: 'Active',
-            field: 'active',
-            sortable: true
-          },
-
-          {
-            name: 'local_part',
-            align: 'left',
-            label: 'Address',
+            label: 'Identity',
             field: 'local_part',
             sortable: true
           },
           {
             name: 'pubkey',
             align: 'left',
-            label: 'Pubkey',
+            label: 'Public key',
             field: 'pubkey',
             sortable: true
           },
           {
-            name: 'reimburse_amount',
+            name: 'status',
             align: 'left',
-            label: 'Reimburse',
+            label: 'Status',
+            field: 'active',
+            sortable: true
+          },
+          {
+            name: 'refund',
+            align: 'left',
+            label: 'Refund owed',
             field: 'reimburse_amount',
             sortable: true
           },
           {
             name: 'time',
             align: 'left',
-            label: 'Created At',
+            label: 'Created',
             field: 'time',
             sortable: true
           }
@@ -195,6 +186,9 @@ window.app = Vue.createApp({
       }
       if (this.showOnlyActiveAddresses) {
         query.active = true
+      }
+      if (this.domainFilter) {
+        query.domain_id = this.domainFilter
       }
       const params = new URLSearchParams(query)
 
@@ -540,6 +534,46 @@ window.app = Vue.createApp({
     },
     exportAddressesCSV: function () {
       LNbits.utils.exportCSV(this.addressesTable.columns, this.addresses)
+    },
+    truncate: function (value, head = 10, tail = 6) {
+      if (!value) return ''
+      if (value.length <= head + tail + 1) return value
+      return `${value.slice(0, head)}…${value.slice(-tail)}`
+    },
+    formatPrice: function (amount, currency) {
+      if (amount === null || amount === undefined) return ''
+      if (currency === 'sats') {
+        return `${Math.round(amount).toLocaleString()} sats`
+      }
+      return `${Number(amount).toFixed(2)} ${currency || ''}`.trim()
+    },
+    copySignupLink: function (domainId) {
+      const url = `${window.location.origin}/nostrnip5/signup/${domainId}`
+      this.copyText(url, 'Signup link copied')
+    },
+    filterByDomain: function (domainId) {
+      this.domainFilter = domainId
+      this.addressesTable.pagination.page = 1
+      this.getAddresses()
+      this.$q.notify({
+        type: 'info',
+        message: 'Filtered identities by domain',
+        timeout: 1500
+      })
+    },
+    setDomainFilter: function (domainId) {
+      this.domainFilter = domainId
+      this.addressesTable.pagination.page = 1
+      this.getAddresses()
+    },
+    statusChip: function (address) {
+      if (address.is_locked) {
+        return {label: 'Locked', color: 'grey-7'}
+      }
+      if (address.active) {
+        return {label: 'Active', color: 'positive'}
+      }
+      return {label: 'Pending payment', color: 'warning'}
     }
   },
   watch: {
@@ -575,6 +609,13 @@ window.app = Vue.createApp({
           value: el.id
         }
       })
+    },
+    pendingRefundsFormatted: function () {
+      const total = (this.addresses || []).reduce(
+        (sum, a) => sum + (Number(a.reimburse_amount) || 0),
+        0
+      )
+      return `${total.toLocaleString()} sats`
     },
     domainRankingAllOptions: function () {
       const rankings = this.domainRankingBraketOptions.map(r => ({

@@ -1,57 +1,268 @@
-{% extends "public.html" %} {% block toolbar_title %} Rotate Keys For {{
-domain.domain }} {% endblock %} {% from "macros.jinja" import window_vars with
-context %} {% block page %}
+{% extends "public.html" %} {% block toolbar_title %} Rotate key for {{
+address.local_part }}@{{ domain.domain }} {% endblock %} {% from "macros.jinja"
+import window_vars with context %} {% block page %}
 <link rel="stylesheet" href="/nostrnip5/static/css/signup.css" />
-<div>
-  <q-card class="q-pa-lg q-pt-lg">
-    <q-form @submit="updateAddress" class="q-gutter-md">
-      <p>
-        You can use this page to change the public key associated with your
-        NIP-5 identity.
-      </p>
-      <p>
-        Your current NIP-5 identity is {{ address.local_part }}@{{ domain.domain
-        }} with nostr public key {{ address.pubkey }}.
-      </p>
+<div class="row justify-center q-pa-md">
+  <div class="col-12 col-md-8 col-lg-6">
+    {% raw %}
 
-      <p>Input your new pubkey below to update it.</p>
+    <!-- Header -->
+    <q-card class="q-pa-lg">
+      <div class="row items-center no-wrap q-gutter-md">
+        <q-icon name="autorenew" size="32px" color="primary"></q-icon>
+        <div class="col">
+          <div class="text-h6">Rotate your Nostr key</div>
+          <div class="text-caption text-grey-7">
+            Assign a new public key to an identity you already own. Your
+            handle stays the same.
+          </div>
+        </div>
+      </div>
 
+      <q-separator class="q-my-md"></q-separator>
+
+      <div class="text-caption text-grey-8">
+        Use this page when you have generated a new Nostr keypair (for example
+        because your previous keys were lost, leaked, or migrated to a new
+        signer) and want to keep the same handle.
+      </div>
+    </q-card>
+
+    <!-- Success state -->
+    <q-card v-if="done" class="q-pa-lg q-mt-md">
+      <div class="row items-center no-wrap">
+        <q-icon
+          name="check_circle"
+          size="40px"
+          color="positive"
+          class="q-mr-md"
+        ></q-icon>
+        <div class="col">
+          <div class="text-h6">Key rotated</div>
+          <div class="text-caption text-grey-7">
+            Your handle is now linked to the new public key. Clients may take a
+            few minutes to pick up the change.
+          </div>
+        </div>
+      </div>
+    </q-card>
+
+    <!-- Current identity -->
+    <q-card v-if="!done" class="q-pa-md q-mt-md">
+      <q-item>
+        <q-item-section avatar>
+          <q-avatar color="primary" text-color="white" icon="alternate_email">
+          </q-avatar>
+        </q-item-section>
+        <q-item-section>
+          <q-item-label class="text-monospace text-body1" v-text="handle">
+          </q-item-label>
+          <q-item-label caption class="text-monospace">
+            Current key:
+            <span v-text="truncate(currentPubkey, 14, 6)"></span>
+            <q-btn
+              flat
+              dense
+              round
+              size="xs"
+              icon="content_copy"
+              class="q-ml-xs"
+              @click="copyText(currentPubkey, 'Public key copied')"
+            >
+              <q-tooltip>Copy full key</q-tooltip>
+            </q-btn>
+          </q-item-label>
+        </q-item-section>
+      </q-item>
+    </q-card>
+
+    <!-- Form -->
+    <q-card v-if="!done" class="q-pa-lg q-mt-md">
+      <div class="text-subtitle2 q-mb-sm">New public key</div>
       <q-input
         filled
-        dense
-        v-model.trim="formDialog.data.pubkey"
-        label="New Pub Key"
-        placeholder="abc234"
-        :rules="[ val => val.length = 64 || val.indexOf('npub') === 0 ||'Please enter a hex pubkey' ]"
+        v-model.trim="form.pubkey"
+        label="npub or 64-character hex"
+        placeholder="npub1…"
+        :error="pubkeyState === 'invalid'"
+        error-message="Enter a valid npub or 64-character hex key"
+        hide-bottom-space
       >
+        <template v-slot:append>
+          <q-btn
+            flat
+            dense
+            round
+            icon="content_paste"
+            @click="pasteFromClipboard"
+          >
+            <q-tooltip>Paste from clipboard</q-tooltip>
+          </q-btn>
+        </template>
       </q-input>
+      <div class="q-mt-sm" style="min-height: 20px">
+        <q-chip
+          v-if="pubkeyState === 'npub' || pubkeyState === 'hex'"
+          dense
+          color="positive"
+          text-color="white"
+          icon="check"
+        >
+          <span
+            v-text="pubkeyState === 'npub' ? 'Valid npub' : 'Valid hex key'"
+          ></span>
+        </q-chip>
+      </div>
 
-      <q-input
-        filled
-        dense
-        v-model.trim="formDialog.data.secret"
-        label="Rotation Secret"
+      <!-- Secret: auto-detected or manual -->
+      <div class="q-mt-md">
+        <div class="text-subtitle2 q-mb-sm">
+          Rotation secret
+          <q-icon name="info" size="xs">
+            <q-tooltip>
+              A one-time code from your recovery link that proves you own this
+              identity.
+            </q-tooltip>
+          </q-icon>
+        </div>
+        <q-banner
+          v-if="secretFromUrl"
+          rounded
+          dense
+          class="bg-green-1 text-green-10"
+        >
+          <template v-slot:avatar>
+            <q-icon name="check_circle" color="positive"></q-icon>
+          </template>
+          Recovery link detected. You can proceed.
+        </q-banner>
+        <q-input
+          v-else
+          filled
+          v-model.trim="form.secret"
+          label="Rotation secret"
+          placeholder="Paste the secret from your recovery link"
+          hint="The secret is the value after '?secret=' in the recovery URL you saved at signup."
+        ></q-input>
+      </div>
+
+      <!-- Diff preview -->
+      <q-card
+        v-if="pubkeyState === 'npub' || pubkeyState === 'hex'"
+        flat
+        bordered
+        class="bg-grey-1 q-pa-md q-mt-md"
       >
-      </q-input>
+        <div class="text-subtitle2 q-mb-sm">Review change</div>
+        <div class="row items-center no-wrap q-mb-xs">
+          <div class="col-auto text-caption text-grey-7" style="width: 48px">
+            From
+          </div>
+          <div class="col text-monospace text-grey-8">
+            <span v-text="truncate(currentPubkey, 14, 6)"></span>
+          </div>
+        </div>
+        <div class="row items-center no-wrap">
+          <div class="col-auto text-caption text-grey-7" style="width: 48px">
+            To
+          </div>
+          <div class="col text-monospace text-primary text-weight-medium">
+            <span v-text="truncate(form.pubkey, 14, 6)"></span>
+          </div>
+        </div>
+        <div class="text-caption text-grey-7 q-mt-sm">
+          This change is immediate. It cannot be undone without your rotation
+          secret.
+        </div>
+      </q-card>
 
-      <div class="row q-mt-lg">
+      <q-banner
+        v-if="pubkeyState === 'npub' || pubkeyState === 'hex'"
+        rounded
+        dense
+        class="bg-orange-1 text-orange-10 q-mt-md"
+      >
+        <template v-slot:avatar>
+          <q-icon name="warning" color="orange-10"></q-icon>
+        </template>
+        Make sure the new key belongs to a signer you control. Once rotated,
+        your handle can only be reassigned again by using your rotation
+        secret.
+      </q-banner>
+
+      <div class="q-mt-lg row items-center">
+        <q-btn
+          flat
+          color="grey-7"
+          label="Cancel"
+          type="a"
+          href="javascript:history.back()"
+        ></q-btn>
+        <q-space></q-space>
         <q-btn
           unelevated
           color="primary"
-          :disable="formDialog.data.pubkey == null"
-          type="submit"
-          >Rotate Keys</q-btn
-        >
+          icon="autorenew"
+          label="Rotate key"
+          :loading="submitting"
+          :disable="!canSubmit"
+          @click="rotateKey"
+        ></q-btn>
       </div>
-    </q-form>
-  </q-card>
+    </q-card>
+
+    <!-- FAQ -->
+    <q-card v-if="!done" flat bordered class="q-mt-md">
+      <q-expansion-item
+        icon="help_outline"
+        label="What is key rotation?"
+        header-class="text-weight-medium"
+      >
+        <q-card-section class="text-caption text-grey-8">
+          Key rotation swaps the public key tied to your handle. Your handle,
+          activation date, and expiry stay the same. Other Nostr users will
+          start seeing posts from the new key under the same verified name
+          once their clients refresh (usually a few minutes).
+        </q-card-section>
+      </q-expansion-item>
+      <q-separator></q-separator>
+      <q-expansion-item
+        icon="vpn_key"
+        label="Where do I find my rotation secret?"
+        header-class="text-weight-medium"
+      >
+        <q-card-section class="text-caption text-grey-8">
+          The recovery link you saved at signup contains it. Look for the part
+          after <span class="text-monospace">?secret=</span> in the URL. If
+          you opened this page from that link, the secret is already loaded.
+        </q-card-section>
+      </q-expansion-item>
+      <q-separator></q-separator>
+      <q-expansion-item
+        icon="block"
+        label="I lost my recovery link. What now?"
+        header-class="text-weight-medium"
+      >
+        <q-card-section class="text-caption text-grey-8">
+          Without the recovery link there is no way to prove ownership of the
+          handle. Contact the operator of
+          <span class="text-monospace" v-text="domain"></span> directly &mdash;
+          they may be able to help if you can prove prior ownership, but this
+          is at their discretion.
+        </q-card-section>
+      </q-expansion-item>
+    </q-card>
+    {% endraw %}
+  </div>
 </div>
 {% endblock %} {% block scripts %}
 <script>
   const domain = '{{ domain.domain }}'
   const domain_id = '{{ domain_id }}'
   const address_id = '{{ address_id }}'
-  const secret = '{{ secret }}'
+  const localPart = '{{ address.local_part }}'
+  const currentPubkey = '{{ address.pubkey }}'
+  const secret = '{{ secret or "" }}'
 </script>
 <script src="{{ static_url_for('nostrnip5/static', 'js/rotate.js') }}"></script>
 {% endblock %}

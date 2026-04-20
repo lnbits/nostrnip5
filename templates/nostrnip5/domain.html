@@ -1,298 +1,541 @@
-{% extends "public.html" %} {% block toolbar_title %} Edit domain "{{
-domain.domain }}" {% endblock %} {% from "macros.jinja" import window_vars with
-context %} {% block page %}
+{% extends "public.html" %} {% block toolbar_title %} Domain settings &middot;
+{{ domain.domain }} {% endblock %} {% from "macros.jinja" import window_vars
+with context %} {% block page %}
 <link rel="stylesheet" href="/nostrnip5/static/css/signup.css" />
-<div class="row">
-  <div class="col-md-2 col-sm-none">
-    <!-- empty space -->
-  </div>
 
-  <q-card class="col-md-6 col-sm-12 q-pa-md">
-    <div class="row">
-      <q-btn
-        unelevated
-        color="primary"
-        @click="saveDomain"
-        class="float-right"
-        :disable="domainForm.data.wallet == null || domainForm.data.currency == null"
-        >Update Domain</q-btn
+<div class="row q-col-gutter-md q-pa-md">
+  <!-- Main column -->
+  <div class="col-12 col-lg-8">
+    {% raw %}
+
+    <!-- Breadcrumb -->
+    <q-breadcrumbs class="text-grey-7 q-mb-sm" separator="›">
+      <q-breadcrumbs-el
+        icon="dashboard"
+        label="Dashboard"
+        to="/nostrnip5/"
+      ></q-breadcrumbs-el>
+      <q-breadcrumbs-el :label="domainForm.data.domain"></q-breadcrumbs-el>
+    </q-breadcrumbs>
+
+    <!-- Page header -->
+    <q-card class="q-pa-md">
+      <div class="row items-center no-wrap">
+        <div class="col">
+          <div class="text-h6" v-text="domainForm.data.domain"></div>
+          <div class="text-caption text-grey-7">
+            Configure pricing, limits, and promotions for this domain.
+          </div>
+        </div>
+        <div class="col-auto">
+          <q-btn
+            flat
+            color="grey-7"
+            icon="content_copy"
+            label="Copy signup link"
+            @click="copySignupLink"
+          >
+            <q-tooltip>Copy the public signup URL to share with buyers</q-tooltip>
+          </q-btn>
+          <q-btn
+            flat
+            color="grey-7"
+            icon="open_in_new"
+            label="Open signup page"
+            type="a"
+            :href="'/nostrnip5/signup/' + domainForm.data.id"
+            target="_blank"
+          ></q-btn>
+        </div>
+      </div>
+    </q-card>
+
+    <!-- Section: Basics -->
+    <q-card class="q-pa-lg q-mt-md">
+      <div class="text-subtitle1 q-mb-xs">Domain basics</div>
+      <div class="text-caption text-grey-7 q-mb-md">
+        Wallet and currency apply to every sale on this domain. The base price
+        is what a standard name costs per year.
+      </div>
+
+      <div class="row q-col-gutter-md">
+        <div class="col-12 col-md-6">
+          <q-input
+            readonly
+            filled
+            dense
+            v-model.trim="domainForm.data.domain"
+            label="Domain"
+          ></q-input>
+        </div>
+        <div class="col-12 col-md-6">
+          <q-select
+            filled
+            dense
+            emit-value
+            map-options
+            v-model="domainForm.data.currency"
+            :options="currencyOptions"
+            label="Currency"
+          ></q-select>
+        </div>
+        <div class="col-12 col-md-6">
+          <q-input
+            filled
+            dense
+            v-model="domainForm.data.cost"
+            type="number"
+            min="0"
+            step="any"
+            label="Base price per year"
+            hint="What a standard name costs. Premium pricing below adds on top."
+          ></q-input>
+        </div>
+        <div class="col-12 col-md-6">
+          <q-input
+            filled
+            dense
+            v-model="domainForm.data.cost_extra.max_years"
+            type="number"
+            min="1"
+            step="1"
+            label="Maximum years per purchase"
+            hint="Buyers can register for up to this many years at once."
+          ></q-input>
+        </div>
+      </div>
+
+      <q-expansion-item
+        class="q-mt-md"
+        icon="admin_panel_settings"
+        label="Advanced"
+        header-class="text-grey-7"
       >
-    </div>
-  </q-card>
-  <div class="col-md-2 col-sm-none">
-    <!-- empty space -->
-  </div>
-</div>
-
-<div class="row q-mt-md">
-  <div class="col-md-2 col-sm-none">
-    <!-- empty space -->
-  </div>
-
-  {% raw %}
-  <div class="col-md-6 col-sm-12">
-    <q-card class="q-pa-lg">
-      <q-input
-        :readonly="!!domainForm.data.id"
-        filled
-        dense
-        v-model.trim="domainForm.data.domain"
-        label="Domain"
-        placeholder="nostr.com"
-      ></q-input>
-      <div class="q-gutter-md">
-        <q-select
-          v-if="!domainForm.data.id"
-          filled
-          dense
-          emit-value
-          v-model="domainForm.data.wallet"
-          :options="g.user.walletOptions"
-          label="Wallet *"
-        ></q-select>
-        <q-select
-          filled
-          dense
-          emit-value
-          v-model="domainForm.data.currency"
-          :options="currencyOptions"
-          label="Currency *"
-        ></q-select>
-
         <q-input
           filled
           dense
-          v-model="domainForm.data.cost"
-          type="number"
-          min="0"
-          step="any"
-          label="Price per Year"
-          placeholder="How much do you want to charge per address?"
-        ></q-input>
-        <q-input
-          filled
-          dense
-          v-model="domainForm.data.cost_extra.max_years"
-          type="number"
-          min="1"
-          step="1"
-          label="Max Years"
-          hint="Maximum number of years a user can have an address before renewing."
-        ></q-input>
-        <q-input
-          filled
-          dense
+          class="q-mt-sm"
           v-model="domainForm.data.cost_extra.transfer_secret"
           type="password"
           :disable="!domainForm.unlockTransferSecret"
-          label="Transfer Secret"
-          hint="Transfer secret used to encrypt the transfer code."
-          placeholder="Transfer secret"
+          label="Transfer secret"
+          hint="Used to encrypt transfer codes so users can move their identity between LNbits instances. Leave default unless you know what you are doing."
         >
           <template v-slot:after>
-            <q-icon
-              :name="domainForm.unlockTransferSecret? 'lock': 'lock_open'"
-              class="cursor-pointer"
+            <q-btn
+              flat
+              dense
+              round
+              :icon="domainForm.unlockTransferSecret ? 'lock_open' : 'lock'"
               @click="domainForm.unlockTransferSecret = !domainForm.unlockTransferSecret"
-            />
+            >
+              <q-tooltip>
+                <span
+                  v-text="domainForm.unlockTransferSecret ? 'Lock field' : 'Unlock to edit'"
+                ></span>
+              </q-tooltip>
+            </q-btn>
           </template>
         </q-input>
+      </q-expansion-item>
+    </q-card>
+
+    <!-- Section: Pricing strategies -->
+    <q-card class="q-pa-lg q-mt-md">
+      <div class="text-subtitle1 q-mb-xs">Pricing strategies</div>
+      <div class="text-caption text-grey-7 q-mb-md">
+        The base price applies to every identity. On top of that you can
+        charge premium rates for short or popular names, and offer
+        promotions. Combine any of the three strategies below.
+      </div>
+
+      <q-expansion-item
+        dense
+        icon="help_outline"
+        label="How pricing is calculated"
+        header-class="text-grey-8 text-caption"
+        class="q-mb-md bg-grey-1 rounded-borders"
+      >
+        <q-card-section class="text-caption text-grey-8">
+          <ol class="q-my-none q-pl-md">
+            <li>
+              Start with the <strong>base price</strong> from the domain
+              basics above.
+            </li>
+            <li>
+              Check if the name matches any <strong>length bracket</strong>.
+              If so, compare its price against the base &mdash; keep whichever
+              is higher.
+            </li>
+            <li>
+              Check if the name matches any
+              <strong>popularity tier</strong>. Compare its price against the
+              running total &mdash; keep whichever is higher.
+            </li>
+            <li>
+              Multiply by the number of years the buyer selected.
+            </li>
+            <li>
+              Apply any <strong>promo code</strong> discount on top.
+            </li>
+          </ol>
+          <div class="q-mt-sm">
+            In short: the highest-matching rate wins, then discounts apply.
+            Use the live preview on the right to experiment.
+          </div>
+        </q-card-section>
+      </q-expansion-item>
+
+      <div class="row q-col-gutter-md">
+        <!-- Card A: Length-based -->
+        <div class="col-12 col-md-6">
+          <q-card flat bordered class="full-height q-pa-md">
+            <div class="row items-center no-wrap q-mb-sm">
+              <q-icon
+                name="straighten"
+                size="sm"
+                class="q-mr-sm text-primary"
+              ></q-icon>
+              <div class="col">
+                <div class="text-subtitle2">Length-based pricing</div>
+              </div>
+              <q-chip
+                dense
+                :color="hasCharCountRules ? 'primary' : 'grey-4'"
+                :text-color="hasCharCountRules ? 'white' : 'grey-8'"
+              >
+                <span
+                  v-text="hasCharCountRules ? 'Active' : 'Inactive'"
+                ></span>
+              </q-chip>
+            </div>
+            <div class="text-caption text-grey-7 q-mb-md">
+              Charge more for short, memorable names. For example, three-letter
+              handles can cost more than ten-letter ones.
+            </div>
+
+            <div
+              v-for="(item, index) in domainForm.data.cost_extra.char_count_cost"
+              :key="'cc' + index"
+              class="row q-col-gutter-sm q-mb-sm items-end"
+            >
+              <div class="col">
+                <q-input
+                  filled
+                  dense
+                  v-model.number="item.bracket"
+                  type="number"
+                  min="1"
+                  step="1"
+                  label="Up to N chars"
+                ></q-input>
+              </div>
+              <div class="col">
+                <q-input
+                  filled
+                  dense
+                  v-model.number="item.amount"
+                  type="number"
+                  min="0"
+                  step="any"
+                  label="Price / year"
+                ></q-input>
+              </div>
+              <div class="col-auto">
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="delete"
+                  color="grey-7"
+                  @click="removeCharCountCost(index)"
+                >
+                  <q-tooltip>Remove bracket</q-tooltip>
+                </q-btn>
+              </div>
+            </div>
+            <q-btn
+              outline
+              color="primary"
+              icon="add"
+              label="Add length bracket"
+              size="sm"
+              @click="addCharCountCost"
+            ></q-btn>
+          </q-card>
+        </div>
+
+        <!-- Card B: Popularity -->
+        <div class="col-12 col-md-6">
+          <q-card flat bordered class="full-height q-pa-md">
+            <div class="row items-center no-wrap q-mb-sm">
+              <q-icon
+                name="trending_up"
+                size="sm"
+                class="q-mr-sm text-primary"
+              ></q-icon>
+              <div class="col">
+                <div class="text-subtitle2">Popularity pricing</div>
+              </div>
+              <q-chip
+                dense
+                :color="hasRankRules ? 'primary' : 'grey-4'"
+                :text-color="hasRankRules ? 'white' : 'grey-8'"
+              >
+                <span v-text="hasRankRules ? 'Active' : 'Inactive'"></span>
+              </q-chip>
+            </div>
+            <div class="text-caption text-grey-7 q-mb-md">
+              Charge more for names that appear in the Cloudflare top-domains
+              list. Refresh the ranking data from the admin settings.
+              <q-icon name="info" size="xs" class="q-ml-xs">
+                <q-tooltip>
+                  Requires a Cloudflare API token configured in the extension
+                  settings.
+                </q-tooltip>
+              </q-icon>
+            </div>
+
+            <div
+              v-for="(item, index) in domainForm.data.cost_extra.rank_cost"
+              :key="'rc' + index"
+              class="row q-col-gutter-sm q-mb-sm items-end"
+            >
+              <div class="col">
+                <q-select
+                  filled
+                  dense
+                  emit-value
+                  map-options
+                  v-model="item.bracket"
+                  :options="rankBracketOptions"
+                  label="Up to rank"
+                ></q-select>
+              </div>
+              <div class="col">
+                <q-input
+                  filled
+                  dense
+                  v-model.number="item.amount"
+                  type="number"
+                  min="0"
+                  step="any"
+                  label="Price / year"
+                ></q-input>
+              </div>
+              <div class="col-auto">
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="delete"
+                  color="grey-7"
+                  @click="removeRankCost(index)"
+                >
+                  <q-tooltip>Remove tier</q-tooltip>
+                </q-btn>
+              </div>
+            </div>
+            <q-btn
+              outline
+              color="primary"
+              icon="add"
+              label="Add rank tier"
+              size="sm"
+              @click="addRankCost"
+            ></q-btn>
+          </q-card>
+        </div>
+
+        <!-- Card C: Promotions -->
+        <div class="col-12">
+          <q-card flat bordered class="q-pa-md">
+            <div class="row items-center no-wrap q-mb-sm">
+              <q-icon
+                name="local_offer"
+                size="sm"
+                class="q-mr-sm text-primary"
+              ></q-icon>
+              <div class="col">
+                <div class="text-subtitle2">Promo codes</div>
+              </div>
+              <q-chip
+                dense
+                :color="hasPromotions ? 'primary' : 'grey-4'"
+                :text-color="hasPromotions ? 'white' : 'grey-8'"
+              >
+                <span v-text="hasPromotions ? 'Active' : 'Inactive'"></span>
+              </q-chip>
+            </div>
+            <div class="text-caption text-grey-7 q-mb-md">
+              Offer discounts or reward referrers. Buyers apply a code at
+              checkout. Discount and bonus together cannot exceed 100&percnt;.
+            </div>
+
+            <div
+              v-for="(item, index) in domainForm.data.cost_extra.promotions"
+              :key="'promo' + index"
+              class="row q-col-gutter-sm q-mb-sm items-end"
+            >
+              <div class="col-12 col-md-3">
+                <q-input
+                  filled
+                  dense
+                  v-model.trim="item.code"
+                  label="Code"
+                ></q-input>
+              </div>
+              <div class="col-6 col-md-2">
+                <q-input
+                  filled
+                  dense
+                  v-model.number="item.buyer_discount_percent"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="any"
+                  label="Buyer discount %"
+                ></q-input>
+              </div>
+              <div class="col-6 col-md-2">
+                <q-input
+                  filled
+                  dense
+                  v-model.number="item.referer_bonus_percent"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="any"
+                  label="Referrer bonus %"
+                ></q-input>
+              </div>
+              <div class="col-12 col-md-4">
+                <q-input
+                  filled
+                  dense
+                  v-model.trim="item.selected_referer"
+                  label="Only when referred by (optional)"
+                  hint="Lock this promo to a single referrer identifier"
+                ></q-input>
+              </div>
+              <div class="col-auto">
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="delete"
+                  color="grey-7"
+                  @click="removePromotion(index)"
+                >
+                  <q-tooltip>Remove promo code</q-tooltip>
+                </q-btn>
+              </div>
+            </div>
+            <q-btn
+              outline
+              color="primary"
+              icon="add"
+              label="Add promo code"
+              size="sm"
+              @click="addPromotion"
+            ></q-btn>
+          </q-card>
+        </div>
       </div>
     </q-card>
-    <q-card class="q-pa-lg q-mt-md">
-      <q-tabs v-model="domainTab" active-color="primary" align="justify">
-        <q-tab name="charCount" label="Char Count"></q-tab>
-        <q-tab name="ranking" label="Ranking"></q-tab>
-        <q-tab name="promotions" label="Promotions"></q-tab>
-      </q-tabs>
 
-      <q-tab-panels class="bg-transparent" v-model="domainTab">
-        <q-tab-panel name="charCount">
-          <div
-            v-for="(item, index) in domainForm.data.cost_extra.char_count_cost"
-            class="row q-mb-sm q-ml-md"
-          >
-            <div class="col-5">
-              <q-input
-                filled
-                dense
-                v-model.trim="item.bracket"
-                type="number"
-                min="0"
-                step="1"
-                label="Character Count"
-              ></q-input>
-            </div>
-            <div class="col-5">
-              <q-input
-                filled
-                dense
-                v-model.trim="item.amount"
-                label="Amount"
-                type="number"
-                class="q-pl-sm"
-              ></q-input>
-            </div>
-            <div class="col-2">
-              <q-btn
-                @click="removeCharCountCost(index)"
-                icon="clear"
-                size="sm"
-                unelevated
-                color="primary"
-                class="float-right q-mt-sm"
-              ></q-btn>
-            </div>
-          </div>
-          <div class="row q-ml-md q-mb-sm q-mt-sm">
-            <div class="col float-right q-mt-lg">
-              <div>
-                <q-btn
-                  icon="add"
-                  label="Add"
-                  @click="addCharCountCost"
-                  size="sm"
-                  unelevated
-                  color="secondary"
-                  class="float-right"
-                ></q-btn>
-              </div>
-            </div>
-          </div>
-        </q-tab-panel>
-        <q-tab-panel name="ranking">
-          <div
-            v-for="(item, index) in domainForm.data.cost_extra.rank_cost"
-            class="row q-mb-sm q-ml-md"
-          >
-            <div class="col-5">
-              <q-select
-                filled
-                dense
-                emit-value
-                v-model="item.bracket"
-                :options="domainRankingBraketOptions"
-                label="Up to Rank"
-              ></q-select>
-            </div>
-            <div class="col-5">
-              <q-input
-                filled
-                dense
-                v-model.trim="item.amount"
-                label="Amount"
-                type="number"
-                class="q-pl-sm"
-              ></q-input>
-            </div>
-            <div class="col-2">
-              <q-btn
-                @click="removeRankCost(index)"
-                icon="clear"
-                size="sm"
-                unelevated
-                color="primary"
-                class="float-right q-mt-sm"
-              ></q-btn>
-            </div>
-          </div>
-          <div class="row q-ml-md q-mb-sm q-mt-sm">
-            <div class="col float-right q-mt-lg">
-              <div>
-                <q-btn
-                  icon="add"
-                  label="Add"
-                  @click="addRankCost"
-                  size="sm"
-                  unelevated
-                  color="secondary"
-                  class="float-right"
-                ></q-btn>
-              </div>
-            </div>
-          </div>
-        </q-tab-panel>
-        <q-tab-panel name="promotions">
-          <div
-            v-for="(item, index) in domainForm.data.cost_extra.promotions"
-            class="row q-mb-sm q-ml-md"
-          >
-            <div class="col-2">
-              <q-input
-                filled
-                dense
-                v-model.trim="item.code"
-                label="Promo Code"
-                class="q-pl-sm"
-              ></q-input>
-            </div>
-            <div class="col-2">
-              <q-input
-                filled
-                dense
-                v-model.trim="item.buyer_discount_percent"
-                label="Discount for buyer (%)"
-                type="number"
-                class="q-pl-sm"
-              ></q-input>
-            </div>
-            <div class="col-2">
-              <q-input
-                filled
-                dense
-                v-model.trim="item.referer_bonus_percent"
-                label="Bonus for referer (%)"
-                type="number"
-                class="q-pl-sm"
-              ></q-input>
-            </div>
-            <div class="col-4">
-              <q-input
-                filled
-                dense
-                v-model.trim="item.selected_referer"
-                label="Only for this identifier."
-                class="q-pl-sm"
-              >
-              </q-input>
-            </div>
-            <div class="col-2">
-              <q-btn
-                @click="removePromotion(index)"
-                icon="clear"
-                size="sm"
-                unelevated
-                color="primary"
-                class="float-right q-mt-sm"
-              ></q-btn>
-            </div>
-          </div>
-          <div class="row q-ml-md q-mb-sm q-mt-sm">
-            <div class="col float-right q-mt-lg">
-              <div>
-                <q-btn
-                  icon="add"
-                  label="Add"
-                  @click="addPromotion"
-                  size="sm"
-                  unelevated
-                  color="secondary"
-                  class="float-right"
-                ></q-btn>
-              </div>
-            </div>
-          </div>
-        </q-tab-panel>
-      </q-tab-panels>
-    </q-card>
+    {% endraw %}
   </div>
 
-  {% endraw %}
-  <div class="col-md-4 col-sm-none">
-    <!-- empty space -->
+  <!-- Sidebar: live preview -->
+  <div class="col-12 col-lg-4">
+    {% raw %}
+    <q-card class="q-pa-md" style="position: sticky; top: 80px">
+      <div class="text-subtitle1 q-mb-xs">Live price preview</div>
+      <div class="text-caption text-grey-7 q-mb-md">
+        Type any name to see what a buyer would pay. Updates as you edit
+        pricing.
+      </div>
+
+      <q-input
+        filled
+        dense
+        v-model.trim="previewName"
+        label="Test identifier"
+        placeholder="yourname"
+      >
+        <template v-slot:append>
+          <span class="text-grey-7 text-caption"
+            >@<span v-text="domainForm.data.domain"></span
+          ></span>
+        </template>
+      </q-input>
+
+      <q-input
+        filled
+        dense
+        class="q-mt-sm"
+        v-model.number="previewRank"
+        type="number"
+        min="0"
+        step="1"
+        label="Simulated rank (optional)"
+        hint="Leave 0 to assume the name is unranked."
+      ></q-input>
+
+      <q-list bordered class="q-mt-md">
+        <q-item>
+          <q-item-section>Base price</q-item-section>
+          <q-item-section side>
+            <span v-text="formatPrice(domainForm.data.cost)"></span>
+          </q-item-section>
+        </q-item>
+        <q-separator></q-separator>
+        <q-item v-if="preview.lengthBonus > 0">
+          <q-item-section>
+            Length bonus
+            <q-item-label caption v-text="preview.lengthReason"></q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <span v-text="'+ ' + formatPrice(preview.lengthBonus)"></span>
+          </q-item-section>
+        </q-item>
+        <q-item v-if="preview.rankBonus > 0">
+          <q-item-section>
+            Popularity bonus
+            <q-item-label caption v-text="preview.rankReason"></q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <span v-text="'+ ' + formatPrice(preview.rankBonus)"></span>
+          </q-item-section>
+        </q-item>
+        <q-separator></q-separator>
+        <q-item class="bg-grey-1">
+          <q-item-section class="text-weight-bold">Total / year</q-item-section>
+          <q-item-section side class="text-weight-bold">
+            <span v-text="formatPrice(preview.pricePerYear)"></span>
+          </q-item-section>
+        </q-item>
+      </q-list>
+    </q-card>
+    {% endraw %}
   </div>
 </div>
-{% endblock %} {% block scripts %} {{ window_vars(user) }}
+
+<!-- Sticky save bar -->
+{% raw %}
+<q-page-sticky position="bottom-right" :offset="[24, 24]">
+  <q-btn
+    fab-mini
+    color="primary"
+    icon="save"
+    @click="saveDomain"
+    :disable="domainForm.data.wallet == null || domainForm.data.currency == null"
+  >
+    <q-tooltip>Save changes</q-tooltip>
+  </q-btn>
+</q-page-sticky>
+{% endraw %} {% endblock %} {% block scripts %} {{ window_vars(user) }}
 <script>
   const domain = JSON.parse({{domain | tojson | safe}})
 </script>

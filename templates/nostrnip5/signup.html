@@ -1,175 +1,680 @@
-{% extends "public.html" %} {% block toolbar_title %} Verify NIP-5 For
-{{domain.domain }} {% endblock %} {% from "macros.jinja" import window_vars with
-context %} {% block page %}
+{% extends "public.html" %} {% block toolbar_title %} Claim your Nostr identity
+on {{ domain.domain }} {% endblock %} {% from "macros.jinja" import window_vars
+with context %} {% block page %}
 <link rel="stylesheet" href="/nostrnip5/static/css/signup.css" />
-<div>
-  <q-card class="q-pa-lg q-pt-lg" v-if="success == true">
+<div class="row justify-center q-pa-md">
+  <div class="col-12 col-md-8 col-lg-6">
     {% raw %}
-    <p>
-      Success! Your username is now active at {{ successData.local_part }}@{{
-      domain }}. Please add this to your nostr profile accordingly. If you ever
-      need to rotate your keys, you can still keep your identity!
-    </p>
 
-    <h3>Important!</h3>
-    <p>
-      Bookmark this link:
-      <a
-        class="text-secondary"
-        v-bind:href="`/nostrnip5/rotate/${domain_id}/${successData.address_id}?secret=${successData.rotation_secret}`"
-        target="_blank"
+    <!-- Hero card -->
+    <q-card class="q-pa-lg">
+      <div class="row items-center no-wrap q-gutter-md">
+        <q-avatar
+          size="48px"
+          color="primary"
+          text-color="white"
+          class="text-weight-bold"
+          v-text="domainInitial"
+        ></q-avatar>
+        <div class="col">
+          <div class="text-h6 q-mb-xs">
+            Claim your Nostr identity on
+            <span class="text-primary" v-text="domain"></span>
+          </div>
+          <div class="text-caption text-grey-7">
+            Get a verified handle like
+            <span class="text-monospace" v-text="previewHandle"></span>
+            that works across every Nostr client.
+          </div>
+        </div>
+      </div>
+
+      <q-separator class="q-my-md"></q-separator>
+
+      <div class="row q-col-gutter-sm text-caption">
+        <div class="col-12 col-sm-4">
+          <q-icon name="paid" size="xs" class="q-mr-xs text-grey-7"></q-icon>
+          <span>
+            From
+            <strong
+              ><span v-text="baseCost"></span>
+              <span v-text="currency"></span></strong
+            >
+            / year
+          </span>
+        </div>
+        <div class="col-12 col-sm-4">
+          <q-icon name="schedule" size="xs" class="q-mr-xs text-grey-7"></q-icon>
+          <span
+            >Up to <strong v-text="maxYears"></strong>
+            <span v-text="maxYears == 1 ? 'year' : 'years'"></span>
+          </span>
+        </div>
+        <div class="col-12 col-sm-4">
+          <q-icon name="key" size="xs" class="q-mr-xs text-grey-7"></q-icon>
+          <span>Keys can be rotated anytime</span>
+        </div>
+      </div>
+    </q-card>
+
+    <!-- Success state -->
+    <q-card v-if="success" class="q-pa-lg q-mt-md">
+      <div class="row items-center no-wrap q-mb-md">
+        <q-icon
+          name="check_circle"
+          size="40px"
+          color="positive"
+          class="q-mr-md"
+        ></q-icon>
+        <div class="col">
+          <div class="text-h6">Your identity is live</div>
+          <div class="text-caption text-grey-7">
+            Use the handle below in any Nostr client that supports NIP-05.
+          </div>
+        </div>
+      </div>
+
+      <q-input
+        filled
+        dense
+        readonly
+        :model-value="successHandle"
+        class="q-mb-md text-monospace"
       >
-        <span
-          v-text="`${base_url}/nostrnip5/rotate/${domain_id}/${successData.address_id}?secret=${successData.rotation_secret}`"
-        ></span>
-      </a>
-    </p>
-    <p>
-      In case you ever need to change your pubkey, you can still keep this NIP-5
-      identity. Just come back to the above linked page to change the pubkey
-      associated to your identity.
-    </p>
-    {% endraw %}
-  </q-card>
-  <q-card class="q-pa-lg q-pt-lg" v-if="success == false">
-    <q-form @submit="checkIdentifier" class="q-gutter-md">
-      <p>
-        You can use this page to get NIP-5 verified on the nostr protocol under
-        the <strong> {{ domain.domain }}</strong> domain.
-      </p>
-      <p>
-        The price starts from
-        <b>{{ domain.cost }} {{ domain.currency }}</b>
-        for an account (if you do not own the domain, the service provider can
-        disable at any time).
-      </p>
+        <template v-slot:append>
+          <q-btn
+            flat
+            dense
+            round
+            icon="content_copy"
+            @click="copyText(successHandle, 'Handle copied')"
+          >
+            <q-tooltip>Copy handle</q-tooltip>
+          </q-btn>
+        </template>
+      </q-input>
 
-      <p>After submitting payment, your address will be</p>
+      <q-banner
+        rounded
+        class="bg-orange-1 text-orange-10 q-mb-md"
+        dense
+      >
+        <template v-slot:avatar>
+          <q-icon name="bookmark" color="orange-10"></q-icon>
+        </template>
+        <div class="text-subtitle2 q-mb-xs">Save your recovery link</div>
+        <div class="text-caption">
+          Without this link you cannot reassign your handle to a new Nostr key.
+          Bookmark it, or download it and store it safely.
+        </div>
+      </q-banner>
 
-      <div class="row">
-        <div class="col-md-10 col-sm-6 q-mt-sm">
+      <q-input
+        filled
+        dense
+        readonly
+        :model-value="recoveryLink"
+        class="q-mb-md text-monospace"
+      >
+        <template v-slot:append>
+          <q-btn
+            flat
+            dense
+            round
+            icon="content_copy"
+            @click="copyText(recoveryLink, 'Recovery link copied')"
+          >
+            <q-tooltip>Copy link</q-tooltip>
+          </q-btn>
+        </template>
+      </q-input>
+
+      <div class="row q-gutter-sm q-mb-lg">
+        <q-btn
+          outline
+          color="primary"
+          icon="content_copy"
+          label="Copy link"
+          @click="copyText(recoveryLink, 'Recovery link copied')"
+        ></q-btn>
+        <q-btn
+          outline
+          color="primary"
+          icon="download"
+          label="Download as .txt"
+          @click="downloadRecovery"
+        ></q-btn>
+        <q-btn
+          outline
+          color="primary"
+          icon="open_in_new"
+          label="Open rotation page"
+          type="a"
+          :href="recoveryLink"
+          target="_blank"
+        ></q-btn>
+      </div>
+
+      <q-separator class="q-my-md"></q-separator>
+
+      <div class="text-subtitle2 q-mb-sm">Next steps</div>
+      <q-list dense>
+        <q-item>
+          <q-item-section avatar>
+            <q-avatar size="24px" color="primary" text-color="white"
+              >1</q-avatar
+            >
+          </q-item-section>
+          <q-item-section>Open your Nostr client.</q-item-section>
+        </q-item>
+        <q-item>
+          <q-item-section avatar>
+            <q-avatar size="24px" color="primary" text-color="white"
+              >2</q-avatar
+            >
+          </q-item-section>
+          <q-item-section>Go to profile settings.</q-item-section>
+        </q-item>
+        <q-item>
+          <q-item-section avatar>
+            <q-avatar size="24px" color="primary" text-color="white"
+              >3</q-avatar
+            >
+          </q-item-section>
+          <q-item-section>
+            Paste
+            <span class="text-monospace" v-text="successHandle"></span>
+            into the NIP-05 field and save.
+          </q-item-section>
+        </q-item>
+        <q-item>
+          <q-item-section avatar>
+            <q-avatar size="24px" color="primary" text-color="white"
+              >4</q-avatar
+            >
+          </q-item-section>
+          <q-item-section>
+            Your verified badge appears within a few minutes.
+          </q-item-section>
+        </q-item>
+      </q-list>
+    </q-card>
+
+    <!-- Choices ribbon - shows as user progresses -->
+    <q-card
+      v-if="!success && step > 1"
+      flat
+      bordered
+      class="q-mt-md q-pa-sm bg-grey-1"
+    >
+      <div class="row items-center q-col-gutter-sm text-caption">
+        <div class="col-auto">
+          <q-chip
+            dense
+            clickable
+            square
+            icon="alternate_email"
+            color="white"
+            text-color="grey-9"
+            @click="step = 1"
+          >
+            <span class="text-monospace" v-text="previewHandle"></span>
+            <q-icon name="edit" size="xs" class="q-ml-xs"></q-icon>
+            <q-tooltip>Change the name</q-tooltip>
+          </q-chip>
+        </div>
+        <div v-if="step > 2" class="col-auto">
+          <q-chip
+            dense
+            clickable
+            square
+            icon="schedule"
+            color="white"
+            text-color="grey-9"
+            @click="step = 2"
+          >
+            <span v-text="form.years"></span>
+            <span v-text="form.years == 1 ? ' year' : ' years'"></span>
+            <q-icon name="edit" size="xs" class="q-ml-xs"></q-icon>
+            <q-tooltip>Change duration</q-tooltip>
+          </q-chip>
+        </div>
+        <div v-if="step > 2 && form.pubkey" class="col-auto">
+          <q-chip
+            dense
+            square
+            icon="key"
+            color="white"
+            text-color="grey-9"
+          >
+            <span
+              class="text-monospace"
+              v-text="truncate(form.pubkey, 10, 4)"
+            ></span>
+          </q-chip>
+        </div>
+        <div v-if="availability.price" class="col text-right">
+          <span class="text-grey-7">Total </span>
+          <span class="text-weight-bold" v-text="totalFormatted"></span>
+        </div>
+      </div>
+    </q-card>
+
+    <!-- Signup stepper -->
+    <q-card v-if="!success" class="q-pa-md q-mt-md">
+      <q-stepper
+        v-model="step"
+        ref="stepper"
+        color="primary"
+        animated
+        flat
+        header-nav
+      >
+        <!-- Step 1: name -->
+        <q-step
+          :name="1"
+          title="Choose your name"
+          icon="alternate_email"
+          :done="step > 1"
+        >
+          <div class="text-caption text-grey-7 q-mb-md">
+            Pick the handle people will use to find you. Availability is checked
+            live.
+          </div>
+
           <q-input
             filled
-            dense
-            v-model.trim="formDialog.data.local_part"
-            label="Identifier"
-            placeholder="benarc"
-            class="q-mr-md"
+            v-model.trim="form.local_part"
+            label="Your name"
+            placeholder="yourname"
+            autofocus
+            :error="availability.state === 'taken' || availability.state === 'invalid'"
+            :error-message="availability.message"
+            hide-bottom-space
+            @keydown.enter.prevent
           >
             <template v-slot:append>
-              <span style="font-size: 18px">@{{ domain.domain }} </span>
+              <span class="text-grey-8 text-body1"
+                >@<span v-text="domain"></span
+              ></span>
             </template>
           </q-input>
-        </div>
-        <div class="col-md-2 col-sm-6 q-mt-sm">
-          <q-btn
-            @click="checkIdentifier"
-            unelevated
-            color="primary"
-            type="submit"
-            :disable="!formDialog.data.local_part"
-            class="float-right"
-            >Check Identifier</q-btn
-          >
-        </div>
-      </div>
 
-      <div v-if="identifier?.length && identifierAvailable">
-        <div class="row">
-          <div class="col">
-            <p>
-              The price for this identifier is
-              <strong> {{identifier_cost}} {{domain.currency}} per year</strong>
-              and will be tied to this nostr pubkey:
-            </p>
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="col-md-10 col-sm-11 q-mt-sm">
-            <q-input
-              filled
-              dense
-              v-model.trim="formDialog.data.pubkey"
-              :rules="[ val => (val && (val.length === 64)) || (val && (val.indexOf('npub') === 0)) ||'Please enter an npub or hex pubkey' ]"
-              label="Pub Key"
-              placeholder="abc234"
-              hint="npub or hex format"
-              class="q-mr-md"
+          <div class="q-mt-sm" style="min-height: 24px">
+            <div
+              v-if="availability.state === 'checking'"
+              class="text-caption text-grey-7"
             >
-            </q-input>
-          </div>
-          <div class="col-md-2 col-sm-1 q-mt-sm"><span></span></div>
-        </div>
-        <div class="row">
-          <div class="col-md-2 col-sm-11 q-mt-sm">
-            <q-select
-              filled
-              dense
-              :options="Array.from({length: maxYears}, (_, i) => i + 1)"
-              v-model="formDialog.data.years"
-              label="Years"
-              hint="Buy for this number of years."
-              class="q-mr-md"
+              <q-spinner-dots size="sm" class="q-mr-xs"></q-spinner-dots>
+              Checking availability…
+            </div>
+            <div
+              v-else-if="availability.state === 'available'"
+              class="text-caption text-positive"
             >
-            </q-select>
+              <q-icon name="check_circle" size="xs" class="q-mr-xs"></q-icon>
+              <span v-text="previewHandle"></span> is available
+            </div>
+            <div
+              v-else-if="availability.state === 'taken'"
+              class="text-caption text-negative"
+            >
+              <q-icon name="cancel" size="xs" class="q-mr-xs"></q-icon>
+              <span v-text="availability.message"></span>
+            </div>
+            <div
+              v-else-if="availability.state === 'invalid'"
+              class="text-caption text-warning"
+            >
+              <q-icon name="warning" size="xs" class="q-mr-xs"></q-icon>
+              <span v-text="availability.message"></span>
+            </div>
           </div>
-          <div class="col-md-10 col-sm-1 q-mt-sm"><span></span></div>
-        </div>
 
-        <div class="row q-mt-lg">
-          <q-btn
-            unelevated
-            color="primary"
-            @click="createAddress"
-            :disable="formDialog.data.local_part == null || !formDialog.data.pubkey"
-            >Create Address</q-btn
+          <!-- Price preview -->
+          <q-card
+            v-if="availability.state === 'available'"
+            flat
+            bordered
+            class="q-mt-md q-pa-md bg-grey-1"
           >
-        </div>
-      </div>
-      <div v-else-if="identifier">
-        <p>This identifier is not available.</p>
-      </div>
-    </q-form>
-  </q-card>
+            <div class="row items-center no-wrap">
+              <div class="col">
+                <div class="text-caption text-grey-7">Price</div>
+                <div class="text-h6">
+                  <span v-text="availability.priceFormatted"></span>
+                  <span class="text-caption text-grey-7"> / year</span>
+                </div>
+              </div>
+              <q-icon
+                v-if="availability.priceReason"
+                name="info"
+                color="grey-7"
+                size="sm"
+              >
+                <q-tooltip
+                  ><span v-text="availability.priceReason"></span
+                ></q-tooltip>
+              </q-icon>
+            </div>
+          </q-card>
 
-  <q-dialog
-    v-model="qrCodeDialog.show"
-    position="top"
-    @hide="closeQrCodeDialog"
-  >
-    <q-card class="q-pa-lg q-pt-xl lnbits__dialog-card text-center">
-      <a
-        class="text-secondary"
-        :href="'lightning:' + qrCodeDialog.data.payment_request"
-      >
-        <q-responsive :ratio="1" class="q-mx-xs">
-          <lnbits-qrcode
-            :value="qrCodeDialog.data.payment_request"
-          ></lnbits-qrcode>
-        </q-responsive>
-      </a>
-      <br />
-      <q-btn
-        outline
-        color="grey"
-        @click="copyText('lightning:' + qrCodeDialog.data.payment_request, 'Invoice copied to clipboard!')"
-        >Copy Invoice</q-btn
-      >
+          <q-stepper-navigation>
+            <q-btn
+              unelevated
+              color="primary"
+              label="Continue"
+              :disable="availability.state !== 'available'"
+              @click="goToStep(2)"
+            ></q-btn>
+          </q-stepper-navigation>
+        </q-step>
+
+        <!-- Step 2: pubkey and years -->
+        <q-step
+          :name="2"
+          title="Link your Nostr key"
+          icon="key"
+          :done="step > 2"
+        >
+          <div class="text-caption text-grey-7 q-mb-md">
+            The public key is how Nostr clients recognise you. It starts with
+            <span class="text-monospace">npub1…</span> or is a 64-character hex
+            string.
+            <q-icon name="info" size="xs" class="q-ml-xs">
+              <q-tooltip>
+                Your public key is safe to share. Never paste your private key
+                (nsec) here.
+              </q-tooltip>
+            </q-icon>
+          </div>
+
+          <q-input
+            filled
+            v-model.trim="form.pubkey"
+            label="Your public key"
+            placeholder="npub1…"
+            :error="pubkeyState === 'invalid'"
+            error-message="Enter a valid npub or 64-character hex key"
+            hide-bottom-space
+          >
+            <template v-slot:append>
+              <q-btn
+                flat
+                dense
+                round
+                icon="content_paste"
+                @click="pasteFromClipboard"
+              >
+                <q-tooltip>Paste from clipboard</q-tooltip>
+              </q-btn>
+            </template>
+          </q-input>
+          <div class="q-mt-sm" style="min-height: 20px">
+            <q-chip
+              v-if="pubkeyState === 'npub' || pubkeyState === 'hex'"
+              dense
+              color="positive"
+              text-color="white"
+              icon="check"
+            >
+              <span
+                v-text="pubkeyState === 'npub' ? 'Valid npub' : 'Valid hex key'"
+              ></span>
+            </q-chip>
+          </div>
+
+          <div class="q-mt-md">
+            <div class="text-subtitle2 q-mb-sm">
+              Duration
+              <q-icon name="info" size="xs">
+                <q-tooltip
+                  >You can renew before expiry to keep your handle.</q-tooltip
+                >
+              </q-icon>
+            </div>
+            <q-btn-toggle
+              v-model="form.years"
+              :options="yearOptions"
+              color="grey-3"
+              toggle-color="primary"
+              text-color="grey-10"
+              unelevated
+              spread
+              no-caps
+            ></q-btn-toggle>
+          </div>
+
+          <q-expansion-item
+            dense
+            class="q-mt-md"
+            icon="local_offer"
+            label="Have a promo code?"
+            header-class="text-grey-7"
+          >
+            <div class="row q-col-gutter-sm q-mt-sm">
+              <div class="col-12 col-sm">
+                <q-input
+                  filled
+                  dense
+                  v-model.trim="form.promo_code"
+                  label="Promo code"
+                ></q-input>
+              </div>
+              <div class="col-12 col-sm">
+                <q-input
+                  filled
+                  dense
+                  v-model.trim="form.referer"
+                  label="Referred by (optional)"
+                  hint="Identifier of the person who referred you"
+                ></q-input>
+              </div>
+            </div>
+          </q-expansion-item>
+
+          <!-- Summary -->
+          <q-card flat bordered class="q-mt-md q-pa-md bg-grey-1">
+            <div class="row items-center no-wrap">
+              <div class="col">
+                <div class="text-caption text-grey-7">Total</div>
+                <div class="text-h6">
+                  <span v-text="totalFormatted"></span>
+                </div>
+                <div class="text-caption text-grey-7">
+                  <span v-text="availability.priceFormatted"></span> ×
+                  <span v-text="form.years"></span>
+                  <span v-text="form.years == 1 ? ' year' : ' years'"></span>
+                </div>
+              </div>
+            </div>
+          </q-card>
+
+          <q-stepper-navigation>
+            <q-btn
+              flat
+              color="grey-7"
+              label="Back"
+              @click="step = 1"
+              class="q-mr-sm"
+            ></q-btn>
+            <q-btn
+              unelevated
+              color="primary"
+              label="Review and pay"
+              :disable="pubkeyState !== 'npub' && pubkeyState !== 'hex'"
+              @click="goToStep(3)"
+            ></q-btn>
+          </q-stepper-navigation>
+        </q-step>
+
+        <!-- Step 3: pay -->
+        <q-step :name="3" title="Pay" icon="bolt">
+          <div v-if="!invoice" class="text-center q-py-md">
+            <div class="text-caption text-grey-7 q-mb-md">
+              Review the details below, then generate a Lightning invoice.
+            </div>
+
+            <q-list bordered class="q-mb-md text-left">
+              <q-item>
+                <q-item-section>Handle</q-item-section>
+                <q-item-section side class="text-monospace text-grey-9">
+                  <span v-text="previewHandle"></span>
+                </q-item-section>
+              </q-item>
+              <q-separator></q-separator>
+              <q-item>
+                <q-item-section>Public key</q-item-section>
+                <q-item-section side class="text-monospace text-grey-9">
+                  <span v-text="truncate(form.pubkey, 12, 6)"></span>
+                </q-item-section>
+              </q-item>
+              <q-separator></q-separator>
+              <q-item>
+                <q-item-section>Duration</q-item-section>
+                <q-item-section side>
+                  <span v-text="form.years"></span>
+                  <span v-text="form.years == 1 ? ' year' : ' years'"></span>
+                </q-item-section>
+              </q-item>
+              <q-separator></q-separator>
+              <q-item>
+                <q-item-section>Total</q-item-section>
+                <q-item-section side class="text-weight-bold">
+                  <span v-text="totalFormatted"></span>
+                </q-item-section>
+              </q-item>
+            </q-list>
+
+            <q-btn
+              flat
+              color="grey-7"
+              label="Back"
+              @click="step = 2"
+              class="q-mr-sm"
+            ></q-btn>
+            <q-btn
+              unelevated
+              color="primary"
+              icon="bolt"
+              label="Generate invoice"
+              :loading="creatingInvoice"
+              @click="createAddress"
+            ></q-btn>
+          </div>
+
+          <div v-else class="text-center q-py-sm">
+            <div class="text-subtitle2 q-mb-sm">
+              Scan or pay with any Lightning wallet
+            </div>
+            <a
+              class="text-secondary"
+              :href="'lightning:' + invoice.payment_request"
+            >
+              <q-responsive
+                :ratio="1"
+                class="q-mx-auto"
+                style="max-width: 280px"
+              >
+                <lnbits-qrcode
+                  :value="invoice.payment_request"
+                ></lnbits-qrcode>
+              </q-responsive>
+            </a>
+
+            <div class="q-mt-md q-mb-md">
+              <q-btn
+                outline
+                color="primary"
+                icon="content_copy"
+                label="Copy invoice"
+                @click="copyText(invoice.payment_request, 'Invoice copied')"
+                class="q-mr-sm"
+              ></q-btn>
+              <q-btn
+                outline
+                color="primary"
+                icon="open_in_new"
+                label="Open in wallet"
+                type="a"
+                :href="'lightning:' + invoice.payment_request"
+              ></q-btn>
+            </div>
+
+            <div class="text-caption text-grey-7">
+              <q-spinner-dots size="sm" class="q-mr-xs"></q-spinner-dots>
+              Waiting for payment… your identity activates automatically.
+            </div>
+          </div>
+        </q-step>
+      </q-stepper>
     </q-card>
-  </q-dialog>
+
+    <!-- Help / FAQ -->
+    <q-card v-if="!success" flat bordered class="q-mt-md">
+      <q-expansion-item
+        icon="help_outline"
+        label="What is a Nostr identity?"
+        header-class="text-weight-medium"
+      >
+        <q-card-section class="text-caption text-grey-8">
+          A Nostr identity (NIP-05) is a human-readable handle like
+          <span class="text-monospace" v-text="previewHandle"></span> that maps
+          to your public key. It lets other users find and verify you across
+          any Nostr client, instead of sharing a long npub.
+        </q-card-section>
+      </q-expansion-item>
+      <q-separator></q-separator>
+      <q-expansion-item
+        icon="shield"
+        label="Is this safe? What do I share?"
+        header-class="text-weight-medium"
+      >
+        <q-card-section class="text-caption text-grey-8">
+          You only share your <strong>public key</strong> (starts with
+          <span class="text-monospace">npub1…</span>). Never paste your private
+          key (<span class="text-monospace">nsec1…</span>) on any website.
+          Payment happens over the Lightning Network; no card details or
+          personal data are collected.
+        </q-card-section>
+      </q-expansion-item>
+      <q-separator></q-separator>
+      <q-expansion-item
+        icon="autorenew"
+        label="What if I lose my Nostr keys?"
+        header-class="text-weight-medium"
+      >
+        <q-card-section class="text-caption text-grey-8">
+          After purchase you receive a <strong>recovery link</strong>. Save it.
+          If your keys are ever lost or compromised, open that link to assign a
+          new key to the same handle. Without the recovery link, the handle
+          cannot be reassigned.
+        </q-card-section>
+      </q-expansion-item>
+      <q-separator></q-separator>
+      <q-expansion-item
+        icon="event_repeat"
+        label="Can I renew or extend later?"
+        header-class="text-weight-medium"
+      >
+        <q-card-section class="text-caption text-grey-8">
+          Yes. Return to this page and purchase the same name again before it
+          expires to extend it for additional years.
+        </q-card-section>
+      </q-expansion-item>
+    </q-card>
+    {% endraw %}
+  </div>
 </div>
 {% endblock %} {% block scripts %}
 <script>
   const base_url = '{{ request.base_url }}'
   const domain = '{{ domain.domain }}'
   const domain_id = '{{ domain_id }}'
-  const wallet = '{{ domain.wallet }}'
   const currency = '{{ domain.currency }}'
-  const maxYears = '{{ domain.max_years }}'
-  const identifier = '{{ identifier }}'
-  const identifierCost = '{{ identifier_cost }}'
-  const identifierAvailable = '{{ identifier_available }}' === 'True'
+  const baseCost = '{{ domain.cost }}'
+  const maxYears = parseInt('{{ domain.max_years }}') || 1
+  const initialIdentifier = '{{ identifier }}'
 </script>
 <script src="{{ static_url_for('nostrnip5/static', 'js/signup.js') }}"></script>
 {% endblock %}
