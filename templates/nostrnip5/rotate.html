@@ -1,7 +1,7 @@
 {% extends "public.html" %} {% block toolbar_title %} Rotate key for {{
 address.local_part }}@{{ domain.domain }} {% endblock %} {% from "macros.jinja"
 import window_vars with context %} {% block page %}
-<link rel="stylesheet" href="/nostrnip5/static/css/signup.css" />
+<link rel="stylesheet" href="/nostrnip5/static/css/nostrnip5.css" />
 <div class="row justify-center q-pa-md">
   <div class="col-12 col-md-8 col-lg-6">
     {% raw %}
@@ -13,8 +13,8 @@ import window_vars with context %} {% block page %}
         <div class="col">
           <div class="text-h6">Rotate your Nostr key</div>
           <div class="text-caption text-grey-7">
-            Assign a new public key to an identity you already own. Your
-            handle stays the same.
+            Assign a new public key to an identity you already own. Your handle
+            stays the same.
           </div>
         </div>
       </div>
@@ -129,7 +129,7 @@ import window_vars with context %} {% block page %}
           v-if="secretFromUrl"
           rounded
           dense
-          class="bg-green-1 text-green-10"
+          class="nip5-banner-success"
         >
           <template v-slot:avatar>
             <q-icon name="check_circle" color="positive"></q-icon>
@@ -151,7 +151,7 @@ import window_vars with context %} {% block page %}
         v-if="pubkeyState === 'npub' || pubkeyState === 'hex'"
         flat
         bordered
-        class="bg-grey-1 q-pa-md q-mt-md"
+        class="nip5-surface-soft q-pa-md q-mt-md"
       >
         <div class="text-subtitle2 q-mb-sm">Review change</div>
         <div class="row items-center no-wrap q-mb-xs">
@@ -180,14 +180,13 @@ import window_vars with context %} {% block page %}
         v-if="pubkeyState === 'npub' || pubkeyState === 'hex'"
         rounded
         dense
-        class="bg-orange-1 text-orange-10 q-mt-md"
+        class="nip5-banner-warning q-mt-md"
       >
         <template v-slot:avatar>
-          <q-icon name="warning" color="orange-10"></q-icon>
+          <q-icon name="warning"></q-icon>
         </template>
         Make sure the new key belongs to a signer you control. Once rotated,
-        your handle can only be reassigned again by using your rotation
-        secret.
+        your handle can only be reassigned again by using your rotation secret.
       </q-banner>
 
       <div class="q-mt-lg row items-center">
@@ -221,8 +220,8 @@ import window_vars with context %} {% block page %}
         <q-card-section class="text-caption text-grey-8">
           Key rotation swaps the public key tied to your handle. Your handle,
           activation date, and expiry stay the same. Other Nostr users will
-          start seeing posts from the new key under the same verified name
-          once their clients refresh (usually a few minutes).
+          start seeing posts from the new key under the same verified name once
+          their clients refresh (usually a few minutes).
         </q-card-section>
       </q-expansion-item>
       <q-separator></q-separator>
@@ -233,8 +232,8 @@ import window_vars with context %} {% block page %}
       >
         <q-card-section class="text-caption text-grey-8">
           The recovery link you saved at signup contains it. Look for the part
-          after <span class="text-monospace">?secret=</span> in the URL. If
-          you opened this page from that link, the secret is already loaded.
+          after <span class="text-monospace">?secret=</span> in the URL. If you
+          opened this page from that link, the secret is already loaded.
         </q-card-section>
       </q-expansion-item>
       <q-separator></q-separator>
@@ -247,8 +246,8 @@ import window_vars with context %} {% block page %}
           Without the recovery link there is no way to prove ownership of the
           handle. Contact the operator of
           <span class="text-monospace" v-text="domain"></span> directly &mdash;
-          they may be able to help if you can prove prior ownership, but this
-          is at their discretion.
+          they may be able to help if you can prove prior ownership, but this is
+          at their discretion.
         </q-card-section>
       </q-expansion-item>
     </q-card>

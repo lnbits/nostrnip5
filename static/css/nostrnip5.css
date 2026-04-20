@@ -1,0 +1,125 @@
+/* Shared theme-aware styles for the nostrnip5 extension.
+   Respects LNbits light and dark themes via body.body--dark. */
+
+/* Subtle surface — replaces hardcoded bg-grey-1 on summary, preview and
+   review panels. Tints the card relative to the current theme instead of
+   locking it to a light-mode grey. */
+.nip5-surface-soft {
+  background: rgba(0, 0, 0, 0.04);
+}
+body.body--dark .nip5-surface-soft {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Code / response block — replaces hardcoded bg-grey-2 text-grey-10. */
+.nip5-code-block {
+  background: rgba(0, 0, 0, 0.06);
+  color: inherit;
+}
+body.body--dark .nip5-code-block {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Semantic tinted banners that work in both themes. */
+.nip5-banner-warning {
+  background: rgba(255, 152, 0, 0.14);
+  color: #b26a00;
+}
+body.body--dark .nip5-banner-warning {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ffcc80;
+}
+.nip5-banner-warning .q-icon {
+  color: inherit;
+}
+
+.nip5-banner-success {
+  background: rgba(76, 175, 80, 0.14);
+  color: #1b5e20;
+}
+body.body--dark .nip5-banner-success {
+  background: rgba(76, 175, 80, 0.22);
+  color: #a5d6a7;
+}
+.nip5-banner-success .q-icon {
+  color: inherit;
+}
+
+/* Soft chip — replaces color="white" text-color="grey-9" chips on the
+   choices ribbon. Uses theme-aware tint and inherits the current text
+   color so it stays readable in both modes. */
+.nip5-chip-soft.q-chip {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: inherit !important;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+body.body--dark .nip5-chip-soft.q-chip {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Responsive dialog card — replaces fixed pixel widths on admin dialogs
+   so they don't overflow on small screens. */
+.nip5-dialog-card {
+  width: min(560px, 95vw);
+}
+
+/* Pricing formula strip — visual replacement for the ordered-list
+   "How pricing is calculated" block. */
+.nip5-formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+}
+.nip5-formula__step {
+  flex: 1 1 140px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.03);
+}
+body.body--dark .nip5-formula__step {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+.nip5-formula__step--total {
+  border-color: var(--q-primary);
+  background: rgba(var(--q-primary-rgb, 105, 27, 154), 0.08);
+}
+.nip5-formula__op {
+  flex: 0 0 auto;
+  align-self: center;
+  font-weight: 600;
+  opacity: 0.6;
+  padding: 0 2px;
+}
+
+/* Empty state block — centered icon + copy + CTA inside strategy cards. */
+.nip5-empty-state {
+  padding: 24px 16px;
+  text-align: center;
+  border: 1px dashed rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+}
+body.body--dark .nip5-empty-state {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Promo item card — one promo per mini-card instead of one-line row. */
+.nip5-promo-item {
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+body.body--dark .nip5-promo-item {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Focus visibility for stepper headers (keyboard navigation). */
+.q-stepper__tab:focus-visible {
+  outline: 2px solid var(--q-primary);
+  outline-offset: -2px;
+  border-radius: 4px;
+}

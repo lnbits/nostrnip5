@@ -27,6 +27,24 @@ This extension allows users to sell NIP-05 verification to other nostr users on 
      - Note, you must own this domain and have access to a web server
 3. You can then use share your signup link with your users to allow them to sign up
 
+## Pricing strategies
+
+On top of the base price per year, each domain supports three optional rules you can combine:
+
+- **Length-based** — charge more for short, memorable names (e.g. ≤3 chars at 8×, ≤4 at 4×).
+- **Popularity** — charge more for names that appear in the Cloudflare top-domains list. Requires a read-only Cloudflare API token in the extension settings.
+- **Promo codes** — offer buyer discounts and/or reward referrers at checkout.
+
+The highest matching premium is used, multiplied by the selected years, then any promo code is applied. Use the live preview on the domain page to test what a buyer would pay.
+
+## Refunds
+
+If a buyer pays but their handle can't be activated (for example, two buyers race for the same name), the extension records what you owe them on that identity row.
+
+> The orange "Refund owed" chip is your to-do list of payments you owe back because their handle couldn't be activated. Click it, scan the QR with your admin wallet to pay it, and the buyer gets their sats back.
+
+Note: automatic refunds only work when the buyer paid from an LNbits wallet — direct-Lightning-only buyers have no wallet to credit back to. In that case you still hold the sats, so the alternative is to use "Issue identity manually" and "Activate without payment" to deliver the handle they paid for.
+
 ## Installation
 
 In order for this to work, you need to have ownership of a domain name, and access to a web server that this domain is pointed to.

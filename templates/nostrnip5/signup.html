@@ -1,7 +1,7 @@
 {% extends "public.html" %} {% block toolbar_title %} Claim your Nostr identity
 on {{ domain.domain }} {% endblock %} {% from "macros.jinja" import window_vars
 with context %} {% block page %}
-<link rel="stylesheet" href="/nostrnip5/static/css/signup.css" />
+<link rel="stylesheet" href="/nostrnip5/static/css/nostrnip5.css" />
 <div class="row justify-center q-pa-md">
   <div class="col-12 col-md-8 col-lg-6">
     {% raw %}
@@ -37,14 +37,17 @@ with context %} {% block page %}
           <span>
             From
             <strong
-              ><span v-text="baseCost"></span>
-              <span v-text="currency"></span></strong
-            >
+              ><span v-text="baseCost"></span> <span v-text="currency"></span
+            ></strong>
             / year
           </span>
         </div>
         <div class="col-12 col-sm-4">
-          <q-icon name="schedule" size="xs" class="q-mr-xs text-grey-7"></q-icon>
+          <q-icon
+            name="schedule"
+            size="xs"
+            class="q-mr-xs text-grey-7"
+          ></q-icon>
           <span
             >Up to <strong v-text="maxYears"></strong>
             <span v-text="maxYears == 1 ? 'year' : 'years'"></span>
@@ -94,13 +97,9 @@ with context %} {% block page %}
         </template>
       </q-input>
 
-      <q-banner
-        rounded
-        class="bg-orange-1 text-orange-10 q-mb-md"
-        dense
-      >
+      <q-banner rounded class="nip5-banner-warning q-mb-md" dense>
         <template v-slot:avatar>
-          <q-icon name="bookmark" color="orange-10"></q-icon>
+          <q-icon name="bookmark"></q-icon>
         </template>
         <div class="text-subtitle2 q-mb-xs">Save your recovery link</div>
         <div class="text-caption">
@@ -205,7 +204,7 @@ with context %} {% block page %}
       v-if="!success && step > 1"
       flat
       bordered
-      class="q-mt-md q-pa-sm bg-grey-1"
+      class="q-mt-md q-pa-sm nip5-surface-soft"
     >
       <div class="row items-center q-col-gutter-sm text-caption">
         <div class="col-auto">
@@ -214,8 +213,7 @@ with context %} {% block page %}
             clickable
             square
             icon="alternate_email"
-            color="white"
-            text-color="grey-9"
+            class="nip5-chip-soft"
             @click="step = 1"
           >
             <span class="text-monospace" v-text="previewHandle"></span>
@@ -229,8 +227,7 @@ with context %} {% block page %}
             clickable
             square
             icon="schedule"
-            color="white"
-            text-color="grey-9"
+            class="nip5-chip-soft"
             @click="step = 2"
           >
             <span v-text="form.years"></span>
@@ -240,13 +237,7 @@ with context %} {% block page %}
           </q-chip>
         </div>
         <div v-if="step > 2 && form.pubkey" class="col-auto">
-          <q-chip
-            dense
-            square
-            icon="key"
-            color="white"
-            text-color="grey-9"
-          >
+          <q-chip dense square icon="key" class="nip5-chip-soft">
             <span
               class="text-monospace"
               v-text="truncate(form.pubkey, 10, 4)"
@@ -336,7 +327,7 @@ with context %} {% block page %}
             v-if="availability.state === 'available'"
             flat
             bordered
-            class="q-mt-md q-pa-md bg-grey-1"
+            class="q-mt-md q-pa-md nip5-surface-soft"
           >
             <div class="row items-center no-wrap">
               <div class="col">
@@ -436,9 +427,7 @@ with context %} {% block page %}
             <q-btn-toggle
               v-model="form.years"
               :options="yearOptions"
-              color="grey-3"
               toggle-color="primary"
-              text-color="grey-10"
               unelevated
               spread
               no-caps
@@ -474,7 +463,7 @@ with context %} {% block page %}
           </q-expansion-item>
 
           <!-- Summary -->
-          <q-card flat bordered class="q-mt-md q-pa-md bg-grey-1">
+          <q-card flat bordered class="q-mt-md q-pa-md nip5-surface-soft">
             <div class="row items-center no-wrap">
               <div class="col">
                 <div class="text-caption text-grey-7">Total</div>
@@ -576,9 +565,7 @@ with context %} {% block page %}
                 class="q-mx-auto"
                 style="max-width: 280px"
               >
-                <lnbits-qrcode
-                  :value="invoice.payment_request"
-                ></lnbits-qrcode>
+                <lnbits-qrcode :value="invoice.payment_request"></lnbits-qrcode>
               </q-responsive>
             </a>
 
@@ -620,8 +607,8 @@ with context %} {% block page %}
         <q-card-section class="text-caption text-grey-8">
           A Nostr identity (NIP-05) is a human-readable handle like
           <span class="text-monospace" v-text="previewHandle"></span> that maps
-          to your public key. It lets other users find and verify you across
-          any Nostr client, instead of sharing a long npub.
+          to your public key. It lets other users find and verify you across any
+          Nostr client, instead of sharing a long npub.
         </q-card-section>
       </q-expansion-item>
       <q-separator></q-separator>

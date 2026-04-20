@@ -6,5 +6,6 @@ Its functions include:
 - Managing verified usernames on your domain
 - Charging Lightning payments for verification
 - Providing a setup guide for domain configuration
+- Flexible pricing with length-based, popularity, and promo-code rules
 
 A straightforward way for domain owners to monetize their domains by selling NIP-05 identity verification to the growing Nostr community.

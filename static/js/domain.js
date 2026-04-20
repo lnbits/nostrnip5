@@ -3,6 +3,14 @@ const RANK_BRACKETS = [
   1000000
 ]
 
+// Common length-bracket defaults used by the "Insert common brackets"
+// preset. Matches typical premium pricing where shorter = more expensive.
+const LENGTH_BRACKET_PRESETS = [
+  {bracket: 3, multiplier: 8},
+  {bracket: 4, multiplier: 4},
+  {bracket: 6, multiplier: 2}
+]
+
 function normalizeIdentifier(value) {
   return (value || '').toLowerCase().trim()
 }
@@ -50,7 +58,8 @@ window.app = Vue.createApp({
 
       let lengthBonus = 0
       let lengthReason = ''
-      for (const item of this.domainForm.data.cost_extra.char_count_cost || []) {
+      for (const item of this.domainForm.data.cost_extra.char_count_cost ||
+        []) {
         const bracket = Number(item.bracket) || 0
         const amount = Number(item.amount) || 0
         if (len > 0 && len <= bracket && amount > base) {
@@ -114,6 +123,28 @@ window.app = Vue.createApp({
     removeCharCountCost(index) {
       this.domainForm.data.cost_extra.char_count_cost.splice(index, 1)
     },
+    sortCharCountCosts() {
+      this.domainForm.data.cost_extra.char_count_cost.sort(
+        (a, b) => (Number(a.bracket) || 0) - (Number(b.bracket) || 0)
+      )
+    },
+    insertLengthPresets() {
+      const base = Number(this.domainForm.data.cost) || 1
+      const existing = new Set(
+        (this.domainForm.data.cost_extra.char_count_cost || []).map(i =>
+          Number(i.bracket)
+        )
+      )
+      for (const preset of LENGTH_BRACKET_PRESETS) {
+        if (!existing.has(preset.bracket)) {
+          this.domainForm.data.cost_extra.char_count_cost.push({
+            bracket: preset.bracket,
+            amount: base * preset.multiplier
+          })
+        }
+      }
+      this.sortCharCountCosts()
+    },
     addRankCost() {
       this.domainForm.data.cost_extra.rank_cost.push({
         bracket: 1000,
@@ -122,6 +153,11 @@ window.app = Vue.createApp({
     },
     removeRankCost(index) {
       this.domainForm.data.cost_extra.rank_cost.splice(index, 1)
+    },
+    sortRankCosts() {
+      this.domainForm.data.cost_extra.rank_cost.sort(
+        (a, b) => (Number(a.bracket) || 0) - (Number(b.bracket) || 0)
+      )
     },
     addPromotion() {
       this.domainForm.data.cost_extra.promotions.push({
@@ -133,6 +169,11 @@ window.app = Vue.createApp({
     },
     removePromotion(index) {
       this.domainForm.data.cost_extra.promotions.splice(index, 1)
+    },
+    promoExceedsLimit(item) {
+      const discount = Number(item.buyer_discount_percent) || 0
+      const bonus = Number(item.referer_bonus_percent) || 0
+      return discount + bonus > 100
     }
   },
   created() {

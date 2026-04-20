@@ -4,60 +4,161 @@
   label="Guide"
   :content-inset-level="0.5"
 >
-  <q-card>
-    <p>
-      <q-card-section>
-        <strong>Usage</strong><br />
+  <q-card flat>
+    <q-card-section class="q-pb-sm">
+      <div class="text-subtitle2 q-mb-sm">Usage</div>
+      <ol class="q-my-none q-pl-md" style="line-height: 1.6">
+        <li>Click <strong>Add domain</strong>.</li>
+        <li>
+          Pick a wallet, currency, base price per year, and the domain you own.
+        </li>
+        <li>Share the signup link from the Domains table.</li>
+      </ol>
+      <div class="text-caption text-grey-7 q-mt-sm">
+        You need to own the domain and run a web server for it.
+      </div>
+    </q-card-section>
 
-        1. Create a Domain by clicking "NEW DOMAIN"\<br />
-        2. Fill the options for your DOMAIN<br />
-        - select the wallet<br />
-        - select the fiat currency the invoice will be denominated in<br />
-        - select an amount in fiat to charge users for verification<br />
-        - enter the domain (or subdomain) you want to provide verification
-        for<br />
-        3. You can then use share your signup link with your users to allow them
-        to sign up *Note, you must own this domain and have access to a web
-        server*
-        <br /><br />
-        <strong>Installation</strong><br />
+    <q-separator></q-separator>
 
-        In order for this to work, you need to have ownership of a domain name,
-        and access to a web server that this domain is pointed to. Then, you'll
-        need to set up a proxy that points
-        `https://{your_domain}/.well-known/nostr.json` to
-        `https://{your_lnbits}/nostrnip5/api/v1/domain/{domain_id}/nostr.json`
-        <br /><br />
-        <strong>Example nginx configuration</strong>
-        <br />
+    <q-card-section class="q-pb-sm">
+      <div class="text-subtitle2 q-mb-sm">Installation</div>
+      <div class="text-caption text-grey-8 q-mb-sm">
+        Proxy your domain's well-known endpoint to LNbits:
+      </div>
+      <div class="text-caption text-grey-7">From</div>
+      <div
+        class="text-monospace text-caption q-mb-sm"
+        style="overflow-wrap: anywhere; word-break: break-all"
+      >
+        https://{your_domain}/.well-known/nostr.json
+      </div>
+      <div class="text-caption text-grey-7">To</div>
+      <div
+        class="text-monospace text-caption"
+        style="overflow-wrap: anywhere; word-break: break-all"
+      >
+        https://{your_lnbits}/nostrnip5/api/v1/domain/{domain_id}/nostr.json
+      </div>
+    </q-card-section>
 
-        <q-card>
-          <q-card-section>
-            <small class="text-caption">
-              proxy_cache_path /tmp/nginx_cache keys_zone=nip5_cache:5m
-              levels=1:2 inactive=300s max_size=100m use_temp_path=off;<br />
+    <q-separator></q-separator>
 
-              location /.well-known/nostr.json {<br />
-              &nbsp;&nbsp;&nbsp;&nbsp;proxy_pass
-              https://{your_lnbits}/nostrnip5/api/v1/domain/{domain_id}/nostr.json;<br />
-              &nbsp;&nbsp;&nbsp;&nbsp;proxy_set_header Host {your_lnbits};<br />
-              &nbsp;&nbsp;&nbsp;&nbsp;proxy_ssl_server_name on;<br /><br />
+    <q-card-section>
+      <div class="text-subtitle2 q-mb-sm">Example nginx config</div>
+      <pre
+        class="nip5-code-block q-pa-md rounded-borders"
+        style="overflow-x: auto; font-size: 11px; white-space: pre; margin: 0"
+      >
+proxy_cache_path /tmp/nginx_cache keys_zone=nip5_cache:5m
+    levels=1:2 inactive=300s max_size=100m use_temp_path=off;
 
-              &nbsp;&nbsp;&nbsp;&nbsp;expires 5m;<br />
-              &nbsp;&nbsp;&nbsp;&nbsp;add_header Cache-Control "public,
-              no-transform";<br /><br />
+location /.well-known/nostr.json {
+    proxy_pass https://{your_lnbits}/nostrnip5/api/v1/domain/{domain_id}/nostr.json;
+    proxy_set_header Host {your_lnbits};
+    proxy_ssl_server_name on;
 
-              &nbsp;&nbsp;&nbsp;&nbsp;proxy_cache nip5_cache;<br />
-              &nbsp;&nbsp;&nbsp;&nbsp;proxy_cache_lock on;<br />
-              &nbsp;&nbsp;&nbsp;&nbsp;proxy_cache_valid 200 300s;<br />
-              &nbsp;&nbsp;&nbsp;&nbsp;proxy_cache_use_stale error timeout
-              invalid_header updating http_500 http_502 http_503 http_504;<br />
-              }
-            </small>
-          </q-card-section>
-        </q-card>
-      </q-card-section>
-    </p>
+    expires 5m;
+    add_header Cache-Control "public, no-transform";
+
+    proxy_cache nip5_cache;
+    proxy_cache_lock on;
+    proxy_cache_valid 200 300s;
+    proxy_cache_use_stale error timeout invalid_header updating
+        http_500 http_502 http_503 http_504;
+}</pre
+      >
+    </q-card-section>
+  </q-card>
+</q-expansion-item>
+
+<q-expansion-item
+  group="extras"
+  icon="sell"
+  label="Pricing strategies"
+  :content-inset-level="0.5"
+>
+  <q-card flat>
+    <q-card-section>
+      <div class="text-caption text-grey-8 q-mb-md">
+        Every sale starts at the base price. The highest matching premium is
+        added on top, then discounts are applied last.
+      </div>
+      <q-list dense separator>
+        <q-item>
+          <q-item-section avatar top>
+            <q-avatar size="28px" color="primary" text-color="white">
+              <q-icon name="payments" size="16px"></q-icon>
+            </q-avatar>
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="text-weight-medium">Base price</q-item-label>
+            <q-item-label caption>
+              Default per-year price every handle pays.
+            </q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item>
+          <q-item-section avatar top>
+            <q-avatar size="28px" color="primary" text-color="white">
+              <q-icon name="straighten" size="16px"></q-icon>
+            </q-avatar>
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="text-weight-medium">Length-based</q-item-label>
+            <q-item-label caption>
+              Charge more for short handles. Example: 8&times; for ≤3 chars,
+              4&times; for ≤4, 2&times; for ≤6.
+            </q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item>
+          <q-item-section avatar top>
+            <q-avatar size="28px" color="primary" text-color="white">
+              <q-icon name="trending_up" size="16px"></q-icon>
+            </q-avatar>
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="text-weight-medium"
+              >Popularity tiers</q-item-label
+            >
+            <q-item-label caption>
+              Charge more for names on Cloudflare's top-domains list. Needs a
+              Cloudflare token in Settings.
+            </q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item>
+          <q-item-section avatar top>
+            <q-avatar size="28px" color="primary" text-color="white">
+              <q-icon name="local_offer" size="16px"></q-icon>
+            </q-avatar>
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="text-weight-medium">Promo codes</q-item-label>
+            <q-item-label caption>
+              Percentage discounts for launches, partners, or giveaways.
+            </q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item>
+          <q-item-section avatar top>
+            <q-avatar size="28px" color="primary" text-color="white">
+              <q-icon name="schedule" size="16px"></q-icon>
+            </q-avatar>
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="text-weight-medium"
+              >Years per purchase</q-item-label
+            >
+            <q-item-label caption>
+              Cap how many years a buyer can register at once. The yearly price
+              is multiplied by the years chosen.
+            </q-item-label>
+          </q-item-section>
+        </q-item>
+      </q-list>
+    </q-card-section>
   </q-card>
 </q-expansion-item>
 
