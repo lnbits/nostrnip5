@@ -117,6 +117,27 @@ body.body--dark .nip5-promo-item {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
+/* Nostr brand avatar — wraps the ostrich icon with a soft primary tint
+   ring so the logo sits cleanly on light and dark backgrounds. */
+.nip5-brand-avatar {
+  background: rgba(var(--q-primary-rgb, 105, 27, 154), 0.08);
+  padding: 6px;
+  box-shadow: 0 0 0 1px rgba(var(--q-primary-rgb, 105, 27, 154), 0.18);
+}
+body.body--dark .nip5-brand-avatar {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.nip5-brand-avatar img {
+  object-fit: contain;
+}
+
+/* Hero card accent — a thin primary underline so the signup landing card
+   feels branded without changing the LNbits palette. */
+.nip5-hero-card {
+  border-top: 3px solid var(--q-primary);
+}
+
 /* Focus visibility for stepper headers (keyboard navigation). */
 .q-stepper__tab:focus-visible {
   outline: 2px solid var(--q-primary);

@@ -7,15 +7,11 @@ with context %} {% block page %}
     {% raw %}
 
     <!-- Hero card -->
-    <q-card class="q-pa-lg">
+    <q-card class="q-pa-lg nip5-hero-card">
       <div class="row items-center no-wrap q-gutter-md">
-        <q-avatar
-          size="48px"
-          color="primary"
-          text-color="white"
-          class="text-weight-bold"
-          v-text="domainInitial"
-        ></q-avatar>
+        <q-avatar size="56px" class="nip5-brand-avatar">
+          <img src="/nostrnip5/static/image/Nostr_icon1.png" alt="Nostr" />
+        </q-avatar>
         <div class="col">
           <div class="text-h6 q-mb-xs">
             Claim your Nostr identity on
@@ -54,7 +50,11 @@ with context %} {% block page %}
           </span>
         </div>
         <div class="col-12 col-sm-4">
-          <q-icon name="key" size="xs" class="q-mr-xs text-grey-7"></q-icon>
+          <q-icon
+            name="autorenew"
+            size="xs"
+            class="q-mr-xs text-grey-7"
+          ></q-icon>
           <span>Keys can be rotated anytime</span>
         </div>
       </div>
@@ -365,7 +365,7 @@ with context %} {% block page %}
         <q-step
           :name="2"
           title="Link your Nostr key"
-          icon="key"
+          icon="vpn_key"
           :done="step > 2"
         >
           <div class="text-caption text-grey-7 q-mb-md">

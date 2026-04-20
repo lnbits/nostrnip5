@@ -55,9 +55,6 @@ window.app = Vue.createApp({
     }
   },
   computed: {
-    domainInitial() {
-      return (this.domain || '?').charAt(0).toUpperCase()
-    },
     previewHandle() {
       const name = this.form.local_part || 'yourname'
       return `${name}@${this.domain}`
