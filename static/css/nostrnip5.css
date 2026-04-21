@@ -132,6 +132,31 @@ body.body--dark .nip5-promo-item {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
+/* Sticky bottom save bar (domain page). Spans the content area so the
+   Save button is always visible without overlapping body content. The
+   helper caption hides on narrow screens to keep the button prominent. */
+.nip5-save-bar {
+  background: #fff;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.04);
+}
+body.body--dark .nip5-save-bar {
+  background: #1d1d1d;
+  border-top-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+}
+@media (max-width: 600px) {
+  .nip5-save-bar .text-caption {
+    display: none;
+  }
+  .nip5-save-bar .q-btn {
+    width: 100%;
+  }
+  .nip5-save-bar .col-auto {
+    flex: 1 1 100%;
+  }
+}
+
 /* Sticky sidebar (domain page live-preview) — sticky only when side-by-
    side with the main column on large screens. On stacked mobile layouts
    the sidebar renders in natural flow. */

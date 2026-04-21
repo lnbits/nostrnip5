@@ -658,18 +658,28 @@ with context %} {% block page %}
   </div>
 </div>
 
-<!-- Sticky save bar -->
+<!-- Sticky save bar — pinned at the bottom of the content area so it is
+     always discoverable while editing. -->
 {% raw %}
-<q-page-sticky position="bottom-right" :offset="[24, 24]">
-  <q-btn
-    fab-mini
-    color="primary"
-    icon="save"
-    @click="saveDomain"
-    :disable="domainForm.data.wallet == null || domainForm.data.currency == null"
-  >
-    <q-tooltip>Save changes</q-tooltip>
-  </q-btn>
+<q-page-sticky expand position="bottom">
+  <div class="nip5-save-bar full-width">
+    <div class="row items-center q-col-gutter-sm q-px-md q-py-sm">
+      <div class="col text-caption text-grey-7">
+        <q-icon name="info" size="xs" class="q-mr-xs"></q-icon>
+        Changes are only applied when you press Save.
+      </div>
+      <div class="col-auto">
+        <q-btn
+          unelevated
+          color="primary"
+          icon="save"
+          label="Save changes"
+          @click="saveDomain"
+          :disable="domainForm.data.wallet == null || domainForm.data.currency == null"
+        ></q-btn>
+      </div>
+    </div>
+  </div>
 </q-page-sticky>
 {% endraw %} {% endblock %} {% block scripts %} {{ window_vars(user) }}
 <script>
