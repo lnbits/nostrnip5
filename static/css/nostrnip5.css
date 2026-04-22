@@ -187,6 +187,24 @@ body.body--dark .nip5-save-bar {
   border-top: 3px solid var(--q-primary);
 }
 
+/* Signup page mobile polish — keep ribbon total readable when chips wrap,
+   and ensure the brand logo doesn't squeeze the hero title on tiny screens. */
+@media (max-width: 599px) {
+  .nip5-ribbon-total {
+    margin-top: 4px;
+  }
+  .nip5-brand-logo {
+    width: 44px;
+    height: 44px;
+  }
+  /* Stepper inner padding eats horizontal room on narrow phones. */
+  .q-stepper--vertical .q-stepper__step-inner,
+  .q-stepper__step-inner {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+
 /* Focus visibility for stepper headers (keyboard navigation). */
 .q-stepper__tab:focus-visible {
   outline: 2px solid var(--q-primary);

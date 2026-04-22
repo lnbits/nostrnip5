@@ -130,30 +130,39 @@ with context %} {% block page %}
         </template>
       </q-input>
 
-      <div class="row q-gutter-sm q-mb-lg">
-        <q-btn
-          outline
-          color="primary"
-          icon="content_copy"
-          label="Copy link"
-          @click="copyText(recoveryLink, 'Recovery link copied')"
-        ></q-btn>
-        <q-btn
-          outline
-          color="primary"
-          icon="download"
-          label="Download as .txt"
-          @click="downloadRecovery"
-        ></q-btn>
-        <q-btn
-          outline
-          color="primary"
-          icon="open_in_new"
-          label="Open rotation page"
-          type="a"
-          :href="recoveryLink"
-          target="_blank"
-        ></q-btn>
+      <div class="row q-col-gutter-sm q-mb-lg nip5-action-row">
+        <div class="col-12 col-sm-auto">
+          <q-btn
+            outline
+            color="primary"
+            icon="content_copy"
+            label="Copy link"
+            class="full-width"
+            @click="copyText(recoveryLink, 'Recovery link copied')"
+          ></q-btn>
+        </div>
+        <div class="col-12 col-sm-auto">
+          <q-btn
+            outline
+            color="primary"
+            icon="download"
+            label="Download as .txt"
+            class="full-width"
+            @click="downloadRecovery"
+          ></q-btn>
+        </div>
+        <div class="col-12 col-sm-auto">
+          <q-btn
+            outline
+            color="primary"
+            icon="open_in_new"
+            label="Open rotation page"
+            type="a"
+            class="full-width"
+            :href="recoveryLink"
+            target="_blank"
+          ></q-btn>
+        </div>
       </div>
 
       <q-separator class="q-my-md"></q-separator>
@@ -208,7 +217,7 @@ with context %} {% block page %}
       bordered
       class="q-mt-md q-pa-sm nip5-surface-soft"
     >
-      <div class="row items-center q-col-gutter-sm text-caption">
+      <div class="row items-center q-col-gutter-sm text-caption nip5-choices-row">
         <div class="col-auto">
           <q-chip
             dense
@@ -246,7 +255,10 @@ with context %} {% block page %}
             ></span>
           </q-chip>
         </div>
-        <div v-if="availability.price" class="col text-right">
+        <div
+          v-if="availability.price"
+          class="col-12 col-sm text-sm-right nip5-ribbon-total"
+        >
           <span class="text-grey-7">Total </span>
           <span class="text-weight-bold" v-text="totalFormatted"></span>
         </div>
@@ -335,7 +347,7 @@ with context %} {% block page %}
               <div class="col">
                 <div class="text-caption text-grey-7">Price</div>
                 <div class="text-h6">
-                  <span v-text="availability.priceFormatted"></span>
+                  <span v-text="perYearFormatted"></span>
                   <span class="text-caption text-grey-7"> / year</span>
                 </div>
               </div>
@@ -473,9 +485,8 @@ with context %} {% block page %}
                   <span v-text="totalFormatted"></span>
                 </div>
                 <div class="text-caption text-grey-7">
-                  <span v-text="availability.priceFormatted"></span> ×
-                  <span v-text="form.years"></span>
-                  <span v-text="form.years == 1 ? ' year' : ' years'"></span>
+                  for <span v-text="form.years"></span>
+                  <span v-text="form.years == 1 ? 'year' : 'years'"></span>
                 </div>
               </div>
             </div>
@@ -571,23 +582,28 @@ with context %} {% block page %}
               </q-responsive>
             </a>
 
-            <div class="q-mt-md q-mb-md">
-              <q-btn
-                outline
-                color="primary"
-                icon="content_copy"
-                label="Copy invoice"
-                @click="copyText(invoice.payment_request, 'Invoice copied')"
-                class="q-mr-sm"
-              ></q-btn>
-              <q-btn
-                outline
-                color="primary"
-                icon="open_in_new"
-                label="Open in wallet"
-                type="a"
-                :href="'lightning:' + invoice.payment_request"
-              ></q-btn>
+            <div class="row q-col-gutter-sm q-mt-md q-mb-md justify-center nip5-action-row">
+              <div class="col-12 col-sm-auto">
+                <q-btn
+                  outline
+                  color="primary"
+                  icon="content_copy"
+                  label="Copy invoice"
+                  class="full-width"
+                  @click="copyText(invoice.payment_request, 'Invoice copied')"
+                ></q-btn>
+              </div>
+              <div class="col-12 col-sm-auto">
+                <q-btn
+                  outline
+                  color="primary"
+                  icon="open_in_new"
+                  label="Open in wallet"
+                  type="a"
+                  class="full-width"
+                  :href="'lightning:' + invoice.payment_request"
+                ></q-btn>
+              </div>
             </div>
 
             <div class="text-caption text-grey-7">

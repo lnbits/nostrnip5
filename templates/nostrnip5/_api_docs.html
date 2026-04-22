@@ -69,6 +69,37 @@ location /.well-known/nostr.json {
 }</pre
       >
     </q-card-section>
+
+    <q-separator></q-separator>
+
+    <q-card-section>
+      <div class="text-subtitle2 q-mb-sm">Example Caddyfile</div>
+      <div class="text-caption text-grey-8 q-mb-sm">
+        Drop this into your site block. Replace
+        <span class="text-monospace">{your_lnbits}</span> with your LNbits
+        host and <span class="text-monospace">{domain_id}</span> with the
+        domain ID shown next to your domain in the table above.
+      </div>
+      <pre
+        class="nip5-code-block q-pa-md rounded-borders"
+        style="overflow-x: auto; font-size: 11px; white-space: pre; margin: 0"
+      >
+{your_domain} {
+    handle /.well-known/nostr.json {
+        reverse_proxy https://{your_lnbits} {
+            header_up Host {your_lnbits}
+            rewrite /nostrnip5/api/v1/domain/{domain_id}/nostr.json?{query}
+        }
+        header Cache-Control "public, max-age=300, no-transform"
+    }
+
+    # ...your other site config...
+}</pre
+      >
+      <div class="text-caption text-grey-7 q-mt-sm">
+        Caddy auto-provisions TLS, so no extra cert config is needed.
+      </div>
+    </q-card-section>
   </q-card>
 </q-expansion-item>
 

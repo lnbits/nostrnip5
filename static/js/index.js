@@ -704,7 +704,7 @@ window.app = Vue.createApp({
         (sum, a) => sum + (Number(a.reimburse_amount) || 0),
         0
       )
-      return `${total.toLocaleString()} sats`
+      return `${Math.round(total).toLocaleString()} sats`
     },
     domainRankingAllOptions: function () {
       const rankings = this.domainRankingBraketOptions.map(r => ({

@@ -241,10 +241,26 @@
           <template v-slot:body="props">
             <q-tr :props="props">
               <q-td key="domain" :props="props">
-                <span
+                <div
                   class="text-weight-medium"
                   v-text="props.row.domain"
-                ></span>
+                ></div>
+                <div
+                  class="text-caption text-grey-7 cursor-pointer"
+                  @click="copyText(props.row.id, 'Domain ID copied')"
+                >
+                  <q-icon name="key" size="xs" class="q-mr-xs"></q-icon>
+                  <span class="text-monospace" v-text="props.row.id"></span>
+                  <q-icon
+                    name="content_copy"
+                    size="xs"
+                    class="q-ml-xs"
+                  ></q-icon>
+                  <q-tooltip
+                    >Click to copy. Use this domain ID in your nginx or
+                    Caddyfile config.</q-tooltip
+                  >
+                </div>
               </q-td>
               <q-td key="price" :props="props">
                 <span
@@ -269,6 +285,19 @@
                   @click="copySignupLink(props.row.id)"
                 >
                   <q-tooltip>Copy signup link</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat
+                  dense
+                  round
+                  size="sm"
+                  icon="key"
+                  color="grey-7"
+                  @click="copyText(props.row.id, 'Domain ID copied')"
+                >
+                  <q-tooltip
+                    >Copy domain ID (use in nginx / Caddy config)</q-tooltip
+                  >
                 </q-btn>
                 <q-btn
                   flat
@@ -500,7 +529,7 @@
                   icon="paid"
                   @click="showReimburseInvoice(props.row)"
                 >
-                  <span v-text="props.row.reimburse_amount + ' sats'"></span>
+                  <span v-text="Math.round(props.row.reimburse_amount).toLocaleString() + ' sats'"></span>
                   <q-tooltip>Click to generate refund invoice</q-tooltip>
                 </q-chip>
                 <span v-else class="text-grey-5">&mdash;</span>

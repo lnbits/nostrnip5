@@ -72,8 +72,18 @@ window.app = Vue.createApp({
     },
     totalFormatted() {
       if (!this.availability.price) return ''
-      const total = this.availability.price * this.form.years
-      return formatPrice(total, this.availability.currency || this.currency)
+      return formatPrice(
+        this.availability.price,
+        this.availability.currency || this.currency
+      )
+    },
+    perYearFormatted() {
+      if (!this.availability.price) return ''
+      const years = Math.max(1, parseInt(this.form.years) || 1)
+      return formatPrice(
+        this.availability.price / years,
+        this.availability.currency || this.currency
+      )
     },
     successHandle() {
       return `${this.successData.local_part}@${this.domain}`
