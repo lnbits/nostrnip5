@@ -205,6 +205,21 @@ body.body--dark .nip5-save-bar {
   }
 }
 
+/* Horizontal scroll wrapper for q-table on narrow screens. The table keeps
+   its natural column widths and scrolls inside the card instead of bleeding
+   into the page or forcing the layout to widen. */
+.nip5-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Keep action buttons on a single horizontal row inside their cell — Quasar
+   defaults can wrap small icon buttons when the cell is narrow, which makes
+   the actions column look broken on mobile. */
+.nip5-actions-cell {
+  white-space: nowrap;
+}
+
 /* Focus visibility for stepper headers (keyboard navigation). */
 .q-stepper__tab:focus-visible {
   outline: 2px solid var(--q-primary);

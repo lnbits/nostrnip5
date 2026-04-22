@@ -28,26 +28,34 @@ with context %} {% block page %}
           </div>
         </div>
         <div class="col-12 col-sm-auto">
-          <q-btn
-            flat
-            color="grey-7"
-            icon="content_copy"
-            label="Copy signup link"
-            @click="copySignupLink"
-          >
-            <q-tooltip
-              >Copy the public signup URL to share with buyers</q-tooltip
-            >
-          </q-btn>
-          <q-btn
-            flat
-            color="grey-7"
-            icon="open_in_new"
-            label="Open signup page"
-            type="a"
-            :href="'/nostrnip5/signup/' + domainForm.data.id"
-            target="_blank"
-          ></q-btn>
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-auto">
+              <q-btn
+                flat
+                color="grey-7"
+                icon="content_copy"
+                label="Copy signup link"
+                class="full-width"
+                @click="copySignupLink"
+              >
+                <q-tooltip
+                  >Copy the public signup URL to share with buyers</q-tooltip
+                >
+              </q-btn>
+            </div>
+            <div class="col-12 col-sm-auto">
+              <q-btn
+                flat
+                color="grey-7"
+                icon="open_in_new"
+                label="Open signup page"
+                type="a"
+                class="full-width"
+                :href="'/nostrnip5/signup/' + domainForm.data.id"
+                target="_blank"
+              ></q-btn>
+            </div>
+          </div>
         </div>
       </div>
     </q-card>
@@ -285,7 +293,7 @@ with context %} {% block page %}
                 :key="'cc' + index"
                 class="row q-col-gutter-sm q-mb-sm items-end"
               >
-                <div class="col">
+                <div class="col-12 col-sm">
                   <q-input
                     filled
                     dense
@@ -297,7 +305,7 @@ with context %} {% block page %}
                     @blur="sortCharCountCosts"
                   ></q-input>
                 </div>
-                <div class="col">
+                <div class="col-12 col-sm">
                   <q-input
                     filled
                     dense
@@ -387,7 +395,7 @@ with context %} {% block page %}
                 :key="'rc' + index"
                 class="row q-col-gutter-sm q-mb-sm items-end"
               >
-                <div class="col">
+                <div class="col-12 col-sm">
                   <q-select
                     filled
                     dense
@@ -399,7 +407,7 @@ with context %} {% block page %}
                     @update:model-value="sortRankCosts"
                   ></q-select>
                 </div>
-                <div class="col">
+                <div class="col-12 col-sm">
                   <q-input
                     filled
                     dense
@@ -483,7 +491,7 @@ with context %} {% block page %}
                 :key="'promo' + index"
                 class="nip5-promo-item q-mb-sm"
               >
-                <div class="row items-center no-wrap q-mb-sm">
+                <div class="row items-center q-mb-sm q-gutter-x-xs">
                   <q-icon
                     name="local_offer"
                     size="xs"

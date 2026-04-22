@@ -115,21 +115,23 @@
     <q-card>
       <q-card-section>
         <div class="row items-center q-col-gutter-sm">
-          <div class="col-auto">
+          <div class="col-12 col-sm-auto">
             <q-btn
               unelevated
               color="primary"
               icon="add"
               label="Add domain"
+              class="full-width"
               @click="formDialog.show = true"
             ></q-btn>
           </div>
-          <div class="col-auto">
+          <div class="col-12 col-sm-auto">
             <q-btn
               outline
               color="primary"
               icon="person_add"
               label="Issue identity manually"
+              class="full-width"
               @click="addressFormDialog.show = true"
             >
               <q-tooltip>
@@ -139,7 +141,7 @@
             </q-btn>
           </div>
           <div class="col"></div>
-          <div class="col-auto">
+          <div class="col-12 col-sm-auto">
             <q-btn-dropdown
               v-if="g.user.admin"
               @click="settingsFormDialog.show = true"
@@ -148,6 +150,7 @@
               color="grey-7"
               icon="settings"
               label="Settings"
+              class="full-width"
             >
               <q-list>
                 <q-item
@@ -220,148 +223,159 @@
           ></q-btn>
         </div>
 
-        <q-table
-          v-else
-          dense
-          flat
-          :rows="domains"
-          row-key="id"
-          :columns="domainsTable.columns"
-          v-model:pagination="domainsTable.pagination"
-        >
-          <template v-slot:header="props">
-            <q-tr :props="props">
-              <q-th v-for="col in props.cols" :key="col.name" :props="props">
-                {{ col.label }}
-              </q-th>
-              <q-th auto-width>Actions</q-th>
-            </q-tr>
-          </template>
+        <div class="nip5-table-scroll">
+          <q-table
+            v-else
+            dense
+            flat
+            :rows="domains"
+            row-key="id"
+            :columns="domainsTable.columns"
+            v-model:pagination="domainsTable.pagination"
+          >
+            <template v-slot:header="props">
+              <q-tr :props="props">
+                <q-th auto-width>Actions</q-th>
+                <q-th v-for="col in props.cols" :key="col.name" :props="props">
+                  {{ col.label }}
+                </q-th>
+              </q-tr>
+            </template>
 
-          <template v-slot:body="props">
-            <q-tr :props="props">
-              <q-td key="domain" :props="props">
-                <div
-                  class="text-weight-medium"
-                  v-text="props.row.domain"
-                ></div>
-                <div
-                  class="text-caption text-grey-7 cursor-pointer"
-                  @click="copyText(props.row.id, 'Domain ID copied')"
-                >
-                  <q-icon name="key" size="xs" class="q-mr-xs"></q-icon>
-                  <span class="text-monospace" v-text="props.row.id"></span>
-                  <q-icon
-                    name="content_copy"
-                    size="xs"
-                    class="q-ml-xs"
-                  ></q-icon>
-                  <q-tooltip
-                    >Click to copy. Use this domain ID in your nginx or
-                    Caddyfile config.</q-tooltip
+            <template v-slot:body="props">
+              <q-tr :props="props">
+                <q-td auto-width class="nip5-actions-cell">
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="content_copy"
+                    color="grey-7"
+                    @click="copySignupLink(props.row.id)"
                   >
-                </div>
-              </q-td>
-              <q-td key="price" :props="props">
-                <span
-                  v-text="formatPrice(props.row.cost, props.row.currency)"
-                ></span>
-                <span class="text-caption text-grey-7"> / year</span>
-              </q-td>
-              <q-td
-                key="currency"
-                :props="props"
-                v-text="props.row.currency"
-              ></q-td>
-              <q-td key="time" :props="props" v-text="props.row.time"></q-td>
-              <q-td auto-width>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  size="sm"
-                  icon="content_copy"
-                  color="grey-7"
-                  @click="copySignupLink(props.row.id)"
-                >
-                  <q-tooltip>Copy signup link</q-tooltip>
-                </q-btn>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  size="sm"
-                  icon="key"
-                  color="grey-7"
-                  @click="copyText(props.row.id, 'Domain ID copied')"
-                >
-                  <q-tooltip
-                    >Copy domain ID (use in nginx / Caddy config)</q-tooltip
+                    <q-tooltip>Copy signup link</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="key"
+                    color="grey-7"
+                    @click="copyText(props.row.id, 'Domain ID copied')"
                   >
-                </q-btn>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  size="sm"
-                  icon="open_in_new"
-                  color="grey-7"
-                  type="a"
-                  :href="'signup/' + props.row.id"
-                  target="_blank"
-                >
-                  <q-tooltip>Open signup page</q-tooltip>
-                </q-btn>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  size="sm"
-                  icon="fact_check"
-                  color="grey-7"
-                  @click="openLookupTester(props.row)"
-                >
-                  <q-tooltip>Test NIP-05 lookup</q-tooltip>
-                </q-btn>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  size="sm"
-                  icon="filter_list"
-                  color="grey-7"
-                  @click="filterByDomain(props.row.id)"
-                >
-                  <q-tooltip>Show only this domain's identities</q-tooltip>
-                </q-btn>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  size="sm"
-                  icon="edit"
-                  color="grey-7"
-                  type="a"
-                  :href="'domain/' + props.row.id"
-                  target="_blank"
-                >
-                  <q-tooltip>Edit domain</q-tooltip>
-                </q-btn>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  size="sm"
-                  icon="delete"
-                  color="negative"
-                  @click="deleteDomain(props.row.id)"
-                >
-                  <q-tooltip>Delete domain</q-tooltip>
-                </q-btn>
-              </q-td>
-            </q-tr>
-          </template>
-        </q-table>
+                    <q-tooltip
+                      >Copy domain ID (use in nginx / Caddy config)</q-tooltip
+                    >
+                  </q-btn>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="open_in_new"
+                    color="grey-7"
+                    type="a"
+                    :href="'signup/' + props.row.id"
+                    target="_blank"
+                  >
+                    <q-tooltip>Open signup page</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="edit"
+                    color="grey-7"
+                    type="a"
+                    :href="'domain/' + props.row.id"
+                    target="_blank"
+                  >
+                    <q-tooltip>Edit domain</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="more_vert"
+                    color="grey-7"
+                  >
+                    <q-tooltip>More actions</q-tooltip>
+                    <q-menu auto-close>
+                      <q-list dense style="min-width: 200px">
+                        <q-item clickable @click="openLookupTester(props.row)">
+                          <q-item-section avatar>
+                            <q-icon name="fact_check"></q-icon>
+                          </q-item-section>
+                          <q-item-section>Test NIP-05 lookup</q-item-section>
+                        </q-item>
+                        <q-item
+                          clickable
+                          @click="filterByDomain(props.row.id)"
+                        >
+                          <q-item-section avatar>
+                            <q-icon name="filter_list"></q-icon>
+                          </q-item-section>
+                          <q-item-section>
+                            Show only this domain's identities
+                          </q-item-section>
+                        </q-item>
+                        <q-separator></q-separator>
+                        <q-item
+                          clickable
+                          @click="deleteDomain(props.row.id)"
+                          class="text-negative"
+                        >
+                          <q-item-section avatar>
+                            <q-icon name="delete" color="negative"></q-icon>
+                          </q-item-section>
+                          <q-item-section>Delete domain</q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                  </q-btn>
+                </q-td>
+                <q-td key="domain" :props="props">
+                  <div
+                    class="text-weight-medium"
+                    v-text="props.row.domain"
+                  ></div>
+                  <div
+                    class="text-caption text-grey-7 cursor-pointer"
+                    @click="copyText(props.row.id, 'Domain ID copied')"
+                  >
+                    <q-icon name="key" size="xs" class="q-mr-xs"></q-icon>
+                    <span class="text-monospace" v-text="props.row.id"></span>
+                    <q-icon
+                      name="content_copy"
+                      size="xs"
+                      class="q-ml-xs"
+                    ></q-icon>
+                    <q-tooltip
+                      >Click to copy. Use this domain ID in your nginx or
+                      Caddyfile config.</q-tooltip
+                    >
+                  </div>
+                </q-td>
+                <q-td key="price" :props="props">
+                  <span
+                    v-text="formatPrice(props.row.cost, props.row.currency)"
+                  ></span>
+                  <span class="text-caption text-grey-7"> / year</span>
+                </q-td>
+                <q-td
+                  key="currency"
+                  :props="props"
+                  v-text="props.row.currency"
+                ></q-td>
+                <q-td key="time" :props="props" v-text="props.row.time"></q-td>
+              </q-tr>
+            </template>
+          </q-table>
+        </div>
         {% endraw %}
       </q-card-section>
     </q-card>
@@ -447,6 +461,7 @@
           </q-chip>
         </div>
         {% endraw %} {% raw %}
+        <div class="nip5-table-scroll">
         <q-table
           dense
           flat
@@ -458,10 +473,10 @@
         >
           <template v-slot:header="props">
             <q-tr :props="props">
+              <q-th auto-width>Actions</q-th>
               <q-th v-for="col in props.cols" :key="col.name" :props="props">
                 {{ col.label }}
               </q-th>
-              <q-th auto-width>Actions</q-th>
             </q-tr>
           </template>
 
@@ -481,6 +496,72 @@
 
           <template v-slot:body="props">
             <q-tr :props="props">
+              <q-td auto-width class="nip5-actions-cell">
+                <q-btn
+                  flat
+                  dense
+                  round
+                  size="sm"
+                  icon="autorenew"
+                  color="grey-7"
+                  type="a"
+                  target="_blank"
+                  :href="'rotate/' + props.row.domain_id + '/' + props.row.id"
+                >
+                  <q-tooltip>Open rotation page</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat
+                  dense
+                  round
+                  size="sm"
+                  icon="edit"
+                  color="grey-7"
+                  @click="editAddress(props.row)"
+                >
+                  <q-tooltip>Edit</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat
+                  dense
+                  round
+                  size="sm"
+                  icon="more_vert"
+                  color="grey-7"
+                >
+                  <q-tooltip>More actions</q-tooltip>
+                  <q-menu auto-close>
+                    <q-list dense style="min-width: 200px">
+                      <q-item
+                        clickable
+                        :disable="props.row.active == true"
+                        @click="activateAddress(props.row.domain_id, props.row.id)"
+                      >
+                        <q-item-section avatar>
+                          <q-icon
+                            name="check_circle"
+                            color="positive"
+                          ></q-icon>
+                        </q-item-section>
+                        <q-item-section>
+                          Activate without payment
+                        </q-item-section>
+                      </q-item>
+                      <q-separator></q-separator>
+                      <q-item
+                        clickable
+                        @click="deleteAddress(props.row.id)"
+                        class="text-negative"
+                      >
+                        <q-item-section avatar>
+                          <q-icon name="delete" color="negative"></q-icon>
+                        </q-item-section>
+                        <q-item-section>Delete identity</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-menu>
+                </q-btn>
+              </q-td>
               <q-td key="handle" :props="props">
                 <span
                   class="text-monospace"
@@ -535,58 +616,10 @@
                 <span v-else class="text-grey-5">&mdash;</span>
               </q-td>
               <q-td key="time" :props="props" v-text="props.row.time"></q-td>
-              <q-td auto-width>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  size="sm"
-                  icon="autorenew"
-                  color="grey-7"
-                  type="a"
-                  target="_blank"
-                  :href="'rotate/' + props.row.domain_id + '/' + props.row.id"
-                >
-                  <q-tooltip>Open rotation page</q-tooltip>
-                </q-btn>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  size="sm"
-                  icon="check_circle"
-                  color="positive"
-                  :disable="props.row.active == true"
-                  @click="activateAddress(props.row.domain_id, props.row.id)"
-                >
-                  <q-tooltip>Activate without payment</q-tooltip>
-                </q-btn>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  size="sm"
-                  icon="edit"
-                  color="grey-7"
-                  @click="editAddress(props.row)"
-                >
-                  <q-tooltip>Edit</q-tooltip>
-                </q-btn>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  size="sm"
-                  icon="delete"
-                  color="negative"
-                  @click="deleteAddress(props.row.id)"
-                >
-                  <q-tooltip>Delete identity</q-tooltip>
-                </q-btn>
-              </q-td>
             </q-tr>
           </template>
         </q-table>
+        </div>
         {% endraw %}
       </q-card-section>
     </q-card>
