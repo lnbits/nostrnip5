@@ -558,18 +558,14 @@ with context %} {% block page %}
         payment lands.
       </div>
 
-      <a
-        class="text-secondary"
-        :href="'lightning:' + invoice.payment_request"
+      <q-responsive
+        :ratio="1"
+        class="q-mx-auto cursor-pointer"
+        style="max-width: 280px"
+        @click="openInWallet"
       >
-        <q-responsive
-          :ratio="1"
-          class="q-mx-auto"
-          style="max-width: 280px"
-        >
-          <lnbits-qrcode :value="invoice.payment_request"></lnbits-qrcode>
-        </q-responsive>
-      </a>
+        <lnbits-qrcode :value="invoice.payment_request"></lnbits-qrcode>
+      </q-responsive>
 
       <div
         class="row q-col-gutter-sm q-mt-md q-mb-md justify-center nip5-action-row"
@@ -590,9 +586,8 @@ with context %} {% block page %}
             color="primary"
             icon="open_in_new"
             label="Open in wallet"
-            type="a"
             class="full-width"
-            :href="'lightning:' + invoice.payment_request"
+            @click="openInWallet"
           ></q-btn>
         </div>
       </div>

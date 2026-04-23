@@ -195,6 +195,14 @@ window.app = Vue.createApp({
       const el = document.querySelector('.nip5-hero-search')
       if (el) el.scrollIntoView({behavior: 'smooth', block: 'center'})
     },
+    openInWallet() {
+      // Hand the invoice to the OS protocol handler. Done via a click
+      // handler rather than an <a href="lightning:..."> so wallet browser
+      // extensions (Alby etc.) don't decorate our markup with their own
+      // floating icons.
+      if (!this.invoice || !this.invoice.payment_request) return
+      window.location.href = 'lightning:' + this.invoice.payment_request
+    },
     async pasteFromClipboard() {
       try {
         const text = await navigator.clipboard.readText()
