@@ -29,9 +29,11 @@ with context %} {% block page %}
 
         <div class="nip5-landing-sub q-mt-sm">
           A verified handle like
-          <span class="text-monospace text-primary" v-text="previewHandle"></span>
-          that you pay once with Lightning. Yours to keep as long as you
-          renew.
+          <span
+            class="text-monospace text-primary"
+            v-text="previewHandle"
+          ></span>
+          that you pay once with Lightning. Yours to keep as long as you renew.
         </div>
 
         <!-- Primary search — the single most important UI on the page -->
@@ -47,7 +49,10 @@ with context %} {% block page %}
             </div>
             <div class="text-caption text-grey-7 col-auto">
               From
-              <span class="text-weight-medium" v-text="baseCostFormatted"></span>
+              <span
+                class="text-weight-medium"
+                v-text="baseCostFormatted"
+              ></span>
               / year
             </div>
           </div>
@@ -80,16 +85,9 @@ with context %} {% block page %}
               v-else-if="availability.state === 'available'"
               class="text-caption text-positive"
             >
-              <q-icon
-                name="check_circle"
-                size="xs"
-                class="q-mr-xs"
-              ></q-icon>
+              <q-icon name="check_circle" size="xs" class="q-mr-xs"></q-icon>
               <span v-text="previewHandle"></span> is available
-              <span
-                v-if="availability.priceFormatted"
-                class="text-grey-7"
-              >
+              <span v-if="availability.priceFormatted" class="text-grey-7">
                 ·
                 <span v-text="availability.priceFormatted"></span> / year
                 <q-icon
@@ -171,14 +169,8 @@ with context %} {% block page %}
           <div class="col-12 col-md-4">
             <q-card flat bordered class="nip5-feature-card full-height">
               <div class="row items-center no-wrap q-gutter-x-md q-mb-sm">
-                <q-icon
-                  name="verified"
-                  size="28px"
-                  color="primary"
-                ></q-icon>
-                <div class="text-subtitle2 col">
-                  Verified everywhere
-                </div>
+                <q-icon name="verified" size="28px" color="primary"></q-icon>
+                <div class="text-subtitle2 col">Verified everywhere</div>
               </div>
               <div class="text-caption text-grey-7">
                 A small NIP-05 badge that confirms
@@ -190,42 +182,29 @@ with context %} {% block page %}
           <div class="col-12 col-md-4">
             <q-card flat bordered class="nip5-feature-card full-height">
               <div class="row items-center no-wrap q-gutter-x-md q-mb-sm">
-                <q-icon
-                  name="vpn_key"
-                  size="28px"
-                  color="primary"
-                ></q-icon>
-                <div class="text-subtitle2 col">
-                  A name that's truly yours
-                </div>
+                <q-icon name="vpn_key" size="28px" color="primary"></q-icon>
+                <div class="text-subtitle2 col">A name that's truly yours</div>
               </div>
               <div class="text-caption text-grey-7">
-                You own the Nostr key. Nobody can take the handle away from
-                you while you renew it.
+                You own the Nostr key. Nobody can take the handle away from you
+                while you renew it.
               </div>
             </q-card>
           </div>
           <div class="col-12 col-md-4">
             <q-card flat bordered class="nip5-feature-card full-height">
               <div class="row items-center no-wrap q-gutter-x-md q-mb-sm">
-                <q-icon
-                  name="autorenew"
-                  size="28px"
-                  color="primary"
-                ></q-icon>
-                <div class="text-subtitle2 col">
-                  A safety net for keys
-                </div>
+                <q-icon name="autorenew" size="28px" color="primary"></q-icon>
+                <div class="text-subtitle2 col">A safety net for keys</div>
               </div>
               <div class="text-caption text-grey-7">
-                Lose your keys? Use your recovery link to assign a new key
-                to the same handle. No drama.
+                Lose your keys? Use your recovery link to assign a new key to
+                the same handle. No drama.
               </div>
             </q-card>
           </div>
         </div>
       </section>
-
     </div>
 
     <!-- Success state -->
@@ -267,8 +246,8 @@ with context %} {% block page %}
         </template>
         <div class="text-subtitle2 q-mb-xs">Save this link now</div>
         <div class="text-caption">
-          You'll need it if you ever lose your Nostr keys. Bookmark it
-          here, or download the recovery file with the button below.
+          You'll need it if you ever lose your Nostr keys. Bookmark it here, or
+          download the recovery file with the button below.
         </div>
       </q-banner>
 
@@ -372,7 +351,7 @@ with context %} {% block page %}
       </q-list>
     </q-card>
 
-<!-- Order form — single focused card, no stepper. Replaces the
+    <!-- Order form — single focused card, no stepper. Replaces the
          previous q-stepper which rendered awkwardly on mobile and
          over-structured a 2-step flow. The same card swaps to the QR
          view once an invoice is created. -->
@@ -384,25 +363,20 @@ with context %} {% block page %}
       <div class="row items-center no-wrap q-gutter-x-md nip5-section-head">
         <q-icon name="vpn_key" size="28px" color="primary"></q-icon>
         <div>
-          <div class="text-overline text-grey-7 nip5-eyebrow">
-            Almost done
-          </div>
+          <div class="text-overline text-grey-7 nip5-eyebrow">Almost done</div>
           <div class="text-h6">Link your Nostr key</div>
         </div>
       </div>
 
       <div class="text-caption text-grey-7 q-mb-md">
         Your Nostr public key. This is the part that's safe to share.
-        <q-icon
-          name="info"
-          size="xs"
-          class="q-ml-xs cursor-pointer"
-        >
+        <q-icon name="info" size="xs" class="q-ml-xs cursor-pointer">
           <q-tooltip max-width="280px">
-            It starts with <span class="text-monospace">npub1…</span>
-            or is a 64-character hex string. Never paste your private
-            key (<span class="text-monospace">nsec…</span>). That
-            stays in your wallet or signer.
+            It starts with <span class="text-monospace">npub1…</span> or is a
+            64-character hex string. Never paste your private key (<span
+              class="text-monospace"
+              >nsec…</span
+            >). That stays in your wallet or signer.
           </q-tooltip>
         </q-icon>
       </div>
@@ -554,8 +528,8 @@ with context %} {% block page %}
       </div>
 
       <div class="text-caption text-grey-7 q-mb-md text-left">
-        Use any Lightning wallet. Your handle activates the moment
-        payment lands.
+        Use any Lightning wallet. Your handle activates the moment payment
+        lands.
       </div>
 
       <q-responsive
