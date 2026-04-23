@@ -8,7 +8,7 @@
     <q-card v-if="!domains.length" class="q-pa-lg">
       <div class="row items-center no-wrap q-mb-md">
         <q-icon
-          name="rocket_launch"
+          name="flag"
           size="32px"
           color="primary"
           class="q-mr-md"
@@ -80,7 +80,7 @@
     {% endraw %}
 
     <!-- KPI strip -->
-    <div class="row q-col-gutter-md">
+    <div class="row q-col-gutter-md q-mt-lg">
       <div class="col-12 col-sm-4">
         <q-card class="q-pa-md">
           <div class="text-caption text-grey-7">Domains</div>
@@ -223,9 +223,8 @@
           ></q-btn>
         </div>
 
-        <div class="nip5-table-scroll">
+        <div v-else class="nip5-table-scroll">
           <q-table
-            v-else
             dense
             flat
             :rows="domains"
@@ -261,7 +260,7 @@
                     dense
                     round
                     size="sm"
-                    icon="key"
+                    icon="vpn_key"
                     color="grey-7"
                     @click="copyText(props.row.id, 'Domain ID copied')"
                   >
@@ -347,7 +346,7 @@
                     class="text-caption text-grey-7 cursor-pointer"
                     @click="copyText(props.row.id, 'Domain ID copied')"
                   >
-                    <q-icon name="key" size="xs" class="q-mr-xs"></q-icon>
+                    <q-icon name="vpn_key" size="xs" class="q-mr-xs"></q-icon>
                     <span class="text-monospace" v-text="props.row.id"></span>
                     <q-icon
                       name="content_copy"

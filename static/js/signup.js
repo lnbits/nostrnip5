@@ -27,7 +27,6 @@ window.app = Vue.createApp({
       currency,
       baseCost,
       maxYears,
-      step: 1,
       form: {
         local_part: initialIdentifier || '',
         pubkey: '',
@@ -69,6 +68,13 @@ window.app = Vue.createApp({
         opts.push({label: `${i} ${i === 1 ? 'year' : 'years'}`, value: i})
       }
       return opts
+    },
+    baseCostFormatted() {
+      // baseCost arrives from the template as a raw string (e.g. "20000.0").
+      // Run it through the same formatter the rest of the page uses so sats
+      // get rounded and thousand-separated, and fiat gets two decimals plus
+      // the currency suffix.
+      return formatPrice(this.baseCost, this.currency)
     },
     totalFormatted() {
       if (!this.availability.price) return ''
@@ -174,8 +180,20 @@ window.app = Vue.createApp({
           }
         })
     },
-    goToStep(n) {
-      this.step = n
+    claimName() {
+      // Hero "Claim" CTA: smooth-scroll to the order form once the API
+      // has confirmed the typed name is free.
+      if (this.availability.state !== 'available') return
+      this.$nextTick(() => {
+        const el = document.getElementById('signup-stepper')
+        if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'})
+      })
+    },
+    changeName() {
+      // Form "Change name" / choices-ribbon name chip: scroll back to the
+      // hero search so the user can pick a different handle.
+      const el = document.querySelector('.nip5-hero-search')
+      if (el) el.scrollIntoView({behavior: 'smooth', block: 'center'})
     },
     async pasteFromClipboard() {
       try {

@@ -45,19 +45,6 @@ body.body--dark .nip5-banner-success {
   color: inherit;
 }
 
-/* Soft chip — replaces color="white" text-color="grey-9" chips on the
-   choices ribbon. Uses theme-aware tint and inherits the current text
-   color so it stays readable in both modes. */
-.nip5-chip-soft.q-chip {
-  background: rgba(0, 0, 0, 0.06) !important;
-  color: inherit !important;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-}
-body.body--dark .nip5-chip-soft.q-chip {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-color: rgba(255, 255, 255, 0.15);
-}
-
 /* Responsive dialog card — replaces fixed pixel widths on admin dialogs
    so they don't overflow on small screens. */
 .nip5-dialog-card {
@@ -170,41 +157,6 @@ body.body--dark .nip5-save-bar {
   }
 }
 
-/* Nostr brand logo — sits natively on the card, no frame. Sized to match
-   the hero typography; object-fit keeps proportions if source is not
-   perfectly square. */
-.nip5-brand-logo {
-  width: 56px;
-  height: 56px;
-  object-fit: contain;
-  flex: 0 0 auto;
-  display: block;
-}
-
-/* Hero card accent — a thin primary underline so the signup landing card
-   feels branded without changing the LNbits palette. */
-.nip5-hero-card {
-  border-top: 3px solid var(--q-primary);
-}
-
-/* Signup page mobile polish — keep ribbon total readable when chips wrap,
-   and ensure the brand logo doesn't squeeze the hero title on tiny screens. */
-@media (max-width: 599px) {
-  .nip5-ribbon-total {
-    margin-top: 4px;
-  }
-  .nip5-brand-logo {
-    width: 44px;
-    height: 44px;
-  }
-  /* Stepper inner padding eats horizontal room on narrow phones. */
-  .q-stepper--vertical .q-stepper__step-inner,
-  .q-stepper__step-inner {
-    padding-left: 8px;
-    padding-right: 8px;
-  }
-}
-
 /* Horizontal scroll wrapper for q-table on narrow screens. The table keeps
    its natural column widths and scrolls inside the card instead of bleeding
    into the page or forcing the layout to widen. */
@@ -218,6 +170,86 @@ body.body--dark .nip5-save-bar {
    the actions column look broken on mobile. */
 .nip5-actions-cell {
   white-space: nowrap;
+}
+
+/* === Signup landing page ================================================
+   Welcoming, playful-but-restrained intro for non-technical buyers. No
+   animation, no glow, no gradients — relies on whitespace, big icons,
+   and the LNbits primary colour for character. Layouts stack on mobile
+   via Quasar's existing responsive utilities. */
+
+/* Compact brand mark next to the eyebrow — keeps the page rooted in
+   "this is a Nostr identity" without dominating the hero. */
+.nip5-brand-mark {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
+
+.nip5-eyebrow {
+  letter-spacing: 0.08em;
+}
+
+/* Headline: large but not screaming. Two-line cadence reads as playful
+   without needing decoration. */
+.nip5-landing-headline {
+  font-size: 2rem;
+  line-height: 1.15;
+  font-weight: 700;
+  margin: 0;
+}
+@media (min-width: 600px) {
+  .nip5-landing-headline {
+    font-size: 2.5rem;
+  }
+}
+.nip5-landing-sub {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.7);
+}
+body.body--dark .nip5-landing-sub {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Hero search card — the focal interaction. Slightly thicker top border
+   in primary colour signals "start here" without resorting to glow. */
+.nip5-hero-search {
+  border-top: 3px solid var(--q-primary);
+}
+
+/* Section header pattern: icon on the left, eyebrow + title stacked on
+   the right. Used by every landing section so they share one rhythm. */
+.nip5-section-head {
+  margin-bottom: 12px;
+}
+.nip5-section-head > .q-icon {
+  flex: 0 0 auto;
+}
+
+/* Trust pills — three short reassurances under the hero search. */
+.nip5-trust-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.03);
+  font-size: 0.875rem;
+  height: 100%;
+}
+body.body--dark .nip5-trust-pill {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Feature cards — taller, more breathing room than the trust pills.
+   Icon-led; copy explains the value in plain English. */
+.nip5-feature-card {
+  padding: 20px 16px;
+  text-align: left;
 }
 
 /* Focus visibility for stepper headers (keyboard navigation). */
