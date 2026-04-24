@@ -291,6 +291,7 @@ async def api_lock_address_for_transfer(
     address = await get_address_for_lock(domain, data)
 
     transfer_code_data = json.dumps(["lock", address.id, address.extra.transfer_code])
+    assert domain.cost_extra.transfer_secret
     lock_code = AESCipher(key=domain.cost_extra.transfer_secret).encrypt(
         transfer_code_data.encode()
     )
