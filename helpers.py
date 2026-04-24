@@ -1,7 +1,7 @@
 import re
 from hashlib import sha256
 from http import HTTPStatus
-from typing import Annotated, Optional
+from typing import Annotated
 from urllib.parse import urlparse
 
 from bech32 import bech32_decode, convertbits
@@ -61,7 +61,7 @@ def is_ws_url(url):
         return False
 
 
-def owner_id_from_user_id(user_id: Optional[str] = None) -> str:
+def owner_id_from_user_id(user_id: str | None = None) -> str:
     return sha256((user_id or "").encode("utf-8")).hexdigest()
 
 

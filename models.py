@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from lnbits.db import FilterModel
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
@@ -53,7 +52,7 @@ class Promotion(BaseModel):
     code: str = ""
     buyer_discount_percent: float
     referer_bonus_percent: float
-    selected_referer: Optional[str] = None
+    selected_referer: str | None = None
 
     def validate_data(self):
         assert (
@@ -68,9 +67,9 @@ class Promotion(BaseModel):
 
 
 class PromoCodeStatus(BaseModel):
-    buyer_discount: Optional[float] = None
+    buyer_discount: float | None = None
     allow_referer: bool = False
-    referer: Optional[str] = None
+    referer: str | None = None
 
 
 class RotateAddressData(BaseModel):
@@ -79,8 +78,8 @@ class RotateAddressData(BaseModel):
 
 
 class UpdateAddressData(BaseModel):
-    pubkey: Optional[str] = None
-    relays: Optional[list[str]] = None
+    pubkey: str | None = None
+    relays: list[str] | None = None
 
     def validate_data(self):
         self.validate_relays_urls()
@@ -103,9 +102,9 @@ class CreateAddressData(BaseModel):
     local_part: str
     pubkey: str = ""
     years: int = 1
-    relays: Optional[list[str]] = None
-    promo_code: Optional[str] = None
-    referer: Optional[str] = None
+    relays: list[str] | None = None
+    promo_code: str | None = None
+    referer: str | None = None
     create_invoice: bool = False
 
     def normalize(self):
@@ -127,13 +126,13 @@ class CreateAddressData(BaseModel):
 
 class DomainCostConfig(BaseModel):
     max_years: int = 1
-    transfer_secret: Optional[str] = None
+    transfer_secret: str | None = None
     char_count_cost: list[CustomCost] = []
     rank_cost: list[CustomCost] = []
     promotions: list[Promotion] = []
 
     def apply_promo_code(
-        self, amount: float, promo_code: Optional[str] = None
+        self, amount: float, promo_code: str | None = None
     ) -> tuple[float, float]:
         if promo_code is None:
             return 0, 0
@@ -145,20 +144,20 @@ class DomainCostConfig(BaseModel):
         referer_bonus = amount * (promotion.referer_bonus_percent / 100)
         return round(discount, 2), round(referer_bonus, 2)
 
-    def get_promotion(self, promo_code: Optional[str] = None) -> Optional[Promotion]:
+    def get_promotion(self, promo_code: str | None = None) -> Promotion | None:
         if promo_code is None:
             return None
         return next((p for p in self.promotions if p.code == promo_code), None)
 
-    def promo_code_buyer_discount(self, promo_code: Optional[str] = None) -> float:
+    def promo_code_buyer_discount(self, promo_code: str | None = None) -> float:
         promotion = self.get_promotion(promo_code)
         if not promotion:
             return 0
         return promotion.buyer_discount_percent
 
     def promo_code_referer(
-        self, promo_code: Optional[str] = None, default_referer: Optional[str] = None
-    ) -> Optional[str]:
+        self, promo_code: str | None = None, default_referer: str | None = None
+    ) -> str | None:
         promotion = self.get_promotion(promo_code)
         if not promotion:
             return None
@@ -169,14 +168,14 @@ class DomainCostConfig(BaseModel):
 
         return default_referer
 
-    def promo_code_allows_referer(self, promo_code: Optional[str] = None) -> bool:
+    def promo_code_allows_referer(self, promo_code: str | None = None) -> bool:
         promotion = self.get_promotion(promo_code)
         if not promotion:
             return False
 
         return promotion.referer_bonus_percent > 0 and not promotion.selected_referer
 
-    def promo_code_status(self, promo_code: Optional[str] = None) -> PromoCodeStatus:
+    def promo_code_status(self, promo_code: str | None = None) -> PromoCodeStatus:
         return PromoCodeStatus(
             buyer_discount=self.promo_code_buyer_discount(promo_code),
             allow_referer=self.promo_code_allows_referer(promo_code),
@@ -207,7 +206,7 @@ class CreateDomainData(BaseModel):
     currency: str
     cost: float
     domain: str
-    cost_extra: Optional[DomainCostConfig] = None
+    cost_extra: DomainCostConfig | None = None
 
     def validate_data(self):
         assert self.cost >= 0, "Domain cost must be positive."
@@ -219,7 +218,7 @@ class EditDomainData(BaseModel):
     id: str
     currency: str
     cost: float
-    cost_extra: Optional[DomainCostConfig] = None
+    cost_extra: DomainCostConfig | None = None
 
     def validate_data(self):
         assert self.cost >= 0, "Domain cost must be positive."
@@ -248,8 +247,8 @@ class Domain(PublicDomain):
         self,
         identifier: str,
         years: int,
-        rank: Optional[int] = None,
-        promo_code: Optional[str] = None,
+        rank: int | None = None,
+        promo_code: str | None = None,
     ) -> PriceData:
         assert (
             1 <= years <= self.cost_extra.max_years
@@ -292,18 +291,18 @@ class LnAddressConfig(BaseModel):
     wallet: str
     min: int = 1
     max: int = 10_000_000
-    pay_link_id: Optional[str] = ""
+    pay_link_id: str | None = ""
 
 
 class AddressExtra(BaseModel):
-    currency: Optional[str] = None
-    price: Optional[float] = None
-    price_in_sats: Optional[float] = None
-    payment_hash: Optional[str] = None
-    reimburse_payment_hash: Optional[str] = None
-    promo_code: Optional[str] = None
-    transfer_code: Optional[str] = None
-    referer: Optional[str] = None
+    currency: str | None = None
+    price: float | None = None
+    price_in_sats: float | None = None
+    payment_hash: str | None = None
+    reimburse_payment_hash: str | None = None
+    promo_code: str | None = None
+    transfer_code: str | None = None
+    referer: str | None = None
     activated_by_owner: bool = False
     years: int = 1
     max_years: int = 1
@@ -313,13 +312,13 @@ class AddressExtra(BaseModel):
 
 class Address(BaseModel):
     id: str
-    owner_id: Optional[str] = None
+    owner_id: str | None = None
     domain_id: str
     local_part: str
     active: bool
     time: datetime
     expires_at: datetime
-    pubkey: Optional[str] = None
+    pubkey: str | None = None
     is_free: bool = False
     is_locked: bool = False
     reimburse_amount: int = 0
@@ -331,12 +330,12 @@ class Address(BaseModel):
 
 class AddressStatus(BaseModel):
     identifier: str
-    free_identifier_number: Optional[str] = None
+    free_identifier_number: str | None = None
     available: bool = False
-    price: Optional[float] = None
-    price_in_sats: Optional[float] = None
-    price_reason: Optional[str] = None
-    currency: Optional[str] = None
+    price: float | None = None
+    price_in_sats: float | None = None
+    price_reason: str | None = None
+    currency: str | None = None
 
     @property
     def price_formatted(self) -> str:
@@ -357,9 +356,9 @@ class AddressFilters(FilterModel):
 
 
 class Nip5Settings(BaseModel):
-    cloudflare_access_token: Optional[str] = None
-    lnaddress_api_admin_key: Optional[str] = ""
-    lnaddress_api_endpoint: Optional[str] = "https://nostr.com"
+    cloudflare_access_token: str | None = None
+    lnaddress_api_admin_key: str | None = ""
+    lnaddress_api_endpoint: str | None = "https://nostr.com"
 
 
 class UserSetting(BaseModel):
