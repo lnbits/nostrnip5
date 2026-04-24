@@ -1,6 +1,5 @@
 import json
 from http import HTTPStatus
-from typing import Optional
 from uuid import uuid4
 
 import httpx
@@ -169,9 +168,9 @@ async def api_get_nostr_json(
 @nostrnip5_api_router.get("/api/v1/domain/{domain_id}/search")
 async def api_search_identifier(
     domain_id: str,
-    q: Optional[str] = None,
-    years: Optional[int] = None,
-    user_id: Optional[str] = Depends(optional_user_id),
+    q: str | None = None,
+    years: int | None = None,
+    user_id: str | None = Depends(optional_user_id),
 ) -> AddressStatus:
 
     if not q:
@@ -506,9 +505,9 @@ async def api_request_address(
 
 @nostrnip5_api_router.get("/api/v1/user/addresses")
 async def api_get_user_addresses(
-    user_id: Optional[str] = Depends(optional_user_id),
-    local_part: Optional[str] = None,
-    active: Optional[bool] = None,
+    user_id: str | None = Depends(optional_user_id),
+    local_part: str | None = None,
+    active: bool | None = None,
 ):
     if not user_id:
         raise HTTPException(HTTPStatus.UNAUTHORIZED)
@@ -523,7 +522,7 @@ async def api_get_user_addresses(
 async def api_delete_user_address(
     domain_id: str,
     address_id: str,
-    user_id: Optional[str] = Depends(optional_user_id),
+    user_id: str | None = Depends(optional_user_id),
 ):
 
     if not user_id:
@@ -570,7 +569,7 @@ async def api_update_user_address(
     domain_id: str,
     address_id: str,
     data: UpdateAddressData,
-    user_id: Optional[str] = Depends(optional_user_id),
+    user_id: str | None = Depends(optional_user_id),
 ) -> Address:
 
     if not user_id:
@@ -606,7 +605,7 @@ async def api_update_user_address(
 async def api_request_user_address(
     address_data: CreateAddressData,
     domain_id: str,
-    user_id: Optional[str] = Depends(optional_user_id),
+    user_id: str | None = Depends(optional_user_id),
 ):
 
     if not user_id:
@@ -631,7 +630,7 @@ async def api_request_user_address(
 async def api_request_public_user_address(
     address_data: CreateAddressData,
     domain_id: str,
-    user_id: Optional[str] = Depends(optional_user_id),
+    user_id: str | None = Depends(optional_user_id),
 ):
 
     address_data.normalize()
@@ -665,7 +664,7 @@ async def api_lnurl_create_or_update(
     domain_id: str,
     address_id: str,
     data: LnAddressConfig,
-    user_id: Optional[str] = Depends(optional_user_id),
+    user_id: str | None = Depends(optional_user_id),
 ):
     if not user_id:
         raise HTTPException(HTTPStatus.UNAUTHORIZED)
@@ -735,8 +734,8 @@ async def api_add_identifier_ranking(bucket: int, request: Request):
     dependencies=[Depends(check_admin)],
 )
 async def api_domain_search_address(
-    q: Optional[str] = None,
-) -> Optional[IdentifierRanking]:
+    q: str | None = None,
+) -> IdentifierRanking | None:
     if not q:
         return None
     return await get_identifier_ranking(q)
@@ -748,7 +747,7 @@ async def api_domain_search_address(
 )
 async def api_domain_update_ranking(
     identifier_ranking: IdentifierRanking,
-) -> Optional[IdentifierRanking]:
+) -> IdentifierRanking | None:
     return await update_identifier_ranking(
         identifier_ranking.name, identifier_ranking.rank
     )

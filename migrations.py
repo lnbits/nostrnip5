@@ -3,8 +3,7 @@ from lnbits.db import Database
 
 async def m001_initial_invoices(db: Database):
 
-    await db.execute(
-        f"""
+    await db.execute(f"""
        CREATE TABLE nostrnip5.domains (
            id TEXT PRIMARY KEY,
            wallet TEXT NOT NULL,
@@ -16,11 +15,9 @@ async def m001_initial_invoices(db: Database):
 
            time TIMESTAMP NOT NULL DEFAULT {db.timestamp_now}
        );
-   """
-    )
+   """)
 
-    await db.execute(
-        f"""
+    await db.execute(f"""
        CREATE TABLE nostrnip5.addresses (
            id TEXT PRIMARY KEY,
            domain_id TEXT NOT NULL,
@@ -34,8 +31,7 @@ async def m001_initial_invoices(db: Database):
 
            FOREIGN KEY(domain_id) REFERENCES {db.references_schema}domains(id)
         );
-   """
-    )
+   """)
 
 
 async def m002_add_owner_id_to_addresess(db: Database):
@@ -54,28 +50,24 @@ async def m003_add_cost_extra_column_to_domains(db: Database):
 
 async def m004_add_domain_rankings_table(db: Database):
 
-    await db.execute(
-        """
+    await db.execute("""
        CREATE TABLE nostrnip5.identifiers_rankings (
            name TEXT PRIMARY KEY,
            rank INTEGER NOT NULL
 
        );
-   """
-    )
+   """)
 
 
 async def m005_add_domain_rankings_table(db: Database):
 
-    await db.execute(
-        """
+    await db.execute("""
        CREATE TABLE nostrnip5.settings (
            owner_id TEXT PRIMARY KEY,
            settings text
 
        );
-   """
-    )
+   """)
 
 
 async def m006_make_amount_type_real(db: Database):
@@ -106,21 +98,17 @@ async def m008_add_is_free_column(db):
     """
     Adds is_free flag for addresses.
     """
-    await db.execute(
-        """
+    await db.execute("""
             ALTER TABLE nostrnip5.addresses
             ADD COLUMN is_free BOOLEAN NOT NULL DEFAULT false
-        """
-    )
+        """)
 
 
 async def m009_add_is_locked_column(db):
     """
     Adds is_locked flag for addresses.
     """
-    await db.execute(
-        """
+    await db.execute("""
             ALTER TABLE nostrnip5.addresses
             ADD COLUMN is_locked BOOLEAN NOT NULL DEFAULT false
-        """
-    )
+        """)

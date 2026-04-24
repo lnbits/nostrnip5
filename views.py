@@ -1,5 +1,4 @@
 from http import HTTPStatus
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -47,8 +46,8 @@ async def domain_details(
 async def signup(
     request: Request,
     domain_id: str,
-    identifier: Optional[str] = None,
-    years: Optional[int] = None,
+    identifier: str | None = None,
+    years: int | None = None,
 ):
     domain = await get_domain_by_id(domain_id)
 
@@ -78,7 +77,7 @@ async def signup(
     "/rotate/{domain_id}/{address_id}", response_class=HTMLResponse
 )
 async def rotate(
-    request: Request, domain_id: str, address_id: str, secret: Optional[str] = None
+    request: Request, domain_id: str, address_id: str, secret: str | None = None
 ):
     domain = await get_domain_public_data(domain_id)
     address = await get_address(domain_id, address_id)

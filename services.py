@@ -1,7 +1,6 @@
 import json
 from datetime import datetime, timedelta, timezone
 from random import randint
-from typing import Optional
 
 import httpx
 from lnbits.core.crud import get_standalone_payment, get_user
@@ -46,7 +45,7 @@ from .models import (
 
 
 async def get_user_domains(
-    user_id: str, wallet_id: str, all_wallets: Optional[bool] = False
+    user_id: str, wallet_id: str, all_wallets: bool | None = False
 ) -> list[Domain]:
     wallet_ids = [wallet_id]
     if all_wallets:
@@ -59,7 +58,7 @@ async def get_user_domains(
 
 
 async def get_user_addresses(
-    user_id: str, wallet_id: str, all_wallets: Optional[bool] = False
+    user_id: str, wallet_id: str, all_wallets: bool | None = False
 ) -> list[Address]:
     wallet_ids = [wallet_id]
     if all_wallets:
@@ -74,8 +73,8 @@ async def get_user_addresses(
 async def get_user_addresses_paginated(
     user_id: str,
     wallet_id: str,
-    all_wallets: Optional[bool] = False,
-    filters: Optional[Filters[AddressFilters]] = None,
+    all_wallets: bool | None = False,
+    filters: Filters[AddressFilters] | None = None,
 ) -> Page[Address]:
     wallet_ids = [wallet_id]
     if all_wallets:
@@ -88,7 +87,7 @@ async def get_user_addresses_paginated(
 
 
 async def get_identifier_status(
-    domain: Domain, identifier: str, years: int, promo_code: Optional[str] = None
+    domain: Domain, identifier: str, years: int, promo_code: str | None = None
 ) -> AddressStatus:
     identifier = normalize_identifier(identifier)
     address = await get_active_address_by_local_part(domain.id, identifier)
@@ -111,8 +110,8 @@ async def get_identifier_status(
 
 
 async def get_identifier_price_data(
-    domain: Domain, identifier: str, years: int, promo_code: Optional[str] = None
-) -> Optional[PriceData]:
+    domain: Domain, identifier: str, years: int, promo_code: str | None = None
+) -> PriceData | None:
     identifier_ranking = await get_identifier_ranking(identifier)
     rank = identifier_ranking.rank if identifier_ranking else None
 
@@ -133,7 +132,7 @@ async def get_next_free_identifier(domain_id: str, identifier: str):
 
 async def get_user_free_identifier(
     user_id: str, domain_id: str, identifier: str
-) -> Optional[str]:
+) -> str | None:
     owner = owner_id_from_user_id(user_id)
     free_addresses = await get_free_addresses_for_owner(owner, domain_id)
     if free_addresses:
@@ -225,9 +224,9 @@ def is_free_identifier(identifier: str) -> bool:
 async def create_address(
     domain: Domain,
     data: CreateAddressData,
-    wallet_id: Optional[str] = None,
-    user_id: Optional[str] = None,
-    promo_code: Optional[str] = None,
+    wallet_id: str | None = None,
+    user_id: str | None = None,
+    promo_code: str | None = None,
 ) -> Address:
 
     identifier = normalize_identifier(data.local_part)
@@ -270,7 +269,7 @@ async def activate_address(
     domain_id: str,
     address_id: str,
     is_free: bool = False,
-    payment_hash: Optional[str] = None,
+    payment_hash: str | None = None,
 ) -> Address:
     logger.info(f"Activating NIP-05 '{address_id}' for {domain_id}")
 
@@ -366,7 +365,7 @@ async def get_address_for_transfer(domain: Domain, lock_code: str) -> Address:
 
 
 async def get_valid_addresses_for_owner(
-    owner_id: str, local_part: Optional[str] = None, active: Optional[bool] = None
+    owner_id: str, local_part: str | None = None, active: bool | None = None
 ) -> list[Address]:
 
     valid_addresses = []

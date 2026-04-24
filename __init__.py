@@ -38,9 +38,9 @@ def nostrnip5_start():
 
 
 __all__ = [
-    "nostrnip5_ext",
-    "nostrnip5_static_files",
-    "nostrnip5_start",
-    "nostrnip5_stop",
     "db",
+    "nostrnip5_ext",
+    "nostrnip5_start",
+    "nostrnip5_static_files",
+    "nostrnip5_stop",
 ]
