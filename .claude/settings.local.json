@@ -1,9 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(git *)",
-      "Bash(npx --version)",
-      "Bash(prettier *)"
-    ]
+    "allow": ["Bash(git *)", "Bash(npx --version)", "Bash(prettier *)"]
   }
 }

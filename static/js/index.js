@@ -742,7 +742,7 @@ window.app = Vue.createApp({
     cloudflareConfigured: function () {
       return Boolean(
         this.settingsFormDialog.data &&
-        this.settingsFormDialog.data.cloudflare_access_token
+          this.settingsFormDialog.data.cloudflare_access_token
       )
     },
     lnaddressConfigured: function () {
