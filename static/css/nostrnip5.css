@@ -1,0 +1,260 @@
+/* Shared theme-aware styles for the nostrnip5 extension.
+   Respects LNbits light and dark themes via body.body--dark. */
+
+/* Subtle surface — replaces hardcoded bg-grey-1 on summary, preview and
+   review panels. Tints the card relative to the current theme instead of
+   locking it to a light-mode grey. */
+.nip5-surface-soft {
+  background: rgba(0, 0, 0, 0.04);
+}
+body.body--dark .nip5-surface-soft {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Code / response block — replaces hardcoded bg-grey-2 text-grey-10. */
+.nip5-code-block {
+  background: rgba(0, 0, 0, 0.06);
+  color: inherit;
+}
+body.body--dark .nip5-code-block {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Semantic tinted banners that work in both themes. */
+.nip5-banner-warning {
+  background: rgba(255, 152, 0, 0.14);
+  color: #b26a00;
+}
+body.body--dark .nip5-banner-warning {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ffcc80;
+}
+.nip5-banner-warning .q-icon {
+  color: inherit;
+}
+
+.nip5-banner-success {
+  background: rgba(76, 175, 80, 0.14);
+  color: #1b5e20;
+}
+body.body--dark .nip5-banner-success {
+  background: rgba(76, 175, 80, 0.22);
+  color: #a5d6a7;
+}
+.nip5-banner-success .q-icon {
+  color: inherit;
+}
+
+/* Responsive dialog card — replaces fixed pixel widths on admin dialogs
+   so they don't overflow on small screens. */
+.nip5-dialog-card {
+  width: min(560px, 95vw);
+}
+
+/* Pricing formula strip — visual replacement for the ordered-list
+   "How pricing is calculated" block. */
+.nip5-formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+}
+.nip5-formula__step {
+  flex: 1 1 140px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.03);
+}
+body.body--dark .nip5-formula__step {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+.nip5-formula__step--total {
+  border-color: var(--q-primary);
+  background: rgba(var(--q-primary-rgb, 105, 27, 154), 0.08);
+}
+.nip5-formula__op {
+  flex: 0 0 auto;
+  align-self: center;
+  font-weight: 600;
+  opacity: 0.6;
+  padding: 0 2px;
+}
+/* On narrow screens stack the formula vertically with the operator
+   centered between rows — avoids ugly wrapping of horizontal steps. */
+@media (max-width: 480px) {
+  .nip5-formula {
+    flex-direction: column;
+  }
+  .nip5-formula__step {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+  .nip5-formula__op {
+    align-self: center;
+    padding: 2px 0;
+  }
+}
+
+/* Empty state block — centered icon + copy + CTA inside strategy cards. */
+.nip5-empty-state {
+  padding: 24px 16px;
+  text-align: center;
+  border: 1px dashed rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+}
+body.body--dark .nip5-empty-state {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Promo item card — one promo per mini-card instead of one-line row. */
+.nip5-promo-item {
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+body.body--dark .nip5-promo-item {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Sticky bottom save bar (domain page). Spans the content area so the
+   Save button is always visible without overlapping body content. The
+   helper caption hides on narrow screens to keep the button prominent. */
+.nip5-save-bar {
+  background: #fff;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.04);
+}
+body.body--dark .nip5-save-bar {
+  background: #1d1d1d;
+  border-top-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+}
+@media (max-width: 600px) {
+  .nip5-save-bar .text-caption {
+    display: none;
+  }
+  .nip5-save-bar .q-btn {
+    width: 100%;
+  }
+  .nip5-save-bar .col-auto {
+    flex: 1 1 100%;
+  }
+}
+
+/* Sticky sidebar (domain page live-preview) — sticky only when side-by-
+   side with the main column on large screens. On stacked mobile layouts
+   the sidebar renders in natural flow. */
+.nip5-sticky-sidebar {
+  position: static;
+}
+@media (min-width: 1024px) {
+  .nip5-sticky-sidebar {
+    position: sticky;
+    top: 80px;
+  }
+}
+
+/* Horizontal scroll wrapper for q-table on narrow screens. The table keeps
+   its natural column widths and scrolls inside the card instead of bleeding
+   into the page or forcing the layout to widen. */
+.nip5-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Keep action buttons on a single horizontal row inside their cell — Quasar
+   defaults can wrap small icon buttons when the cell is narrow, which makes
+   the actions column look broken on mobile. */
+.nip5-actions-cell {
+  white-space: nowrap;
+}
+
+/* === Signup landing page ================================================
+   Welcoming, playful-but-restrained intro for non-technical buyers. No
+   animation, no glow, no gradients — relies on whitespace, big icons,
+   and the LNbits primary colour for character. Layouts stack on mobile
+   via Quasar's existing responsive utilities. */
+
+/* Compact brand mark next to the eyebrow — keeps the page rooted in
+   "this is a Nostr identity" without dominating the hero. */
+.nip5-brand-mark {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
+
+.nip5-eyebrow {
+  letter-spacing: 0.08em;
+}
+
+/* Headline: large but not screaming. Two-line cadence reads as playful
+   without needing decoration. */
+.nip5-landing-headline {
+  font-size: 2rem;
+  line-height: 1.15;
+  font-weight: 700;
+  margin: 0;
+}
+@media (min-width: 600px) {
+  .nip5-landing-headline {
+    font-size: 2.5rem;
+  }
+}
+.nip5-landing-sub {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.7);
+}
+body.body--dark .nip5-landing-sub {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Hero search card — the focal interaction. Slightly thicker top border
+   in primary colour signals "start here" without resorting to glow. */
+.nip5-hero-search {
+  border-top: 3px solid var(--q-primary);
+}
+
+/* Section header pattern: icon on the left, eyebrow + title stacked on
+   the right. Used by every landing section so they share one rhythm. */
+.nip5-section-head {
+  margin-bottom: 12px;
+}
+.nip5-section-head > .q-icon {
+  flex: 0 0 auto;
+}
+
+/* Trust pills — three short reassurances under the hero search. */
+.nip5-trust-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.03);
+  font-size: 0.875rem;
+  height: 100%;
+}
+body.body--dark .nip5-trust-pill {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Feature cards — taller, more breathing room than the trust pills.
+   Icon-led; copy explains the value in plain English. */
+.nip5-feature-card {
+  padding: 20px 16px;
+  text-align: left;
+}
+
+/* Focus visibility for stepper headers (keyboard navigation). */
+.q-stepper__tab:focus-visible {
+  outline: 2px solid var(--q-primary);
+  outline-offset: -2px;
+  border-radius: 4px;
+}

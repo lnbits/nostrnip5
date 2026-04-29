@@ -16,18 +16,18 @@ window.app = Vue.createApp({
       ],
       currencyOptions: [],
       showOnlyActiveAddresses: true,
+      domainFilter: null,
       domainsTable: {
         columns: [
-          {name: 'id', align: 'left', label: 'ID', field: 'id'},
           {name: 'domain', align: 'left', label: 'Domain', field: 'domain'},
+          {name: 'price', align: 'left', label: 'Price', field: 'cost'},
           {
             name: 'currency',
             align: 'left',
             label: 'Currency',
             field: 'currency'
           },
-          {name: 'cost', align: 'left', label: 'Amount', field: 'cost'},
-          {name: 'time', align: 'left', label: 'Created At', field: 'time'}
+          {name: 'time', align: 'left', label: 'Created', field: 'time'}
         ],
         pagination: {
           rowsPerPage: 10
@@ -35,47 +35,38 @@ window.app = Vue.createApp({
       },
       addressesTable: {
         columns: [
-          {name: 'id', align: 'left', label: 'ID', field: 'id'},
           {
-            name: 'is_locked',
+            name: 'handle',
             align: 'left',
-            label: 'Locked',
-            field: 'is_locked',
-            sortable: true
-          },
-          {
-            name: 'active',
-            align: 'left',
-            label: 'Active',
-            field: 'active',
-            sortable: true
-          },
-
-          {
-            name: 'local_part',
-            align: 'left',
-            label: 'Address',
+            label: 'Identity',
             field: 'local_part',
             sortable: true
           },
           {
             name: 'pubkey',
             align: 'left',
-            label: 'Pubkey',
+            label: 'Public key',
             field: 'pubkey',
             sortable: true
           },
           {
-            name: 'reimburse_amount',
+            name: 'status',
             align: 'left',
-            label: 'Reimburse',
+            label: 'Status',
+            field: 'active',
+            sortable: true
+          },
+          {
+            name: 'refund',
+            align: 'left',
+            label: 'Refund owed',
             field: 'reimburse_amount',
             sortable: true
           },
           {
             name: 'time',
             align: 'left',
-            label: 'Created At',
+            label: 'Created',
             field: 'time',
             sortable: true
           }
@@ -106,8 +97,14 @@ window.app = Vue.createApp({
       },
       identifierFormDialog: {
         show: false,
-        data: {}
+        data: {},
+        searching: false,
+        searched: false,
+        notFound: false,
+        originalRank: null
       },
+      showCloudflareToken: false,
+      showLnaddressAdminKey: false,
       settingsFormDialog: {
         show: false,
         data: {}
@@ -115,6 +112,14 @@ window.app = Vue.createApp({
       qrCodeDialog: {
         show: false,
         data: {}
+      },
+      lookupDialog: {
+        show: false,
+        domainId: null,
+        domain: '',
+        name: '',
+        result: '',
+        match: false
       }
     }
   },
@@ -147,8 +152,12 @@ window.app = Vue.createApp({
       this.identifierFormDialog.data = {
         searchText: '',
         bucket: 0,
-        identifier: ''
+        identifier: null
       }
+      this.identifierFormDialog.searching = false
+      this.identifierFormDialog.searched = false
+      this.identifierFormDialog.notFound = false
+      this.identifierFormDialog.originalRank = null
       this.settingsFormDialog.show = false
       this.qrCodeDialog.show = false
       this.qrCodeDialog.data = {
@@ -195,6 +204,9 @@ window.app = Vue.createApp({
       }
       if (this.showOnlyActiveAddresses) {
         query.active = true
+      }
+      if (this.domainFilter) {
+        query.domain_id = this.domainFilter
       }
       const params = new URLSearchParams(query)
 
@@ -450,19 +462,52 @@ window.app = Vue.createApp({
     },
     searchIdentifier: function () {
       var self = this
+      const query = (this.identifierFormDialog.data.searchText || '').trim()
+      if (!query) return
+      self.identifierFormDialog.searching = true
+      self.identifierFormDialog.searched = false
+      self.identifierFormDialog.notFound = false
+      self.identifierFormDialog.data.identifier = null
       return LNbits.api
         .request(
           'GET',
-          '/nostrnip5/api/v1/ranking/search?q=' +
-            this.identifierFormDialog.data.searchText,
+          '/nostrnip5/api/v1/ranking/search?q=' + encodeURIComponent(query),
           self.g.user.wallets[0].adminkey
         )
         .then(function (response) {
-          self.identifierFormDialog.data.identifier = response.data
+          self.identifierFormDialog.searching = false
+          self.identifierFormDialog.searched = true
+          if (response.data && response.data.name) {
+            self.identifierFormDialog.data.identifier = response.data
+            self.identifierFormDialog.originalRank = response.data.rank
+          } else {
+            self.identifierFormDialog.notFound = true
+          }
         })
         .catch(function (error) {
+          self.identifierFormDialog.searching = false
+          self.identifierFormDialog.searched = true
+          self.identifierFormDialog.notFound = true
           LNbits.utils.notifyApiError(error)
         })
+    },
+    rankLabel: function (rank) {
+      const match = this.domainRankingAllOptions.find(o => o.value === rank)
+      return match ? match.label : '—'
+    },
+    pasteBulkIdentifiers: async function () {
+      try {
+        const text = await navigator.clipboard.readText()
+        const current = this.rankingFormDialog.data.identifiers || ''
+        this.rankingFormDialog.data.identifiers = current
+          ? current.replace(/\s*$/, '') + '\n' + text
+          : text
+      } catch (e) {
+        this.$q.notify({type: 'warning', message: 'Clipboard read blocked'})
+      }
+    },
+    clearBulkIdentifiers: function () {
+      this.rankingFormDialog.data.identifiers = ''
     },
     updateIdentifier: function () {
       var self = this
@@ -540,6 +585,76 @@ window.app = Vue.createApp({
     },
     exportAddressesCSV: function () {
       LNbits.utils.exportCSV(this.addressesTable.columns, this.addresses)
+    },
+    truncate: function (value, head = 10, tail = 6) {
+      if (!value) return ''
+      if (value.length <= head + tail + 1) return value
+      return `${value.slice(0, head)}…${value.slice(-tail)}`
+    },
+    formatPrice: function (amount, currency) {
+      if (amount === null || amount === undefined) return ''
+      if (currency === 'sats') {
+        return `${Math.round(amount).toLocaleString()} sats`
+      }
+      return `${Number(amount).toFixed(2)} ${currency || ''}`.trim()
+    },
+    openLookupTester: function (domainRow) {
+      this.lookupDialog.domainId = domainRow.id
+      this.lookupDialog.domain = domainRow.domain
+      this.lookupDialog.name = ''
+      this.lookupDialog.result = ''
+      this.lookupDialog.match = false
+      this.lookupDialog.show = true
+    },
+    runLookup: function () {
+      const name = (this.lookupDialog.name || '').trim().toLowerCase()
+      if (!name) return
+      const url =
+        `/nostrnip5/api/v1/domain/${this.lookupDialog.domainId}` +
+        `/nostr.json?name=${encodeURIComponent(name)}`
+      axios
+        .get(url)
+        .then(res => {
+          const data = res.data || {}
+          this.lookupDialog.result = JSON.stringify(data, null, 2)
+          this.lookupDialog.match = Boolean(
+            data.names && Object.keys(data.names).length
+          )
+        })
+        .catch(err => {
+          this.lookupDialog.result = `Error: ${
+            (err.response && err.response.status) || ''
+          } ${(err.response && JSON.stringify(err.response.data)) || err.message}`
+          this.lookupDialog.match = false
+        })
+    },
+    copySignupLink: function (domainId) {
+      const url = `${window.location.origin}/nostrnip5/signup/${domainId}`
+      this.copyText(url, 'Signup link copied')
+    },
+    filterByDomain: function (domainId) {
+      this.domainFilter = domainId
+      this.addressesTable.pagination.page = 1
+      this.getAddresses()
+      this.$q.notify({
+        type: 'info',
+        message: 'Filtered identities by domain',
+        timeout: 1500
+      })
+    },
+    setDomainFilter: function (domainId) {
+      this.domainFilter = domainId
+      this.addressesTable.pagination.page = 1
+      this.getAddresses()
+    },
+    statusChip: function (address) {
+      if (address.is_locked) {
+        return {label: 'Locked', color: 'grey-7'}
+      }
+      if (address.active) {
+        return {label: 'Active', color: 'positive'}
+      }
+      return {label: 'Pending payment', color: 'warning'}
     }
   },
   watch: {
@@ -576,12 +691,63 @@ window.app = Vue.createApp({
         }
       })
     },
+    lookupUrl: function () {
+      if (!this.lookupDialog.domainId || !this.lookupDialog.name) return ''
+      const name = this.lookupDialog.name.trim().toLowerCase()
+      return (
+        `${window.location.origin}/nostrnip5/api/v1/domain/` +
+        `${this.lookupDialog.domainId}/nostr.json?name=${encodeURIComponent(name)}`
+      )
+    },
+    pendingRefundsFormatted: function () {
+      const total = (this.addresses || []).reduce(
+        (sum, a) => sum + (Number(a.reimburse_amount) || 0),
+        0
+      )
+      return `${Math.round(total).toLocaleString()} sats`
+    },
     domainRankingAllOptions: function () {
       const rankings = this.domainRankingBraketOptions.map(r => ({
         value: r,
-        label: `Top ${r} identifiers`
+        label: `Top ${r.toLocaleString()}`
       }))
       return [{value: 0, label: 'Reserved'}].concat(rankings)
+    },
+    bulkIdentifierStats: function () {
+      const raw = this.rankingFormDialog.data.identifiers || ''
+      const lines = raw
+        .split(/\r?\n/)
+        .map(l => l.trim().toLowerCase())
+        .filter(Boolean)
+      const unique = new Set(lines)
+      return {
+        total: lines.length,
+        unique: unique.size,
+        duplicates: lines.length - unique.size
+      }
+    },
+    bulkIdentifierPreview: function () {
+      const raw = this.rankingFormDialog.data.identifiers || ''
+      const seen = new Set()
+      const out = []
+      for (const line of raw.split(/\r?\n/)) {
+        const v = line.trim().toLowerCase()
+        if (!v || seen.has(v)) continue
+        seen.add(v)
+        out.push(v)
+        if (out.length >= 5) break
+      }
+      return out
+    },
+    cloudflareConfigured: function () {
+      return Boolean(
+        this.settingsFormDialog.data &&
+          this.settingsFormDialog.data.cloudflare_access_token
+      )
+    },
+    lnaddressConfigured: function () {
+      const d = this.settingsFormDialog.data || {}
+      return Boolean(d.lnaddress_api_endpoint && d.lnaddress_api_admin_key)
     }
   }
 })
