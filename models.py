@@ -317,7 +317,7 @@ class Address(BaseModel):
     local_part: str
     active: bool
     time: datetime
-    expires_at: datetime
+    expires_at: datetime | None = None
     pubkey: str | None = None
     is_free: bool = False
     is_locked: bool = False
