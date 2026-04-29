@@ -1,5 +1,11 @@
-Allow users to NIP-05 verify themselves at a domain you control
+Sell NIP-05 verification to Nostr users on a domain you control.
 
-Lets users to sell NIP-05 verification to other nostr users on a domain they control.
+Its functions include:
 
-Make sure to check the guide after installing for details on how to set up.
+- Offering NIP-05 identity verification services
+- Managing verified usernames on your domain
+- Charging Lightning payments for verification
+- Providing a setup guide for domain configuration
+- Flexible pricing with length-based, popularity, and promo-code rules
+
+A straightforward way for domain owners to monetize their domains by selling NIP-05 identity verification to the growing Nostr community.

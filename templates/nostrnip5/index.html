@@ -1,285 +1,649 @@
 {% extends "base.html" %} {% from "macros.jinja" import window_vars with context
 %} {% block page %}
+<link rel="stylesheet" href="/nostrnip5/static/css/nostrnip5.css" />
 <div class="row q-col-gutter-md">
-  <div class="col-12 col-md-8 col-lg-7 q-gutter-y-md">
+  <div class="col-12 col-md-8 col-lg-8 q-gutter-y-md">
+    {% raw %}
+    <!-- Quick start (only shown before first domain) -->
+    <q-card v-if="!domains.length" class="q-pa-lg">
+      <div class="row items-center no-wrap q-mb-md">
+        <q-icon
+          name="flag"
+          size="32px"
+          color="primary"
+          class="q-mr-md"
+        ></q-icon>
+        <div class="col">
+          <div class="text-h6">Get started</div>
+          <div class="text-caption text-grey-7">
+            Three steps to start selling Nostr identities on a domain you own.
+          </div>
+        </div>
+      </div>
+      <q-list dense>
+        <q-item>
+          <q-item-section avatar>
+            <q-avatar size="28px" color="primary" text-color="white"
+              >1</q-avatar
+            >
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="text-weight-medium">Add a domain</q-item-label>
+            <q-item-label caption>
+              Pick a wallet, currency, and base price per year.
+            </q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-btn
+              unelevated
+              dense
+              color="primary"
+              icon="add"
+              label="Add domain"
+              @click="formDialog.show = true"
+            ></q-btn>
+          </q-item-section>
+        </q-item>
+        <q-separator spaced></q-separator>
+        <q-item>
+          <q-item-section avatar>
+            <q-avatar size="28px" color="grey-5" text-color="white">2</q-avatar>
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="text-weight-medium">
+              Point the domain to LNbits
+            </q-item-label>
+            <q-item-label caption>
+              Proxy <span class="text-monospace">/.well-known/nostr.json</span>
+              on your domain to the extension's public feed. See the README for
+              nginx and Caddy examples.
+            </q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-separator spaced></q-separator>
+        <q-item>
+          <q-item-section avatar>
+            <q-avatar size="28px" color="grey-5" text-color="white">3</q-avatar>
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="text-weight-medium">
+              Share your signup link
+            </q-item-label>
+            <q-item-label caption>
+              Every domain has a public signup page. Copy its URL from the
+              Domains table once the domain is created.
+            </q-item-label>
+          </q-item-section>
+        </q-item>
+      </q-list>
+    </q-card>
+    {% endraw %}
+
+    <!-- KPI strip -->
+    <div class="row q-col-gutter-md q-mt-lg">
+      <div class="col-12 col-sm-4">
+        <q-card class="q-pa-md">
+          <div class="text-caption text-grey-7">Domains</div>
+          <div class="text-h5" v-text="domains.length"></div>
+        </q-card>
+      </div>
+      <div class="col-12 col-sm-4">
+        <q-card class="q-pa-md">
+          <div class="text-caption text-grey-7">
+            Identities<span v-if="showOnlyActiveAddresses"> (active)</span>
+          </div>
+          <div
+            class="text-h5"
+            v-text="addressesTable.pagination.rowsNumber || 0"
+          ></div>
+        </q-card>
+      </div>
+      <div class="col-12 col-sm-4">
+        <q-card class="q-pa-md">
+          <div class="text-caption text-grey-7">
+            Refunds pending
+            <q-icon name="info" size="xs" class="q-ml-xs">
+              <q-tooltip>Sum of refunds visible on the current page.</q-tooltip>
+            </q-icon>
+          </div>
+          <div class="text-h5" v-text="pendingRefundsFormatted"></div>
+        </q-card>
+      </div>
+    </div>
+
+    <!-- Action bar -->
     <q-card>
       <q-card-section>
-        <q-btn
-          unelevated
-          color="primary"
-          @click="formDialog.show = true"
-          class="q-mr-md"
-          >New Domain</q-btn
-        >
-        <q-btn unelevated color="primary" @click="addressFormDialog.show = true"
-          >New Address</q-btn
-        >
-        <q-btn-dropdown
-          v-if="g.user.admin"
-          @click="settingsFormDialog.show=true"
-          unelevated
-          split
-          color="primary"
-          class="float-right"
-          icon="settings"
-        >
-          <q-list>
-            <q-item clickable v-close-popup
-              ><q-item-section @click="rankingFormDialog.show = true">
-                <q-item-label v-text="'Add Identifiers'"></q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-close-popup
-              ><q-item-section @click="identifierFormDialog.show = true">
-                <q-item-label v-text="'Manage Identifiers'"></q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-btn-dropdown>
+        <div class="row items-center q-col-gutter-sm">
+          <div class="col-12 col-sm-auto">
+            <q-btn
+              unelevated
+              color="primary"
+              icon="add"
+              label="Add domain"
+              class="full-width"
+              @click="formDialog.show = true"
+            ></q-btn>
+          </div>
+          <div class="col-12 col-sm-auto">
+            <q-btn
+              outline
+              color="primary"
+              icon="person_add"
+              label="Issue identity manually"
+              class="full-width"
+              @click="addressFormDialog.show = true"
+            >
+              <q-tooltip>
+                Create a verified identity for a user without requiring
+                Lightning payment.
+              </q-tooltip>
+            </q-btn>
+          </div>
+          <div class="col"></div>
+          <div class="col-12 col-sm-auto">
+            <q-btn-dropdown
+              v-if="g.user.admin"
+              @click="settingsFormDialog.show = true"
+              outline
+              split
+              color="grey-7"
+              icon="settings"
+              label="Settings"
+              class="full-width"
+            >
+              <q-list>
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="rankingFormDialog.show = true"
+                >
+                  <q-item-section avatar>
+                    <q-icon name="list_alt" color="grey-7"></q-icon>
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Bulk add identifiers</q-item-label>
+                    <q-item-label caption>
+                      Paste a list to assign them to a ranking tier.
+                    </q-item-label>
+                  </q-item-section>
+                </q-item>
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="identifierFormDialog.show = true"
+                >
+                  <q-item-section avatar>
+                    <q-icon name="search" color="grey-7"></q-icon>
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Manage identifier rankings</q-item-label>
+                    <q-item-label caption>
+                      Search an identifier and change its tier.
+                    </q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-btn-dropdown>
+          </div>
+        </div>
       </q-card-section>
     </q-card>
 
+    <!-- Domains table -->
     <q-card>
       <q-card-section>
         <div class="row items-center no-wrap q-mb-md">
           <div class="col">
-            <h5 class="text-subtitle1 q-my-none">Domains</h5>
+            <div class="text-subtitle1">Domains</div>
+            <div class="text-caption text-grey-7">
+              Domains you sell Nostr identities on.
+            </div>
           </div>
           <div class="col-auto">
-            <q-btn flat color="grey" @click="exportCSV">Export to CSV</q-btn>
+            <q-btn flat color="grey-7" icon="file_download" @click="exportCSV">
+              Export CSV
+            </q-btn>
           </div>
         </div>
-        <q-table
-          dense
-          flat
-          :rows="domains"
-          row-key="id"
-          :columns="domainsTable.columns"
-          v-model:pagination="domainsTable.pagination"
-        >
-          {% raw %}
-          <template v-slot:header="props">
-            <q-tr :props="props">
-              <q-th auto-width></q-th>
-              <q-th v-for="col in props.cols" :key="col.name" :props="props">
-                {{ col.label }}
-              </q-th>
-              <q-th auto-width></q-th>
-            </q-tr>
-          </template>
 
-          <template v-slot:body="props">
-            <q-tr :props="props">
-              <q-td auto-width>
-                <q-btn
-                  unelevated
-                  dense
-                  size="xs"
-                  icon="launch"
-                  :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
-                  type="a"
-                  :href="'signup/' + props.row.id"
-                  target="_blank"
-                  class="q-mr-sm"
-                ></q-btn>
-                <q-btn
-                  unelevated
-                  dense
-                  size="xs"
-                  icon="link"
-                  :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
-                  type="a"
-                  :href="'api/v1/domain/' + props.row.id + '/nostr.json'"
-                  target="_blank"
-                  class="q-mr-sm"
-                ></q-btn>
-                <q-btn
-                  unelevated
-                  dense
-                  size="xs"
-                  icon="delete"
-                  :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
-                  @click="deleteDomain(props.row.id)"
-                  class="q-mr-sm"
-                ></q-btn>
-                <q-btn
-                  unelevated
-                  dense
-                  size="xs"
-                  icon="edit"
-                  :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
-                  type="a"
-                  :href="'domain/' + props.row.id"
-                  target="_blank"
-                  class="q-mr-sm"
-                ></q-btn>
-              </q-td>
-              <q-td v-for="col in props.cols" :key="col.name" :props="props">
-                {{ col.value }}
-              </q-td>
-            </q-tr>
-          </template>
-          {% endraw %}
-        </q-table>
+        {% raw %}
+        <div v-if="!domains.length" class="text-center q-py-xl">
+          <q-icon name="dns" size="48px" color="grey-5"></q-icon>
+          <div class="text-subtitle1 q-mt-sm">No domains yet</div>
+          <div class="text-caption text-grey-7 q-mb-md">
+            Add a domain you own to start selling verified Nostr identities.
+          </div>
+          <q-btn
+            unelevated
+            color="primary"
+            icon="add"
+            label="Add domain"
+            @click="formDialog.show = true"
+          ></q-btn>
+        </div>
+
+        <div v-else class="nip5-table-scroll">
+          <q-table
+            dense
+            flat
+            :rows="domains"
+            row-key="id"
+            :columns="domainsTable.columns"
+            v-model:pagination="domainsTable.pagination"
+          >
+            <template v-slot:header="props">
+              <q-tr :props="props">
+                <q-th auto-width>Actions</q-th>
+                <q-th v-for="col in props.cols" :key="col.name" :props="props">
+                  {{ col.label }}
+                </q-th>
+              </q-tr>
+            </template>
+
+            <template v-slot:body="props">
+              <q-tr :props="props">
+                <q-td auto-width class="nip5-actions-cell">
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="content_copy"
+                    color="grey-7"
+                    @click="copySignupLink(props.row.id)"
+                  >
+                    <q-tooltip>Copy signup link</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="vpn_key"
+                    color="grey-7"
+                    @click="copyText(props.row.id, 'Domain ID copied')"
+                  >
+                    <q-tooltip
+                      >Copy domain ID (use in nginx / Caddy config)</q-tooltip
+                    >
+                  </q-btn>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="open_in_new"
+                    color="grey-7"
+                    type="a"
+                    :href="'signup/' + props.row.id"
+                    target="_blank"
+                  >
+                    <q-tooltip>Open signup page</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="edit"
+                    color="grey-7"
+                    type="a"
+                    :href="'domain/' + props.row.id"
+                    target="_blank"
+                  >
+                    <q-tooltip>Edit domain</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="more_vert"
+                    color="grey-7"
+                  >
+                    <q-tooltip>More actions</q-tooltip>
+                    <q-menu auto-close>
+                      <q-list dense style="min-width: 200px">
+                        <q-item clickable @click="openLookupTester(props.row)">
+                          <q-item-section avatar>
+                            <q-icon name="fact_check"></q-icon>
+                          </q-item-section>
+                          <q-item-section>Test NIP-05 lookup</q-item-section>
+                        </q-item>
+                        <q-item clickable @click="filterByDomain(props.row.id)">
+                          <q-item-section avatar>
+                            <q-icon name="filter_list"></q-icon>
+                          </q-item-section>
+                          <q-item-section>
+                            Show only this domain's identities
+                          </q-item-section>
+                        </q-item>
+                        <q-separator></q-separator>
+                        <q-item
+                          clickable
+                          @click="deleteDomain(props.row.id)"
+                          class="text-negative"
+                        >
+                          <q-item-section avatar>
+                            <q-icon name="delete" color="negative"></q-icon>
+                          </q-item-section>
+                          <q-item-section>Delete domain</q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                  </q-btn>
+                </q-td>
+                <q-td key="domain" :props="props">
+                  <div
+                    class="text-weight-medium"
+                    v-text="props.row.domain"
+                  ></div>
+                  <div
+                    class="text-caption text-grey-7 cursor-pointer"
+                    @click="copyText(props.row.id, 'Domain ID copied')"
+                  >
+                    <q-icon name="vpn_key" size="xs" class="q-mr-xs"></q-icon>
+                    <span class="text-monospace" v-text="props.row.id"></span>
+                    <q-icon
+                      name="content_copy"
+                      size="xs"
+                      class="q-ml-xs"
+                    ></q-icon>
+                    <q-tooltip
+                      >Click to copy. Use this domain ID in your nginx or
+                      Caddyfile config.</q-tooltip
+                    >
+                  </div>
+                </q-td>
+                <q-td key="price" :props="props">
+                  <span
+                    v-text="formatPrice(props.row.cost, props.row.currency)"
+                  ></span>
+                  <span class="text-caption text-grey-7"> / year</span>
+                </q-td>
+                <q-td
+                  key="currency"
+                  :props="props"
+                  v-text="props.row.currency"
+                ></q-td>
+                <q-td key="time" :props="props" v-text="props.row.time"></q-td>
+              </q-tr>
+            </template>
+          </q-table>
+        </div>
+        {% endraw %}
       </q-card-section>
     </q-card>
 
+    <!-- Addresses table -->
     <q-card>
       <q-card-section>
-        <div class="row items-center no-wrap q-mb-md">
-          <div class="col-md-6 col-sm-12">
+        <div class="row items-center no-wrap q-mb-sm">
+          <div class="col">
+            <div class="text-subtitle1">Identities</div>
+            <div class="text-caption text-grey-7">
+              Every Nostr handle sold or issued across your domains.
+            </div>
+          </div>
+          <div class="col-auto">
+            <q-btn
+              flat
+              color="grey-7"
+              icon="file_download"
+              @click="exportAddressesCSV"
+            >
+              Export CSV
+            </q-btn>
+          </div>
+        </div>
+
+        <div class="row q-col-gutter-sm q-mb-md items-center">
+          <div class="col-12 col-md-6">
             <q-input
               filled
               dense
               v-model.trim="addressesTable.search"
-              label="Search identifier or pubkey"
-              placeholder="Search identifier or pubkey"
+              label="Search by name or public key"
+              debounce="300"
             >
-              <template v-slot:before>
-                <q-icon name="search"> </q-icon>
+              <template v-slot:prepend>
+                <q-icon name="search"></q-icon>
               </template>
               <template v-slot:append>
                 <q-icon
                   v-if="addressesTable.search"
                   name="close"
-                  @click="addressesTable.search = ''"
                   class="cursor-pointer"
-                >
-                </q-icon>
+                  @click="addressesTable.search = ''"
+                ></q-icon>
               </template>
             </q-input>
           </div>
-          <div class="col-md-3 col-sm-12">
+          <div class="col-12 col-md-auto">
             <q-toggle
-              @click="getAddresses()"
               v-model="showOnlyActiveAddresses"
-              label="Only Active"
-              size="md"
-              class="float-left"
-            />
-          </div>
-          <div class="col-md-3 col-sm-12">
-            <q-btn
-              flat
-              color="grey"
-              @click="exportAddressesCSV"
-              class="float-right"
-              >Export to CSV</q-btn
-            >
+              @update:model-value="getAddresses()"
+              label="Active only"
+            ></q-toggle>
           </div>
         </div>
-        <q-table
-          dense
-          flat
-          :rows="addresses"
-          row-key="id"
-          :columns="addressesTable.columns"
-          v-model:pagination="addressesTable.pagination"
-          @request="getAddresses"
-        >
-          {% raw %}
-          <template v-slot:header="props">
-            <q-tr :props="props">
-              <q-th auto-width></q-th>
-              <q-th v-for="col in props.cols" :key="col.name" :props="props">
-                {{ col.label }}
-              </q-th>
-              <q-th auto-width></q-th>
-            </q-tr>
-          </template>
 
-          <template v-slot:body="props">
-            <q-tr :props="props">
-              <q-td auto-width>
-                <q-btn
-                  unelevated
-                  dense
-                  size="xs"
-                  icon="link"
-                  :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
-                  type="a"
-                  target="_blank"
-                  :href="'rotate/' + props.row.domain_id + '/' + props.row.id"
-                  class="q-mr-sm"
-                ></q-btn>
-                <q-btn
-                  unelevated
-                  dense
-                  size="xs"
-                  icon="check"
-                  :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
-                  :disable="props.row.active == true"
-                  @click="activateAddress(props.row.domain_id, props.row.id)"
-                  class="q-mr-sm"
-                ></q-btn>
-                <q-btn
-                  unelevated
-                  dense
-                  size="xs"
-                  icon="edit"
-                  :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
-                  @click="editAddress(props.row)"
-                  class="q-mr-sm"
-                ></q-btn>
-                <q-btn
-                  unelevated
-                  dense
-                  size="xs"
-                  icon="delete"
-                  :color="($q.dark.isActive) ? 'grey-7' : 'grey-5'"
-                  @click="deleteAddress(props.row.id)"
-                ></q-btn>
-              </q-td>
+        <!-- Domain filter chips -->
+        {% raw %}
+        <div v-if="domains.length > 1" class="q-mb-md">
+          <span class="text-caption text-grey-7 q-mr-sm">Domain:</span>
+          <q-chip
+            dense
+            clickable
+            :outline="!!domainFilter"
+            :color="!domainFilter ? 'primary' : undefined"
+            :text-color="!domainFilter ? 'white' : undefined"
+            @click="setDomainFilter(null)"
+          >
+            All
+          </q-chip>
+          <q-chip
+            v-for="d in domains"
+            :key="d.id"
+            dense
+            clickable
+            :outline="domainFilter !== d.id"
+            :color="domainFilter === d.id ? 'primary' : undefined"
+            :text-color="domainFilter === d.id ? 'white' : undefined"
+            @click="setDomainFilter(d.id)"
+          >
+            <span v-text="d.domain"></span>
+          </q-chip>
+        </div>
+        {% endraw %} {% raw %}
+        <div class="nip5-table-scroll">
+          <q-table
+            dense
+            flat
+            :rows="addresses"
+            row-key="id"
+            :columns="addressesTable.columns"
+            v-model:pagination="addressesTable.pagination"
+            @request="getAddresses"
+          >
+            <template v-slot:header="props">
+              <q-tr :props="props">
+                <q-th auto-width>Actions</q-th>
+                <q-th v-for="col in props.cols" :key="col.name" :props="props">
+                  {{ col.label }}
+                </q-th>
+              </q-tr>
+            </template>
 
-              <q-td v-text="props.row.id"></q-td>
-              <q-td v-text="props.row.is_locked"></q-td>
-              <q-td v-text="props.row.active"></q-td>
+            <template v-slot:no-data>
+              <div class="full-width text-center q-py-xl">
+                <q-icon
+                  name="alternate_email"
+                  size="48px"
+                  color="grey-5"
+                ></q-icon>
+                <div class="text-subtitle1 q-mt-sm">No identities yet</div>
+                <div class="text-caption text-grey-7">
+                  Share your signup link or issue an identity manually.
+                </div>
+              </div>
+            </template>
 
-              <q-td>
-                <q-tooltip>
-                  <span>Domain ID:</span>
-                  <span v-text="props.row.domain_id"></span
-                ></q-tooltip>
-                <span v-text="addressFullName(props.row)"></span>
-              </q-td>
-              <q-td v-text="props.row.pubkey"></q-td>
-              <q-td
-                v-text="props.row.reimburse_amount"
-                @click="showReimburseInvoice(props.row)"
-                class="cursor-pointer"
-              >
-              </q-td>
-              <q-td v-text="props.row.time"></q-td>
-            </q-tr>
-          </template>
-          {% endraw %}
-        </q-table>
+            <template v-slot:body="props">
+              <q-tr :props="props">
+                <q-td auto-width class="nip5-actions-cell">
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="autorenew"
+                    color="grey-7"
+                    type="a"
+                    target="_blank"
+                    :href="'rotate/' + props.row.domain_id + '/' + props.row.id"
+                  >
+                    <q-tooltip>Open rotation page</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="edit"
+                    color="grey-7"
+                    @click="editAddress(props.row)"
+                  >
+                    <q-tooltip>Edit</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="more_vert"
+                    color="grey-7"
+                  >
+                    <q-tooltip>More actions</q-tooltip>
+                    <q-menu auto-close>
+                      <q-list dense style="min-width: 200px">
+                        <q-item
+                          clickable
+                          :disable="props.row.active == true"
+                          @click="activateAddress(props.row.domain_id, props.row.id)"
+                        >
+                          <q-item-section avatar>
+                            <q-icon
+                              name="check_circle"
+                              color="positive"
+                            ></q-icon>
+                          </q-item-section>
+                          <q-item-section>
+                            Activate without payment
+                          </q-item-section>
+                        </q-item>
+                        <q-separator></q-separator>
+                        <q-item
+                          clickable
+                          @click="deleteAddress(props.row.id)"
+                          class="text-negative"
+                        >
+                          <q-item-section avatar>
+                            <q-icon name="delete" color="negative"></q-icon>
+                          </q-item-section>
+                          <q-item-section>Delete identity</q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                  </q-btn>
+                </q-td>
+                <q-td key="handle" :props="props">
+                  <span
+                    class="text-monospace"
+                    v-text="addressFullName(props.row)"
+                  ></span>
+                  <q-tooltip>
+                    Domain ID: <span v-text="props.row.domain_id"></span>
+                    <br />
+                    Address ID: <span v-text="props.row.id"></span>
+                  </q-tooltip>
+                </q-td>
+                <q-td key="pubkey" :props="props">
+                  <span
+                    class="text-monospace"
+                    v-text="truncate(props.row.pubkey, 10, 6)"
+                  ></span>
+                  <q-btn
+                    v-if="props.row.pubkey"
+                    flat
+                    dense
+                    round
+                    size="xs"
+                    icon="content_copy"
+                    class="q-ml-xs"
+                    @click="copyText(props.row.pubkey, 'Public key copied')"
+                  >
+                    <q-tooltip>Copy full key</q-tooltip>
+                  </q-btn>
+                </q-td>
+                <q-td key="status" :props="props">
+                  <q-chip
+                    dense
+                    :color="statusChip(props.row).color"
+                    text-color="white"
+                  >
+                    <span v-text="statusChip(props.row).label"></span>
+                  </q-chip>
+                </q-td>
+                <q-td key="refund" :props="props">
+                  <q-chip
+                    v-if="props.row.reimburse_amount > 0"
+                    dense
+                    clickable
+                    color="warning"
+                    text-color="white"
+                    icon="paid"
+                    @click="showReimburseInvoice(props.row)"
+                  >
+                    <span
+                      v-text="Math.round(props.row.reimburse_amount).toLocaleString() + ' sats'"
+                    ></span>
+                    <q-tooltip>Click to generate refund invoice</q-tooltip>
+                  </q-chip>
+                  <span v-else class="text-grey-5">&mdash;</span>
+                </q-td>
+                <q-td key="time" :props="props" v-text="props.row.time"></q-td>
+              </q-tr>
+            </template>
+          </q-table>
+        </div>
+        {% endraw %}
       </q-card-section>
     </q-card>
   </div>
 
-  <div class="col-12 col-md-5 q-gutter-y-md">
+  <!-- Right column: intro + API docs -->
+  <div class="col-12 col-md-4 q-gutter-y-md">
     <q-card>
       <q-card-section>
-        <h6 class="text-subtitle1 q-my-none">
-          {{SITE_TITLE}} Nostr NIP-5 extension
-        </h6>
-        <p>
-          <strong
-            >Allow users to NIP-05 verify themselves at a domain you
-            control</strong
-          >
-        </p>
+        <div class="text-h6">{{SITE_TITLE}} Nostr identities</div>
+        <div class="text-caption text-grey-7 q-mt-xs">
+          Sell verified NIP-05 handles on domains you own. Buyers pay over
+          Lightning and can rotate their Nostr key anytime.
+        </div>
       </q-card-section>
       <q-card-section class="q-pa-none">
         <q-separator></q-separator>
-        <q-list> {% include "nostrnip5/_api_docs.html" %} </q-list>
+        <q-list>{% include "nostrnip5/_api_docs.html" %}</q-list>
       </q-card-section>
     </q-card>
   </div>
 
+  <!-- New/Edit domain dialog -->
   <q-dialog v-model="formDialog.show" position="top" @hide="closeFormDialog">
-    <q-card class="q-pa-lg q-pt-xl" style="width: 500px">
+    <q-card class="q-pa-lg q-pt-xl nip5-dialog-card">
+      <div class="text-h6 q-mb-md">Add domain</div>
       <q-form @submit="saveDomain" class="q-gutter-md">
         <q-select
           v-if="!formDialog.data.id"
@@ -288,7 +652,8 @@
           emit-value
           v-model="formDialog.data.wallet"
           :options="g.user.walletOptions"
-          label="Wallet *"
+          label="Wallet"
+          hint="Payments for this domain will be credited here."
         ></q-select>
         <q-select
           filled
@@ -296,7 +661,8 @@
           emit-value
           v-model="formDialog.data.currency"
           :options="currencyOptions"
-          label="Currency *"
+          label="Currency"
+          hint="Prices are displayed to buyers in this currency."
         ></q-select>
         <q-input
           v-if="!formDialog.data.id"
@@ -305,6 +671,7 @@
           v-model.trim="formDialog.data.domain"
           label="Domain"
           placeholder="nostr.com"
+          hint="The domain you will serve nostr.json from."
         ></q-input>
         <q-input
           filled
@@ -313,8 +680,8 @@
           type="number"
           min="0"
           step="any"
-          label="Price per Year"
-          placeholder="How much do you want to charge per address?"
+          label="Base price per year"
+          hint="Standard price. You can add premium pricing for short or popular names after creating the domain."
         ></q-input>
         <q-input
           filled
@@ -323,30 +690,43 @@
           type="number"
           min="1"
           step="1"
-          label="Max Years"
-          hint="Maximum number of years a user can have an address before renewing."
+          label="Maximum years per purchase"
+          hint="How long a buyer can register a handle at once."
         ></q-input>
 
-        <q-btn
-          unelevated
-          color="primary"
-          :disable="formDialog.data.wallet == null || formDialog.data.currency == null"
-          type="submit"
-          >Create Domain</q-btn
-        >
-        <q-btn v-close-popup flat color="grey" class="q-ml-auto float-right"
-          >Cancel</q-btn
-        >
+        <div class="row q-mt-lg">
+          <q-btn
+            unelevated
+            color="primary"
+            :disable="formDialog.data.wallet == null || formDialog.data.currency == null"
+            type="submit"
+            label="Create domain"
+          ></q-btn>
+          <q-btn v-close-popup flat color="grey-7" class="q-ml-auto"
+            >Cancel</q-btn
+          >
+        </div>
       </q-form>
     </q-card>
   </q-dialog>
 
+  <!-- Manual address dialog -->
   <q-dialog
     v-model="addressFormDialog.show"
     position="top"
     @hide="closeAddressFormDialog"
   >
-    <q-card class="q-pa-lg q-pt-xl" style="width: 500px">
+    <q-card class="q-pa-lg q-pt-xl nip5-dialog-card">
+      <div class="text-h6 q-mb-xs">
+        {% raw %}
+        <span v-if="addressFormDialog.data.id">Edit identity</span>
+        <span v-else>Issue identity manually</span>
+        {% endraw %}
+      </div>
+      <div class="text-caption text-grey-7 q-mb-md">
+        Use this to create or edit a verified identity without requiring a
+        Lightning payment.
+      </div>
       <q-form @submit="saveAddress" class="q-gutter-md">
         <q-select
           v-if="!addressFormDialog.data.id"
@@ -355,22 +735,24 @@
           emit-value
           v-model="addressFormDialog.data.domain_id"
           :options="domainOptions"
-          label="Domain *"
+          label="Domain"
         ></q-select>
         <q-input
           filled
           dense
           v-model.trim="addressFormDialog.data.pubkey"
-          label="Public Key"
-          placeholder="npub or hex"
+          label="Public key"
+          placeholder="npub1… or 64-character hex"
+          hint="The user's Nostr public key."
         ></q-input>
         <q-input
           v-if="!addressFormDialog.data.id"
           filled
           dense
           v-model.trim="addressFormDialog.data.local_part"
-          label="Local Part"
-          placeholder="benarc"
+          label="Name"
+          placeholder="yourname"
+          hint="The handle before the @."
         ></q-input>
         <q-input
           filled
@@ -378,11 +760,21 @@
           v-model="addressFormDialog.data.relay"
           @keydown.enter="addRelayForAddress"
           type="text"
-          label="Relay"
+          label="Relays (optional)"
+          hint="Hit enter or + to add each relay URL."
         >
-          <q-btn @click="addRelayForAddress" dense flat icon="add"></q-btn>
+          <template v-slot:append>
+            <q-btn
+              flat
+              dense
+              round
+              icon="add"
+              @click="addRelayForAddress"
+            ></q-btn>
+          </template>
         </q-input>
         <div>
+          {% raw %}
           <q-chip
             v-for="relay in addressFormDialog.data.extra.relays"
             :key="relay"
@@ -390,8 +782,10 @@
             @remove="removeRelayForAddress(relay)"
             color="primary"
             text-color="white"
-            ><span v-text="relay"></span
-          ></q-chip>
+          >
+            <span v-text="relay"></span>
+          </q-chip>
+          {% endraw %}
         </div>
 
         <div class="row q-mt-lg">
@@ -401,10 +795,12 @@
             :disable="addressFormDialog.data.domain_id == null || addressFormDialog.data.pubkey == null || addressFormDialog.data.local_part == null"
             type="submit"
           >
-            <span v-if="!addressFormDialog.data.id"> Create Address</span>
-            <span v-else> Update Address</span></q-btn
-          >
-          <q-btn v-close-popup flat color="grey" class="q-ml-auto"
+            {% raw %}
+            <span v-if="!addressFormDialog.data.id">Create identity</span>
+            <span v-else>Update identity</span>
+            {% endraw %}
+          </q-btn>
+          <q-btn v-close-popup flat color="grey-7" class="q-ml-auto"
             >Cancel</q-btn
           >
         </div>
@@ -412,32 +808,126 @@
     </q-card>
   </q-dialog>
 
+  <!-- Bulk rankings dialog -->
   <q-dialog v-model="rankingFormDialog.show" position="top">
-    <q-card class="q-pa-lg q-pt-xl" style="width: 500px">
+    <q-card class="q-pa-lg q-pt-xl nip5-dialog-card">
+      <div class="row items-center no-wrap q-mb-xs">
+        <q-icon name="list_alt" size="sm" class="q-mr-sm text-primary"></q-icon>
+        <div class="text-h6">Bulk add identifiers</div>
+      </div>
+      <div class="text-caption text-grey-7 q-mb-md">
+        Assign a batch of names to a popularity tier. Tiers drive the
+        popularity-pricing rules you configure per domain.
+      </div>
+
       <q-form @submit="addDomainRanking" class="q-gutter-md">
-        <q-select
-          filled
+        <!-- Step 1: pick tier -->
+        <div>
+          <div class="text-caption text-weight-medium q-mb-xs">
+            1. Pick a tier
+          </div>
+          <q-select
+            filled
+            dense
+            emit-value
+            map-options
+            v-model="rankingFormDialog.data.bucket"
+            :options="domainRankingAllOptions"
+            label="Ranking tier"
+            hint="Identifiers below get this tier. Used by popularity-based pricing."
+          ></q-select>
+        </div>
+
+        <!-- Step 2: paste identifiers -->
+        <div>
+          <div class="row items-center no-wrap q-mb-xs">
+            <div class="col text-caption text-weight-medium">
+              2. Paste identifiers
+            </div>
+            <q-btn
+              flat
+              dense
+              size="sm"
+              color="grey-7"
+              icon="content_paste"
+              label="Paste"
+              @click="pasteBulkIdentifiers"
+            ></q-btn>
+            <q-btn
+              v-if="rankingFormDialog.data.identifiers"
+              flat
+              dense
+              size="sm"
+              color="grey-7"
+              icon="clear"
+              label="Clear"
+              @click="clearBulkIdentifiers"
+            ></q-btn>
+          </div>
+          <q-input
+            filled
+            dense
+            type="textarea"
+            rows="8"
+            v-model="rankingFormDialog.data.identifiers"
+            placeholder="alice&#10;bob&#10;satoshi"
+            hint="One identifier per line. Case-insensitive; duplicates are removed."
+          ></q-input>
+
+          {% raw %}
+          <div
+            v-if="rankingFormDialog.data.identifiers"
+            class="row items-center q-col-gutter-sm q-mt-sm"
+          >
+            <div class="col-auto">
+              <q-chip dense outline icon="numbers">
+                <span v-text="bulkIdentifierStats.unique + ' unique'"></span>
+              </q-chip>
+            </div>
+            <div v-if="bulkIdentifierStats.duplicates > 0" class="col-auto">
+              <q-chip dense outline color="warning" icon="content_copy">
+                <span
+                  v-text="bulkIdentifierStats.duplicates + ' duplicate' + (bulkIdentifierStats.duplicates === 1 ? '' : 's') + ' ignored'"
+                ></span>
+              </q-chip>
+            </div>
+          </div>
+          {% endraw %}
+        </div>
+
+        {% raw %}
+        <q-banner
+          v-if="bulkIdentifierStats.unique > 0"
+          rounded
           dense
-          emit-value
-          map-options
-          v-model="rankingFormDialog.data.bucket"
-          :options="domainRankingAllOptions"
-          label="Bucket"
-        ></q-select>
-        <q-input
-          filled
-          dense
-          type="textarea"
-          rows="10"
-          v-model.trim="rankingFormDialog.data.identifiers"
-          label="Identifiers"
-          placeholder="identifiers"
-          hint="One identifier per line"
-        ></q-input>
+          class="nip5-banner-warning"
+        >
+          <template v-slot:avatar>
+            <q-icon name="warning"></q-icon>
+          </template>
+          <div class="text-caption">
+            This will set
+            <strong v-text="bulkIdentifierStats.unique"></strong>
+            identifier<span
+              v-text="bulkIdentifierStats.unique === 1 ? '' : 's'"
+            ></span>
+            to tier
+            <strong v-text="rankLabel(rankingFormDialog.data.bucket)"></strong>,
+            overwriting any existing assignment for them.
+          </div>
+        </q-banner>
+        {% endraw %}
 
         <div class="row q-mt-lg">
-          <q-btn unelevated color="primary" type="submit">Update Ranking</q-btn>
-          <q-btn v-close-popup flat color="grey" class="q-ml-auto"
+          <q-btn
+            unelevated
+            color="primary"
+            type="submit"
+            icon="save"
+            label="Save tier"
+            :disable="!bulkIdentifierStats.unique"
+          ></q-btn>
+          <q-btn v-close-popup flat color="grey-7" class="q-ml-auto"
             >Cancel</q-btn
           >
         </div>
@@ -445,144 +935,351 @@
     </q-card>
   </q-dialog>
 
+  <!-- Manage single identifier dialog -->
   <q-dialog v-model="identifierFormDialog.show" position="top">
-    <q-card class="q-pa-lg q-pt-xl" style="width: 500px">
-      <q-form @submit="searchIdentifier" class="q-gutter-md">
-        <div class="row">
-          <div class="col-8">
+    <q-card class="q-pa-lg q-pt-xl nip5-dialog-card">
+      <div class="row items-center no-wrap q-mb-xs">
+        <q-icon name="search" size="sm" class="q-mr-sm text-primary"></q-icon>
+        <div class="text-h6">Manage identifier ranking</div>
+      </div>
+      <div class="text-caption text-grey-7 q-mb-md">
+        Look up one identifier to see which popularity tier it belongs to, and
+        move it to a different tier if needed.
+      </div>
+
+      <q-form @submit.prevent="searchIdentifier" class="q-gutter-md">
+        <div class="row q-col-gutter-sm items-start">
+          <div class="col">
             <q-input
               filled
               dense
+              autofocus
               v-model.trim="identifierFormDialog.data.searchText"
-              label="Search Identifier"
-              placeholder="Search"
-            ></q-input>
+              label="Identifier"
+              placeholder="e.g. alice"
+              hint="Exact name, case-insensitive"
+              @keydown.enter.prevent="searchIdentifier"
+            >
+              <template v-slot:prepend>
+                <q-icon name="alternate_email"></q-icon>
+              </template>
+            </q-input>
           </div>
-          <div class="col-4">
+          <div class="col-auto">
             <q-btn
               @click="searchIdentifier"
               type="submit"
               unelevated
               color="primary"
-              class="float-right"
-              >Search</q-btn
-            >
+              icon="search"
+              label="Look up"
+              :loading="identifierFormDialog.searching"
+              :disable="!identifierFormDialog.data.searchText"
+            ></q-btn>
           </div>
-        </div>
-        <div v-if="identifierFormDialog.data.identifier" class="row">
-          <div class="col-8">
-            <q-select
-              filled
-              dense
-              emit-value
-              map-options
-              v-model="identifierFormDialog.data.identifier.rank"
-              :options="domainRankingAllOptions"
-              label="Bucket"
-            ></q-select>
-          </div>
-          <div class="col-4"></div>
         </div>
 
-        <div class="row q-mt-lg">
-          <q-btn @click="updateIdentifier" unelevated color="primary"
-            >Update Ranking</q-btn
-          >
-          <q-btn v-close-popup flat color="grey" class="q-ml-auto"
-            >Cancel</q-btn
-          >
+        {% raw %}
+        <!-- Idle state -->
+        <div
+          v-if="!identifierFormDialog.searched && !identifierFormDialog.searching"
+          class="nip5-empty-state"
+        >
+          <q-icon name="search" size="32px" color="grey-5"></q-icon>
+          <div class="text-subtitle2 q-mt-sm">Look up an identifier</div>
+          <div class="text-caption text-grey-7">
+            Type a name above and press Enter to see its current tier.
+          </div>
+        </div>
+
+        <!-- Not found state -->
+        <q-banner
+          v-if="identifierFormDialog.notFound"
+          rounded
+          dense
+          class="nip5-banner-warning"
+        >
+          <template v-slot:avatar>
+            <q-icon name="search_off"></q-icon>
+          </template>
+          <div class="text-caption">
+            No identifier matches
+            <strong
+              class="text-monospace"
+              v-text="'&quot;' + identifierFormDialog.data.searchText + '&quot;'"
+            ></strong
+            >. Add it via <em>Bulk add identifiers</em> or try a different
+            spelling.
+          </div>
+        </q-banner>
+
+        <!-- Found state -->
+        <q-card
+          v-if="identifierFormDialog.data.identifier"
+          flat
+          bordered
+          class="nip5-surface-soft q-pa-md"
+        >
+          <div class="row items-center no-wrap q-mb-md">
+            <q-icon
+              name="check_circle"
+              color="positive"
+              class="q-mr-sm"
+            ></q-icon>
+            <div class="col">
+              <div
+                class="text-monospace text-body1"
+                v-text="identifierFormDialog.data.identifier.name"
+              ></div>
+              <div class="text-caption text-grey-7">
+                Currently in tier
+                <strong
+                  v-text="rankLabel(identifierFormDialog.originalRank)"
+                ></strong>
+              </div>
+            </div>
+          </div>
+
+          <q-select
+            filled
+            dense
+            emit-value
+            map-options
+            v-model="identifierFormDialog.data.identifier.rank"
+            :options="domainRankingAllOptions"
+            label="Move to tier"
+            hint="Changing the tier affects popularity-based pricing on every domain."
+          ></q-select>
+
+          <div class="row q-mt-md">
+            <q-btn
+              @click="updateIdentifier"
+              unelevated
+              color="primary"
+              icon="save"
+              label="Save new tier"
+              :disable="identifierFormDialog.data.identifier.rank === identifierFormDialog.originalRank"
+            ></q-btn>
+            <q-space></q-space>
+            <q-btn
+              flat
+              color="grey-7"
+              icon="restart_alt"
+              label="Reset"
+              :disable="identifierFormDialog.data.identifier.rank === identifierFormDialog.originalRank"
+              @click="identifierFormDialog.data.identifier.rank = identifierFormDialog.originalRank"
+            ></q-btn>
+          </div>
+        </q-card>
+        {% endraw %}
+
+        <div class="row q-mt-sm">
+          <q-space></q-space>
+          <q-btn v-close-popup flat color="grey-7" label="Close"></q-btn>
         </div>
       </q-form>
     </q-card>
   </q-dialog>
 
+  <!-- Settings dialog -->
   <q-dialog v-model="settingsFormDialog.show" position="top">
     <q-card
       v-if="settingsFormDialog.show"
-      class="q-pa-lg q-pt-xl"
-      style="width: 500px"
+      class="q-pa-lg q-pt-xl nip5-dialog-card"
     >
-      <h6 class="q-mt-none">Settings</h6>
+      <div class="row items-center no-wrap q-mb-xs">
+        <q-icon name="settings" size="sm" class="q-mr-sm text-primary"></q-icon>
+        <div class="text-h6">Extension settings</div>
+      </div>
+      <div class="text-caption text-grey-7 q-mb-md">
+        Global settings that apply across every domain in this extension.
+      </div>
 
       <q-form @submit="updateSettings" class="q-gutter-md">
-        <div class="row">
-          <div class="col-8">
-            <q-input
-              filled
-              dense
-              v-model.trim="settingsFormDialog.data.cloudflare_access_token"
-              label="Cloudflare Access Token"
-              hint="Domain ranking is fetched from CloudFlare. An access token must be provided."
-              placeholder="Read-only access token"
-            ></q-input>
-          </div>
-          <div class="col-4">
-            <q-btn-dropdown
-              v-if="g.user.admin"
-              @click="refreshDomainRanking(200)"
-              unelevated
-              split
-              color="primary"
-              class="float-right"
-              label="Refresh"
-            >
-              <q-list
-                v-for="bracket in domainRankingBraketOptions"
-                :key="bracket"
-              >
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="refreshDomainRanking(bracket)"
-                  ><q-item-section>
-                    <q-item-label
-                      v-text="'Refresh top '+ bracket + ' identifiers'"
-                    ></q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-btn-dropdown>
-          </div>
-        </div>
-
         <q-expansion-item
-          group="advanced"
-          icon="alternate_email"
-          label="Lightning Address"
-          class="q-mt-lg"
+          default-opened
+          icon="trending_up"
+          label="Popularity ranking (Cloudflare)"
+          header-class="text-weight-medium"
         >
-          <q-card>
+          <template v-slot:header>
+            <q-item-section avatar>
+              <q-icon name="trending_up"></q-icon>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label class="text-weight-medium">
+                Popularity ranking (Cloudflare)
+              </q-item-label>
+            </q-item-section>
+            {% raw %}
+            <q-item-section side>
+              <q-chip
+                dense
+                :outline="!cloudflareConfigured"
+                :color="cloudflareConfigured ? 'positive' : undefined"
+                :text-color="cloudflareConfigured ? 'white' : undefined"
+                :icon="cloudflareConfigured ? 'check' : 'remove'"
+              >
+                <span
+                  v-text="cloudflareConfigured ? 'Configured' : 'Not set'"
+                ></span>
+              </q-chip>
+            </q-item-section>
+            {% endraw %}
+          </template>
+          <q-card flat>
             <q-card-section>
-              <div class="row">
-                <div class="col">
-                  <q-input
-                    filled
-                    dense
-                    v-model.trim="settingsFormDialog.data.lnaddress_api_endpoint"
-                    label="Lightning Address API Endpoint"
-                    hint="LNURLp requires an https endpoint."
-                    placeholder="httsp://nostr.com"
-                  ></q-input>
-                </div>
+              <div class="text-caption text-grey-7 q-mb-sm">
+                Rankings let you charge more for popular names. Data comes from
+                Cloudflare's public top-domains list and requires a read-only
+                API token.
               </div>
-              <div class="row q-mt-lg">
-                <div class="col">
-                  <q-input
-                    filled
+              <q-input
+                filled
+                dense
+                v-model.trim="settingsFormDialog.data.cloudflare_access_token"
+                :type="showCloudflareToken ? 'text' : 'password'"
+                label="Cloudflare API token"
+                placeholder="Read-only access token"
+                autocomplete="off"
+              >
+                <template v-slot:append>
+                  <q-btn
+                    flat
                     dense
-                    v-model.trim="settingsFormDialog.data.lnaddress_api_admin_key"
-                    hint="This admin key must belong to an admin user."
-                    label="Lightning Address Admin Key"
-                  ></q-input>
+                    round
+                    :icon="showCloudflareToken ? 'visibility_off' : 'visibility'"
+                    @click="showCloudflareToken = !showCloudflareToken"
+                  >
+                    <q-tooltip>
+                      <span
+                        v-text="showCloudflareToken ? 'Hide token' : 'Show token'"
+                      ></span>
+                    </q-tooltip>
+                  </q-btn>
+                </template>
+              </q-input>
+              <div class="q-mt-md">
+                <q-btn-dropdown
+                  v-if="g.user.admin"
+                  @click="refreshDomainRanking(200)"
+                  outline
+                  split
+                  color="primary"
+                  icon="refresh"
+                  label="Refresh top 200"
+                  :disable="!cloudflareConfigured"
+                >
+                  <q-list>
+                    {% raw %}
+                    <q-item
+                      v-for="bracket in domainRankingBraketOptions"
+                      :key="bracket"
+                      clickable
+                      v-close-popup
+                      @click="refreshDomainRanking(bracket)"
+                    >
+                      <q-item-section>
+                        <q-item-label
+                          v-text="'Refresh top ' + bracket.toLocaleString()"
+                        ></q-item-label>
+                      </q-item-section>
+                    </q-item>
+                    {% endraw %}
+                  </q-list>
+                </q-btn-dropdown>
+                <div
+                  v-if="!cloudflareConfigured"
+                  class="text-caption text-grey-7 q-mt-xs"
+                >
+                  Add a token above to enable refreshing.
                 </div>
               </div>
             </q-card-section>
           </q-card>
         </q-expansion-item>
 
+        <q-expansion-item
+          icon="alternate_email"
+          label="Lightning Address"
+          header-class="text-weight-medium"
+        >
+          <template v-slot:header>
+            <q-item-section avatar>
+              <q-icon name="alternate_email"></q-icon>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label class="text-weight-medium">
+                Lightning Address
+              </q-item-label>
+            </q-item-section>
+            {% raw %}
+            <q-item-section side>
+              <q-chip
+                dense
+                :outline="!lnaddressConfigured"
+                :color="lnaddressConfigured ? 'positive' : undefined"
+                :text-color="lnaddressConfigured ? 'white' : undefined"
+                :icon="lnaddressConfigured ? 'check' : 'remove'"
+              >
+                <span
+                  v-text="lnaddressConfigured ? 'Configured' : 'Not set'"
+                ></span>
+              </q-chip>
+            </q-item-section>
+            {% endraw %}
+          </template>
+          <q-card flat>
+            <q-card-section>
+              <div class="text-caption text-grey-7 q-mb-sm">
+                Optional: let buyers use their handle as a Lightning Address.
+                Requires an HTTPS endpoint and an admin-level API key.
+              </div>
+              <q-input
+                filled
+                dense
+                class="q-mb-md"
+                v-model.trim="settingsFormDialog.data.lnaddress_api_endpoint"
+                label="Lightning Address API endpoint"
+                placeholder="https://nostr.com"
+              ></q-input>
+              <q-input
+                filled
+                dense
+                v-model.trim="settingsFormDialog.data.lnaddress_api_admin_key"
+                :type="showLnaddressAdminKey ? 'text' : 'password'"
+                label="Lightning Address admin key"
+                hint="Must belong to an admin user."
+                autocomplete="off"
+              >
+                <template v-slot:append>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    :icon="showLnaddressAdminKey ? 'visibility_off' : 'visibility'"
+                    @click="showLnaddressAdminKey = !showLnaddressAdminKey"
+                  >
+                    <q-tooltip>
+                      <span
+                        v-text="showLnaddressAdminKey ? 'Hide key' : 'Show key'"
+                      ></span>
+                    </q-tooltip>
+                  </q-btn>
+                </template>
+              </q-input>
+            </q-card-section>
+          </q-card>
+        </q-expansion-item>
+
         <div class="row q-mt-lg">
-          <q-btn unelevated color="primary" type="submit">Update</q-btn>
-          <q-btn v-close-popup flat color="grey" class="q-ml-auto"
+          <q-btn
+            unelevated
+            color="primary"
+            type="submit"
+            label="Save settings"
+          ></q-btn>
+          <q-btn v-close-popup flat color="grey-7" class="q-ml-auto"
             >Cancel</q-btn
           >
         </div>
@@ -590,8 +1287,114 @@
     </q-card>
   </q-dialog>
 
+  <!-- NIP-05 lookup tester dialog -->
+  <q-dialog v-model="lookupDialog.show" position="top">
+    <q-card class="q-pa-lg q-pt-xl nip5-dialog-card">
+      <div class="text-h6 q-mb-xs">Test NIP-05 lookup</div>
+      <div class="text-caption text-grey-7 q-mb-md">
+        Nostr clients query
+        <span class="text-monospace"
+          >/.well-known/nostr.json?name=&lt;handle&gt;</span
+        >
+        on your domain. The bare URL returns an empty feed by design &mdash; a
+        name is always required. Enter a handle below to preview the real
+        response.
+      </div>
+      <q-input
+        filled
+        dense
+        v-model.trim="lookupDialog.name"
+        label="Handle to test"
+        placeholder="yourname"
+        autofocus
+        @keydown.enter="runLookup"
+      >
+        <template v-slot:append>
+          <span class="text-grey-7 text-caption"
+            >@<span v-text="lookupDialog.domain"></span
+          ></span>
+        </template>
+      </q-input>
+
+      {% raw %}
+      <div v-if="lookupDialog.name" class="q-mt-md">
+        <div class="text-caption text-grey-7">Request URL</div>
+        <q-input
+          filled
+          dense
+          readonly
+          :model-value="lookupUrl"
+          class="text-monospace q-mt-xs"
+        >
+          <template v-slot:append>
+            <q-btn
+              flat
+              dense
+              round
+              icon="content_copy"
+              @click="copyText(lookupUrl, 'URL copied')"
+            >
+              <q-tooltip>Copy URL</q-tooltip>
+            </q-btn>
+          </template>
+        </q-input>
+      </div>
+
+      <div class="row q-mt-md q-gutter-sm">
+        <q-btn
+          unelevated
+          color="primary"
+          icon="search"
+          label="Run lookup"
+          :disable="!lookupDialog.name"
+          @click="runLookup"
+        ></q-btn>
+        <q-btn
+          v-if="lookupDialog.name"
+          outline
+          color="primary"
+          icon="open_in_new"
+          label="Open in new tab"
+          type="a"
+          :href="lookupUrl"
+          target="_blank"
+        ></q-btn>
+        <q-space></q-space>
+        <q-btn v-close-popup flat color="grey-7" label="Close"></q-btn>
+      </div>
+
+      <div v-if="lookupDialog.result" class="q-mt-md">
+        <div class="row items-center">
+          <div class="text-caption text-grey-7">Response</div>
+          <q-space></q-space>
+          <q-chip
+            dense
+            :color="lookupDialog.match ? 'positive' : 'warning'"
+            text-color="white"
+          >
+            <span
+              v-text="lookupDialog.match ? 'Handle resolved' : 'No mapping found'"
+            ></span>
+          </q-chip>
+        </div>
+        <pre
+          class="nip5-code-block q-pa-md rounded-borders q-mt-xs"
+          style="overflow-x: auto; font-size: 12px"
+          v-text="lookupDialog.result"
+        ></pre>
+        <div v-if="!lookupDialog.match" class="text-caption text-grey-7">
+          An empty <span class="text-monospace">names</span> object usually
+          means the handle has not been sold yet, or the address is not active.
+        </div>
+      </div>
+      {% endraw %}
+    </q-card>
+  </q-dialog>
+
+  <!-- Reimburse QR dialog -->
   <q-dialog v-model="qrCodeDialog.show" position="top">
     <q-card class="q-pa-lg q-pt-xl lnbits__dialog-card text-center">
+      <div class="text-subtitle2 q-mb-sm">Refund invoice</div>
       <a
         class="text-secondary"
         :href="'lightning:' + qrCodeDialog.data.payment_request"
@@ -605,10 +1408,11 @@
       <br />
       <q-btn
         outline
-        color="grey"
-        @click="copyText('lightning:' + qrCodeDialog.data.payment_request, 'Invoice copied to clipboard!')"
-        >Copy Invoice</q-btn
-      >
+        color="primary"
+        icon="content_copy"
+        label="Copy invoice"
+        @click="copyText('lightning:' + qrCodeDialog.data.payment_request, 'Invoice copied')"
+      ></q-btn>
     </q-card>
   </q-dialog>
 </div>

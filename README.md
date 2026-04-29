@@ -1,3 +1,13 @@
+<a href="https://lnbits.com" target="_blank" rel="noopener noreferrer">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://i.imgur.com/QE6SIrs.png">
+    <img src="https://i.imgur.com/fyKPgVT.png" alt="LNbits" style="width:280px">
+  </picture>
+</a>
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-success?logo=open-source-initiative&logoColor=white)](./LICENSE)
+[![Built for LNbits](https://img.shields.io/badge/Built%20for-LNbits-4D4DFF?logo=lightning&logoColor=white)](https://github.com/lnbits/lnbits)
+
 # Nostr NIP-05 - <small>[LNbits](https://github.com/lnbits/lnbits) extension</small>
 
 <small>For more about LNBits extension check [this tutorial](https://github.com/lnbits/lnbits/wiki/LNbits-Extensions)</small>
@@ -16,6 +26,24 @@ This extension allows users to sell NIP-05 verification to other nostr users on 
    - enter the domain (or subdomain) you want to provide verification for
      - Note, you must own this domain and have access to a web server
 3. You can then use share your signup link with your users to allow them to sign up
+
+## Pricing strategies
+
+On top of the base price per year, each domain supports three optional rules you can combine:
+
+- **Length-based** — charge more for short, memorable names (e.g. ≤3 chars at 8×, ≤4 at 4×).
+- **Popularity** — charge more for names that appear in the Cloudflare top-domains list. Requires a read-only Cloudflare API token in the extension settings.
+- **Promo codes** — offer buyer discounts and/or reward referrers at checkout.
+
+The highest matching premium is used, multiplied by the selected years, then any promo code is applied. Use the live preview on the domain page to test what a buyer would pay.
+
+## Refunds
+
+If a buyer pays but their handle can't be activated (for example, two buyers race for the same name), the extension records what you owe them on that identity row.
+
+> The orange "Refund owed" chip is your to-do list of payments you owe back because their handle couldn't be activated. Click it, scan the QR with your admin wallet to pay it, and the buyer gets their sats back.
+
+Note: automatic refunds only work when the buyer paid from an LNbits wallet — direct-Lightning-only buyers have no wallet to credit back to. In that case you still hold the sats, so the alternative is to use "Issue identity manually" and "Activate without payment" to deliver the handle they paid for.
 
 ## Installation
 
@@ -58,3 +86,10 @@ nip.5.domain {
     }
 }
 ```
+
+## Powered by LNbits
+
+[LNbits](https://lnbits.com) is a free and open-source lightning accounts system.
+
+[![Visit LNbits Shop](https://img.shields.io/badge/Visit-LNbits%20Shop-7C3AED?logo=shopping-cart&logoColor=white&labelColor=5B21B6)](https://shop.lnbits.com/)
+[![Try myLNbits SaaS](https://img.shields.io/badge/Try-myLNbits%20SaaS-2563EB?logo=lightning&logoColor=white&labelColor=1E40AF)](https://my.lnbits.com/login)

@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Union
 
 from lnbits.db import Database, Filters, Page
 from lnbits.helpers import urlsafe_short_hash
@@ -23,7 +22,7 @@ from .models import (
 db = Database("ext_nostrnip5")
 
 
-async def get_domain(domain_id: str, wallet_id: str) -> Optional[Domain]:
+async def get_domain(domain_id: str, wallet_id: str) -> Domain | None:
     return await db.fetchone(
         "SELECT * FROM nostrnip5.domains WHERE id = :id AND wallet = :wallet",
         {"id": domain_id, "wallet": wallet_id},
@@ -31,7 +30,7 @@ async def get_domain(domain_id: str, wallet_id: str) -> Optional[Domain]:
     )
 
 
-async def get_domain_by_id(domain_id: str) -> Optional[Domain]:
+async def get_domain_by_id(domain_id: str) -> Domain | None:
     return await db.fetchone(
         "SELECT * FROM nostrnip5.domains WHERE id = :id",
         {"id": domain_id},
@@ -39,7 +38,7 @@ async def get_domain_by_id(domain_id: str) -> Optional[Domain]:
     )
 
 
-async def get_domain_public_data(domain_id: str) -> Optional[PublicDomain]:
+async def get_domain_public_data(domain_id: str) -> PublicDomain | None:
     return await db.fetchone(
         "SELECT id, currency, cost, domain FROM nostrnip5.domains WHERE id = :id",
         {"id": domain_id},
@@ -47,7 +46,7 @@ async def get_domain_public_data(domain_id: str) -> Optional[PublicDomain]:
     )
 
 
-async def get_domain_by_name(domain: str) -> Optional[Domain]:
+async def get_domain_by_name(domain: str) -> Domain | None:
     return await db.fetchone(
         "SELECT * FROM nostrnip5.domains WHERE domain = :domain",
         {"domain": domain.lower()},
@@ -55,7 +54,7 @@ async def get_domain_by_name(domain: str) -> Optional[Domain]:
     )
 
 
-async def get_domains(wallet_ids: Union[str, list[str]]) -> list[Domain]:
+async def get_domains(wallet_ids: str | list[str]) -> list[Domain]:
     if isinstance(wallet_ids, str):
         wallet_ids = [wallet_ids]
 
@@ -66,7 +65,7 @@ async def get_domains(wallet_ids: Union[str, list[str]]) -> list[Domain]:
     )
 
 
-async def get_address(domain_id: str, address_id: str) -> Optional[Address]:
+async def get_address(domain_id: str, address_id: str) -> Address | None:
     return await db.fetchone(
         """
         SELECT * FROM nostrnip5.addresses
@@ -79,7 +78,7 @@ async def get_address(domain_id: str, address_id: str) -> Optional[Address]:
 
 async def get_active_address_by_local_part(
     domain_id: str, local_part: str
-) -> Optional[Address]:
+) -> Address | None:
     return await db.fetchone(
         """
         SELECT * FROM nostrnip5.addresses
@@ -100,7 +99,7 @@ async def get_addresses(domain_id: str) -> list[Address]:
 
 async def get_address_for_owner(
     owner_id: str, domain_id: str, local_part: str
-) -> Optional[Address]:
+) -> Address | None:
     return await db.fetchone(
         """
         SELECT * FROM nostrnip5.addresses WHERE owner_id = :owner_id
@@ -133,7 +132,7 @@ async def get_free_addresses_for_owner(owner_id: str, domain_id: str) -> list[Ad
     )
 
 
-async def get_all_addresses(wallet_ids: Union[str, list[str]]) -> list[Address]:
+async def get_all_addresses(wallet_ids: str | list[str]) -> list[Address]:
     if isinstance(wallet_ids, str):
         wallet_ids = [wallet_ids]
 
@@ -149,8 +148,8 @@ async def get_all_addresses(wallet_ids: Union[str, list[str]]) -> list[Address]:
 
 
 async def get_all_addresses_paginated(
-    wallet_ids: Union[str, list[str]],
-    filters: Optional[Filters[AddressFilters]] = None,
+    wallet_ids: str | list[str],
+    filters: Filters[AddressFilters] | None = None,
 ) -> Page[Address]:
     if isinstance(wallet_ids, str):
         wallet_ids = [wallet_ids]
@@ -213,8 +212,8 @@ async def delete_address_by_id(domain_id, address_id):
 
 async def create_address_internal(
     data: CreateAddressData,
-    owner_id: Optional[str] = None,
-    extra: Optional[AddressExtra] = None,
+    owner_id: str | None = None,
+    extra: AddressExtra | None = None,
 ) -> Address:
     expires_at = datetime.now(timezone.utc) + timedelta(days=365 * data.years)
     address = Address(
@@ -232,7 +231,7 @@ async def create_address_internal(
     return address
 
 
-async def update_domain(wallet_id: str, data: EditDomainData) -> Optional[Domain]:
+async def update_domain(wallet_id: str, data: EditDomainData) -> Domain | None:
     domain = await get_domain(data.id, wallet_id)
     if not domain:
         return None
@@ -279,7 +278,7 @@ async def update_identifier_ranking(name: str, rank: int):
     )
 
 
-async def get_identifier_ranking(name: str) -> Optional[IdentifierRanking]:
+async def get_identifier_ranking(name: str) -> IdentifierRanking | None:
     return await db.fetchone(
         "SELECT * FROM nostrnip5.identifiers_rankings WHERE name = :name",
         {"name": normalize_identifier(name)},
@@ -306,7 +305,7 @@ async def create_settings(settings: UserSetting) -> UserSetting:
     return settings
 
 
-async def get_settings(owner_id: str) -> Optional[Nip5Settings]:
+async def get_settings(owner_id: str) -> Nip5Settings | None:
     user_settings = await db.fetchone(
         "SELECT * FROM nostrnip5.settings WHERE owner_id = :owner_id",
         {"owner_id": owner_id},
