@@ -105,6 +105,7 @@ class CreateAddressData(BaseModel):
     relays: list[str] | None = None
     promo_code: str | None = None
     referer: str | None = None
+    fiat_provider: str | None = None
     create_invoice: bool = False
 
     def normalize(self):
