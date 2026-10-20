@@ -6,7 +6,7 @@
   "short_description": "Verify addresses for Nostr NIP-5",
   "description": "",
   "tile": "/nostrnip5/static/image/nostrnip5.png",
-  "min_lnbits_version": "1.0.0",
+  "min_lnbits_version": "1.7.0",
   "contributors": [
     {
       "name": "leesalminen",
