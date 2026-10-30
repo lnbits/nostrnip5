@@ -500,7 +500,7 @@ async def api_request_address(
     return {
         "payment_hash": None,
         "payment_request": None,
-        **address.dict(),
+        **address.model_dump(),
     }
 
 

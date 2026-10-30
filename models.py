@@ -324,7 +324,7 @@ class Address(BaseModel):
     is_locked: bool = False
     reimburse_amount: int = 0
     promo_code_status: PromoCodeStatus = Field(
-        default=PromoCodeStatus(), no_database=True
+        default=PromoCodeStatus(), json_schema_extra={"no_database": True}
     )
     extra: AddressExtra = AddressExtra()
 

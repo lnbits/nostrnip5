@@ -25,7 +25,7 @@ def nostrnip5_renderer():
 @nostrnip5_generic_router.get("/", response_class=HTMLResponse)
 async def index(request: Request, user: User = Depends(check_user_exists)):
     return nostrnip5_renderer().TemplateResponse(
-        "nostrnip5/index.html", {"request": request, "user": user.json()}
+        "nostrnip5/index.html", {"request": request, "user": user.model_dump_json()}
     )
 
 
@@ -38,7 +38,11 @@ async def domain_details(
         raise HTTPException(HTTPStatus.NOT_FOUND, "Domain does not exist.")
     return nostrnip5_renderer().TemplateResponse(
         "nostrnip5/domain.html",
-        {"request": request, "domain": domain.json(), "user": user.json()},
+        {
+            "request": request,
+            "domain": domain.model_dump_json(),
+            "user": user.model_dump_json(),
+        },
     )
 
 
