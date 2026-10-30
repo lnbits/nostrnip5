@@ -1,6 +1,6 @@
 {
   "id": "nostrnip5",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "name": "Nostr NIP-5",
   "repo": "https://github.com/lnbits/nostrnip5",
   "short_description": "Verify addresses for Nostr NIP-5",
