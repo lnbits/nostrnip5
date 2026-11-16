@@ -215,6 +215,9 @@ async def create_invoice_for_identifier(
     payment = await create_payment_request(
         wallet_id=domain.wallet, invoice_data=invoice_data
     )
+    address.extra.payment_hash = payment.payment_hash
+    address.extra.payment_amount_msat = payment.amount
+    await update_address(address)
     return payment
 
 
