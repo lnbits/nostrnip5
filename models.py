@@ -300,6 +300,7 @@ class AddressExtra(BaseModel):
     price: float | None = None
     price_in_sats: float | None = None
     payment_hash: str | None = None
+    payment_amount_msat: int | None = None
     reimburse_payment_hash: str | None = None
     promo_code: str | None = None
     transfer_code: str | None = None

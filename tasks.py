@@ -4,7 +4,7 @@ from lnbits.core.models import Payment
 from lnbits.tasks import register_invoice_listener
 from loguru import logger
 
-from .crud import get_address, update_address
+from .crud import get_address, get_domain_by_id, update_address
 from .models import Address
 from .services import activate_address, pay_referer_for_promo_code, update_ln_address
 
@@ -19,6 +19,8 @@ async def wait_for_paid_invoices():
 
 
 async def on_invoice_paid(payment: Payment) -> None:
+    if not payment.is_in or not payment.success:
+        return
     if not payment.extra or payment.extra.get("tag") != "nostrnip5":
         return
 
@@ -57,6 +59,16 @@ async def _handle_action(action: str, payment: Payment, address: Address):
 
 
 async def _activate_address(payment: Payment, address: Address):
+    domain = await get_domain_by_id(address.domain_id)
+    if (
+        not domain
+        or payment.wallet_id != domain.wallet
+        or payment.payment_hash != address.extra.payment_hash
+        or payment.amount != address.extra.payment_amount_msat
+        or address.active
+    ):
+        return
+
     activated_address = await activate_address(
         address.domain_id, address.id, payment_hash=payment.payment_hash
     )
@@ -94,4 +106,6 @@ async def _pay_promo_code(payment: Payment, address: Address):
         )
         return
 
-    await pay_referer_for_promo_code(address, referer, int(referer_bonus_sats))
+    await pay_referer_for_promo_code(
+        address, referer, min(referer_bonus_sats, payment.sat)
+    )
